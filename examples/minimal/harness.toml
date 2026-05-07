@@ -1,0 +1,40 @@
+# examples/minimal/harness.toml — the smallest plausible consumer config.
+#
+# Replace the placeholders before pointing the harness at this directory.
+# The matrix in the same dir lists one scenario that exercises a fictional
+# "myfs" driver; you will see the harness build the right command, attempt
+# to run it, and emit a failure manifest because no real binary exists.
+
+[project]
+name        = "minimal-example"
+binary      = "target/release/myfs.exe"      # fictional driver
+matrix_path = "test-matrix.json"
+
+[vm]
+host    = "user@192.0.2.10"                  # replace
+ssh_key = "../privatekey"                    # replace
+workdir = "C:/Users/user/dev/minimal"
+
+[tools]
+# Optional reference tools. Substituted as {tools.fsck} etc. into [ops]
+# / [post_verify] templates.
+# fsck = "fsck.myfs -fn"
+
+[ops]
+# Op-name -> shell command template. Reserved tokens:
+#   {binary}, {image}, {drive}, {path}, {from}, {to}, {content}, {extra},
+#   {tools.<name>}.
+ls   = "{binary} ls {image} {path}"
+cat  = "{binary} cat {image} {path}"
+stat = "{binary} stat {image} {path}"
+
+[mount]
+# Spawned as a background process; the harness waits for `ready_line` to
+# appear on stdout before treating the mount as ready.
+command    = "{binary} mount {image} --drive {drive} {extra}"
+ready_line = "myfs mounted at"
+rw_extra   = "--rw"
+
+# [post_verify]
+# command     = "{tools.fsck} {image}"
+# expect_exit = 0

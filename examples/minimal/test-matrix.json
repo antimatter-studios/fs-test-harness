@@ -1,0 +1,17 @@
+{
+  "_format": "v1",
+  "_doc": "Single scenario showcasing the matrix shape. Will fail because no real myfs.exe exists; the failure is intentional — it lets you see what the diag tree looks like when an op errors.",
+  "scenarios": {
+    "minimal-list-root": {
+      "status": "pending",
+      "image": "fixtures/empty.img",
+      "ops": [
+        {
+          "type": "ls",
+          "path": "/",
+          "expect_names": [".", ".."]
+        }
+      ]
+    }
+  }
+}

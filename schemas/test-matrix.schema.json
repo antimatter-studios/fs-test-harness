@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/fs-test-harness/test-matrix.schema.json",
+  "title": "test-matrix.json",
+  "description": "Consumer scenario list for fs-test-harness. The runner reads `scenarios`; everything else is free-form metadata.",
+  "type": "object",
+  "required": ["scenarios"],
+  "properties": {
+    "_format": { "type": "string", "description": "Schema version tag, e.g. \"v1\"." },
+    "_doc":    { "type": "string", "description": "Human note about the matrix's intent." },
+    "scenarios": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Agent bookkeeping. One of `pending`, `claimed-<session>`, `passed-<session>`, `failed-<session>`, `errored-<session>`, `blocked-needs-<feature>`. The runner does not read this; the claim/update/reset scripts mutate it.",
+          "examples": ["pending", "claimed-agent-3f7c", "passed-agent-3f7c-2026-05-07", "blocked-needs-getxattr-cli"]
+        },
+        "image": {
+          "type": "string",
+          "description": "Path under harness.toml [vm.image_dir] to the test image. May be empty for scenarios that build their image at scenario-time."
+        },
+        "mount_args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Substituted into the mount template's {extra}. Presence of `--rw` flips the scenario into RW mode."
+        },
+        "mount": {
+          "type": "object",
+          "description": "Per-scenario mount override. Most scenarios omit this and inherit harness.toml [mount].",
+          "properties": {
+            "command":    { "type": "string" },
+            "ready_line": { "type": "string" }
+          },
+          "required": ["command"],
+          "additionalProperties": false
+        },
+        "ops": {
+          "type": "array",
+          "description": "Ordered ops to execute against the mounted volume. Each op's `type` selects a template from harness.toml [ops]; remaining keys are passed through as substitution tokens and expectation checks.",
+          "items": { "$ref": "#/$defs/op" }
+        },
+        "operations": {
+          "type": "array",
+          "description": "Alias for `ops`, accepted for backwards compat with the existing copies.",
+          "items": { "$ref": "#/$defs/op" }
+        },
+        "post_verify": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "command":     { "type": "string" },
+                "expect_exit": { "type": "integer" }
+              },
+              "required": ["command"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "_attempts":     { "type": "array",  "description": "Agent bookkeeping; runner ignores." },
+        "_notes":        { "type": "string", "description": "Free-form description." },
+        "evidence_link": { "type": "string", "description": "Path to the diag dir on success/failure; written by update-scenario-status.sh." }
+      },
+      "additionalProperties": false
+    },
+    "op": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Op kind. Reserved built-in vocabulary: ls, cat, stat, tree, mount, unmount, write, mkdir, rmdir, unlink, rename, cat_via_mount. Consumers may add custom op types with a matching template in harness.toml [ops]."
+        },
+        "path":           { "type": "string", "description": "Substituted as {path}." },
+        "from":           { "type": "string", "description": "Substituted as {from} (rename)." },
+        "to":             { "type": "string", "description": "Substituted as {to} (rename)." },
+        "content":        { "type": "string", "description": "UTF-8 content for write ops; substituted as {content} for templates." },
+        "content_b64":    { "type": "string", "description": "Base64 binary content for write ops." },
+        "extra":          { "type": "string", "description": "Substituted as {extra}." },
+        "via":            { "type": "string", "description": "If \"mount\", read through the mounted drive instead of the binary's CLI subcommand." },
+        "expect_names":   { "type": "array", "items": { "type": "string" } },
+        "expect_count":   { "type": "integer" },
+        "expect_size":    { "type": "integer" },
+        "expect_mode":    { "type": "string" },
+        "expect_file_type": { "type": "string" },
+        "expect_sha256":  { "type": "string" },
+        "expect_content": { "type": "string" },
+        "expect_stdout_sha256":   { "type": "string" },
+        "expect_stdout_contains": { "type": "string" },
+        "expect_exit":    { "type": "integer" },
+        "allow_nonzero_exit": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

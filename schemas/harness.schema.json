@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/fs-test-harness/harness.schema.json",
+  "title": "harness.toml",
+  "description": "Per-consumer fs-test-harness configuration. Consumed by both the Mac-side scripts and the Rust runner.",
+  "type": "object",
+  "required": ["project"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name":        { "type": "string" },
+        "binary":      { "type": "string", "description": "Path to consumer's binary on the VM (relative to harness.toml or absolute). Substituted as {binary}." },
+        "matrix_path": { "type": "string", "description": "Path to scenario file. Default: \"test-matrix.json\"." }
+      }
+    },
+    "vm": {
+      "type": "object",
+      "properties": {
+        "host":           { "type": "string", "description": "Default user@host for SSH; setup-local.sh uses this as a prompt default." },
+        "ssh_key":        { "type": "string" },
+        "workdir":        { "type": "string" },
+        "image_dir":      { "type": "string" },
+        "packages":       { "type": "array", "items": { "type": "string" }, "description": "winget package IDs installed by setup-windows-vm.ps1." },
+        "rust_toolchain": { "type": "string", "description": "rustup channel-target-triple to set as default on the VM, e.g. \"stable-aarch64-pc-windows-gnullvm\"." },
+        "env_prefix":     { "type": "string", "description": "PowerShell prefix prepended before the cargo invocation, e.g. setting LIBCLANG_PATH." }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Reference tool paths. Substituted into [ops] / [post_verify] / [mount] templates as {tools.<name>}, e.g. {tools.fsck}."
+    },
+    "ops": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Op-name -> shell command template. Reserved tokens: {binary}, {image}, {drive}, {path}, {from}, {to}, {content}, {extra}, {tools.<name>}."
+    },
+    "mount": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command":       { "type": "string", "description": "Spawn template for mount. Tokens: {binary}, {image}, {drive}, {extra}." },
+        "ready_line":    { "type": "string", "description": "Regex matched against mount stdout; mount is considered ready when this matches. Empty => don't wait." },
+        "default_extra": { "type": "string" },
+        "rw_extra":      { "type": "string", "description": "Substituted as {extra} when the scenario's mount_args includes --rw. Typical: \"--rw\"." }
+      }
+    },
+    "post_verify": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command":     { "type": "string", "description": "Default post-verify command. Tokens: {binary}, {image}, {drive}, {tools.<name>}." },
+        "expect_exit": { "type": "integer", "description": "Expected exit code. Default 0." }
+      }
+    }
+  }
+}
