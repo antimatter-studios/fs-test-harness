@@ -78,18 +78,27 @@ tar "${TAR_EXCLUDES[@]}" -cf - . | \
 
 # Also push the harness checkout itself unless the consumer wired it as a
 # submodule already (the tar above will have included it then). The
-# convention: harness lives at <consumer_root>/harness/. If $harness_root
-# is not under $consumer_root, push it under <VM_WORKDIR>/harness/ so the
-# remote can find scripts/run-scenario.ps1.
+# remote-relative path of the runner is computed below and used in the
+# REMOTE_CMD so the same script works regardless of whether consumers
+# vendor at ./harness, ./vendor/fs-test-harness, ./tools/harness, etc.
+HARNESS_REL=""
 case "${harness_root}" in
-    "${consumer_root}"/*) ;;  # already shipped as part of consumer tar
+    "${consumer_root}"/*)
+        # Already shipped as part of the consumer tar. Compute its path
+        # relative to consumer_root so we know where the runner lives on
+        # the remote.
+        HARNESS_REL="${harness_root#"${consumer_root}/"}"
+        ;;
     *)
-        echo "[push] harness -> ${VM_HOST}:${VM_WORKDIR}/harness"
+        # Out-of-tree checkout. Push it under <VM_WORKDIR>/harness/ and
+        # use that as the remote-relative path.
+        HARNESS_REL="harness"
+        echo "[push] harness -> ${VM_HOST}:${VM_WORKDIR}/${HARNESS_REL}"
         # shellcheck disable=SC2029
-        ssh ${SSH_OPTS} "${VM_HOST}" "if (-not (Test-Path '${VM_WORKDIR_PS}\\harness')) { New-Item -ItemType Directory -Path '${VM_WORKDIR_PS}\\harness' -Force | Out-Null }"
+        ssh ${SSH_OPTS} "${VM_HOST}" "if (-not (Test-Path '${VM_WORKDIR_PS}\\${HARNESS_REL}')) { New-Item -ItemType Directory -Path '${VM_WORKDIR_PS}\\${HARNESS_REL}' -Force | Out-Null }"
         tar --exclude='./target' --exclude='./.git' \
             -C "${harness_root}" -cf - . | \
-            ssh ${SSH_OPTS} "${VM_HOST}" "tar -xf - -C '${VM_WORKDIR}/harness'"
+            ssh ${SSH_OPTS} "${VM_HOST}" "tar -xf - -C '${VM_WORKDIR}/${HARNESS_REL}'"
         ;;
 esac
 
@@ -160,7 +169,7 @@ IMAGE_DIR_ESCAPED="${VM_IMAGE_DIR//\\/\\\\}"
 # cargo invocation. Read from harness.toml `[vm.env_prefix]` if present.
 ENV_PREFIX="$(harness_get_or vm.env_prefix "")"
 
-REMOTE_CMD="Set-Location '${VM_WORKDIR_PS}'; \$env:PATH=\"\$env:USERPROFILE\\.cargo\\bin;\$env:PATH\"; \$env:HARNESS_IMAGE_DIR='${IMAGE_DIR_ESCAPED}'; \$env:HARNESS_CONSUMER_ROOT='${VM_WORKDIR_PS}'; ${ENV_PREFIX} ${VERBOSE_ENV_PREFIX}cargo run --manifest-path harness/runner/Cargo.toml --release --bin run-matrix -- --test-threads=1${EXTRA_ARGS}"
+REMOTE_CMD="Set-Location '${VM_WORKDIR_PS}'; \$env:PATH=\"\$env:USERPROFILE\\.cargo\\bin;\$env:PATH\"; \$env:HARNESS_IMAGE_DIR='${IMAGE_DIR_ESCAPED}'; \$env:HARNESS_CONSUMER_ROOT='${VM_WORKDIR_PS}'; ${ENV_PREFIX} ${VERBOSE_ENV_PREFIX}cargo run --manifest-path ${HARNESS_REL}/runner/Cargo.toml --release --bin run-matrix -- --test-threads=1${EXTRA_ARGS}"
 
 echo "[run]  cargo run --bin run-matrix on ${VM_HOST}"
 echo "[run]  remote: cargo run --bin run-matrix -- --test-threads=1${EXTRA_ARGS}"
