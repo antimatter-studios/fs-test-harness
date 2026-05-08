@@ -113,10 +113,13 @@ impl TomlAdapter {
         let mount_command = mount_command.replace("{binary}", &binary_abs);
 
         // Resolve templates: substitute {binary} now; PS substitutes
-        // per-op tokens at run time.
+        // per-op tokens at run time. The v1 path emits the legacy
+        // string-only `templates` map; v2 (recipe execution) reads
+        // each op's full `OpDef` (host/expect_exit/when) and never
+        // hits this code path.
         let mut templates = serde_json::Map::new();
-        for (k, v) in &self.config.ops {
-            let v = v.replace("{binary}", &binary_abs);
+        for (k, def) in &self.config.ops {
+            let v = def.command.replace("{binary}", &binary_abs);
             // {tools.name} -> the resolved tool path
             let mut v = v;
             for (tname, tpath) in &self.config.tools {
