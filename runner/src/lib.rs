@@ -18,6 +18,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub mod config;
+mod dispatch;
 mod matrix;
 mod report;
 mod substitution;
@@ -27,6 +28,7 @@ mod toml_adapter;
 mod tests;
 
 pub use config::{HarnessConfig, OpDef, OpHost};
+pub use dispatch::{run_recipe, RecipeResult, StepResult};
 pub use matrix::{Matrix, MountSpec, OpSpec, PostVerifySpec, Scenario, Step};
 pub use report::{RunReport, ScenarioResult};
 pub use substitution::Substitution;
