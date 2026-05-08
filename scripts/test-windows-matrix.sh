@@ -93,6 +93,49 @@ case "${harness_root}" in
         ;;
 esac
 
+# Push the image_dir if it's outside the consumer tree. The runner
+# resolves images relative to consumer_root + VM_IMAGE_DIR, so we tar
+# the image_dir to the matching location on the VM. Skipped when
+# VM_IMAGE_DIR is unset, empty, absolute, or a path inside consumer_root
+# (in which case the consumer-source tar above already shipped it).
+if [[ -n "${VM_IMAGE_DIR}" ]]; then
+    case "${VM_IMAGE_DIR}" in
+        /*|[A-Za-z]:[/\\]*) ;;  # absolute paths handled by the consumer
+        *)
+            local_image_dir="${consumer_root}/${VM_IMAGE_DIR}"
+            if [[ -d "${local_image_dir}" ]]; then
+                # Resolve to a normalised real path so we can detect "is
+                # this inside consumer_root" reliably even with `..`.
+                resolved_image_dir="$(cd "${local_image_dir}" 2>/dev/null && pwd -P || echo "")"
+                resolved_consumer="$(cd "${consumer_root}" && pwd -P)"
+                case "${resolved_image_dir}" in
+                    "${resolved_consumer}"|"${resolved_consumer}"/*) ;;  # under consumer tree
+                    "")
+                        echo "[push] image_dir ${VM_IMAGE_DIR} did not resolve; skipping" >&2
+                        ;;
+                    *)
+                        # Compute remote path = VM_WORKDIR / VM_IMAGE_DIR, normalised.
+                        remote_image_dir="${VM_WORKDIR}/${VM_IMAGE_DIR}"
+                        # Replace `/foo/../bar` -> `/bar` segments at most twice for
+                        # the common `..` cases we hit in practice.
+                        for _ in 1 2 3; do
+                            remote_image_dir="$(echo "${remote_image_dir}" | sed 's:/[^/]*/\.\./:/:g')"
+                        done
+                        remote_image_dir_ps="${remote_image_dir//\//\\}"
+                        echo "[push] images -> ${VM_HOST}:${remote_image_dir}"
+                        # shellcheck disable=SC2029
+                        ssh ${SSH_OPTS} "${VM_HOST}" "if (-not (Test-Path '${remote_image_dir_ps}')) { New-Item -ItemType Directory -Path '${remote_image_dir_ps}' -Force | Out-Null }"
+                        tar -C "${resolved_image_dir}" --exclude='./.DS_Store' -cf - . | \
+                            ssh ${SSH_OPTS} "${VM_HOST}" "tar -xf - -C '${remote_image_dir}'"
+                        ;;
+                esac
+            else
+                echo "[push] image_dir ${local_image_dir} not found locally; skipping" >&2
+            fi
+            ;;
+    esac
+fi
+
 # Build the libtest-mimic argv passthrough.
 EXTRA_ARGS=""
 VERBOSE_ENV_PREFIX=""
