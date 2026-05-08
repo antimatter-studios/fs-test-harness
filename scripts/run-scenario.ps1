@@ -69,11 +69,14 @@ function Find-FreeDriveLetter {
 }
 
 # Substitute {token} placeholders in a template string against a hashtable.
+# Plain (non-regex) string replacement so Windows paths -- which contain
+# `\`, a regex metachar AND a -replace backreference char -- pass
+# through unmolested.
 function Expand-Template {
     param([string]$Template, [hashtable]$Vars)
     $out = $Template
     foreach ($k in $Vars.Keys) {
-        $out = $out -replace ("\{" + [regex]::Escape($k) + "\}"), [regex]::Escape("$($Vars[$k])").Replace('\','\\\\').TrimStart('\').Replace('\\\\','\\')
+        $out = $out.Replace("{$k}", "$($Vars[$k])")
     }
     # Replace remaining empty-substitution tokens with empty string.
     $out = $out -replace '\{[a-zA-Z_][a-zA-Z0-9_]*\}', ''
@@ -100,6 +103,23 @@ function Invoke-CommandLine {
 
 New-Item -ItemType Directory -Path $Diag -Force | Out-Null
 Remove-Item -LiteralPath (Join-Path $Diag 'op-trace.jsonl') -EA SilentlyContinue
+
+# Best-effort cleanup of stale mount processes from a previously-crashed
+# scenario. We can't reliably name-filter to "this consumer's binary",
+# but the consumer name + cmd.exe child pattern catches the common case
+# where a Start-Process cmd.exe wrapper is still alive holding stdout.
+$staleProcessName = $null
+if ($scenario.mount -and $scenario.mount.command) {
+    $cmdHead = ($scenario.mount.command -split '\s+')[0]
+    $staleProcessName = [System.IO.Path]::GetFileNameWithoutExtension($cmdHead)
+}
+if ($staleProcessName) {
+    Get-Process -Name $staleProcessName -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    # Tiny grace so handles release before the next Start-Process opens
+    # the same RedirectStandardOutput path.
+    Start-Sleep -Milliseconds 200
+}
 
 $scenario = Get-Content -Raw -LiteralPath $ScenarioJson | ConvertFrom-Json
 
@@ -139,8 +159,12 @@ try {
         $mountCmd = Expand-Template -Template $scenario.mount.command -Vars $vars
         $mountStdout = Join-Path $Diag 'mount-stdout.txt'
         $mountStderr = Join-Path $Diag 'mount-stderr.txt'
-        Set-Content -LiteralPath $mountStdout -Value '' -NoNewline
-        Set-Content -LiteralPath $mountStderr -Value '' -NoNewline
+        # Remove any stale files from a prior run before Start-Process
+        # opens them. Pre-creating with Set-Content collides with the
+        # child process's RedirectStandardOutput on Windows; deletion
+        # is the safer reset.
+        Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $mountStdout
+        Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $mountStderr
         $mountProc = Start-Process -FilePath 'cmd.exe' `
             -ArgumentList @('/c', $mountCmd) `
             -NoNewWindow -PassThru `
@@ -345,16 +369,33 @@ try {
     $manifest.verdict = 'errored'
 } finally {
     # ---- Stage D: stop mount ---------------------------------------
+    # `Stop-Process` kills only the named process. Mount commands are
+    # spawned through `cmd.exe /c <binary> mount ...` so the actual
+    # mount lives one level deeper as a child of cmd.exe. If we kill
+    # only cmd.exe the binary inherits the orphaned stdout/stderr and
+    # cargo / ssh / the runner all wait on it forever.
+    #
+    # `taskkill /T /F` (terminate-tree, force) walks the descendant
+    # tree and kills every member — the right primitive for tearing
+    # down the wrapper + mount + any winfsp helpers in one shot.
     try {
         if ($manifest.mount_pid) {
             $p = Get-Process -Id $manifest.mount_pid -EA SilentlyContinue
             if ($p) {
-                Stop-Process -Id $manifest.mount_pid -Force -EA SilentlyContinue
+                & taskkill.exe /T /F /PID $manifest.mount_pid 2>&1 | Out-Null
                 for ($i = 0; $i -lt 20; $i++) {
                     Start-Sleep -Milliseconds 500
                     if (-not (Get-Process -Id $manifest.mount_pid -EA SilentlyContinue)) { break }
                 }
             }
+        }
+        # Defence in depth: anything matching the consumer's binary name
+        # that's still alive is a leaked WinFsp host from this or a
+        # previous scenario. Kill it before the next scenario reuses
+        # the drive letter.
+        if ($staleProcessName) {
+            Get-Process -Name $staleProcessName -EA SilentlyContinue |
+                ForEach-Object { & taskkill.exe /T /F /PID $_.Id 2>&1 | Out-Null }
         }
     } catch { }
 

@@ -96,13 +96,16 @@ esac
 # Build the libtest-mimic argv passthrough.
 EXTRA_ARGS=""
 VERBOSE_ENV_PREFIX=""
-for arg in "${TEST_ARGS[@]}"; do
-    if [[ "$arg" == "--verbose" ]]; then
-        VERBOSE_ENV_PREFIX="\$env:MATRIX_VERBOSE='1'; "
-        echo "[run]  --verbose detected -- engaging per-step tree on remote"
-    fi
-done
-if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+# macOS ships bash 3.2 where `${TEST_ARGS[@]}` and `${#TEST_ARGS[@]}` on
+# an empty array are treated as unset under `set -u`. Guard with
+# `${arr[@]+...}` and `$#` from the original positional args.
+if [[ $# -gt 0 ]]; then
+    for arg in "${TEST_ARGS[@]}"; do
+        if [[ "$arg" == "--verbose" ]]; then
+            VERBOSE_ENV_PREFIX="\$env:MATRIX_VERBOSE='1'; "
+            echo "[run]  --verbose detected -- engaging per-step tree on remote"
+        fi
+    done
     EXTRA_ARGS=$(printf ' %q' "${TEST_ARGS[@]}")
 fi
 
