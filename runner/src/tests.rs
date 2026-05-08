@@ -142,6 +142,50 @@ fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
 }
 
 #[test]
+fn scenario_preserves_unknown_consumer_fields_through_round_trip() {
+    // Consumer-defined fields on a scenario (volume_params, fixtures,
+    // verdict_shape, custom annotations, ...) must round-trip through
+    // serde so v2 substitution `{scenario.<dotted.path>}` can reach
+    // them at op-template-expand time. Without `#[serde(flatten)]`
+    // catch-all on Scenario, these fields are silently dropped on
+    // deserialise.
+    let raw = r#"
+    {
+      "_format": "v2",
+      "scenarios": {
+        "consumer-data": {
+          "volume_params": { "size_mib": 256, "label": "T", "alloc_unit_size": 4096 },
+          "fixtures": [ { "name": "a.txt", "size": 16 } ],
+          "verdict_shape": "clean",
+          "recipe": [ { "op": "noop" } ]
+        }
+      }
+    }
+    "#;
+    let matrix: Matrix = serde_json::from_str(raw).expect("parses");
+    let scn = matrix.scenarios.get("consumer-data").expect("scenario");
+
+    // Unknown fields land in the flatten catch-all.
+    assert_eq!(
+        scn.extra.get("volume_params").and_then(|v| v.get("size_mib")),
+        Some(&serde_json::json!(256))
+    );
+    assert_eq!(
+        scn.extra.get("verdict_shape").and_then(|v| v.as_str()),
+        Some("clean")
+    );
+    assert!(scn.extra.contains_key("fixtures"));
+
+    // Re-serialising the typed Scenario re-emits the unknown fields
+    // in the JSON output so the v2 dispatcher can substitute against
+    // `{scenario.volume_params.size_mib}` etc. at runtime.
+    let re_emitted = serde_json::to_value(scn).expect("re-emit");
+    assert_eq!(re_emitted["volume_params"]["size_mib"], 256);
+    assert_eq!(re_emitted["verdict_shape"], "clean");
+    assert_eq!(re_emitted["fixtures"][0]["name"], "a.txt");
+}
+
+#[test]
 fn config_op_def_accepts_v1_string_and_v2_table() {
     use crate::config::{HarnessConfig, OpHost};
     // v1 + v2 mixed in the same `[ops]` table.

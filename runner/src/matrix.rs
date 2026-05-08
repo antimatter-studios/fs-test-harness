@@ -71,6 +71,29 @@ pub struct Scenario {
     #[serde(default)]
     pub post_verify: Option<PostVerifySpec>,
 
+    /// Optional per-scenario post-verify spec. Already declared above —
+    /// re-mentioned here only to anchor the doc-comment on the
+    /// `extra` field below: `post_verify` is one of several typed
+    /// "known" fields. Everything *not* enumerated above lands in
+    /// `extra` so v2 substitution can reach it via
+    /// `{scenario.<dotted.path>}`.
+
+    /// Catch-all for consumer-defined scenario fields the harness
+    /// doesn't otherwise know about. Captures things like
+    /// `volume_params`, `verdict_shape`, `fixtures`, etc. that
+    /// individual fs-* drivers attach to their scenarios. Without
+    /// this, those fields would be silently dropped during the
+    /// serde round-trip and unreachable from
+    /// `{scenario.<dotted.path>}` substitution.
+    ///
+    /// Agent-bookkeeping fields the harness *does* know about
+    /// (`status`, `_attempts`, `_notes`, `evidence_link`) are
+    /// captured separately via aliases so they can be skipped on
+    /// re-serialise; everything else flattens here and round-trips
+    /// untouched.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+
     // Agent-bookkeeping fields ignored by the runner. They live here
     // for serde round-trip preservation if a consumer ever pipes the
     // scenario through us.
