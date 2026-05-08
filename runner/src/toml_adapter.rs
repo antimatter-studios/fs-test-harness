@@ -66,13 +66,26 @@ impl TomlAdapter {
         };
 
         // Substitute {binary} now -- PS shouldn't need to know harness.toml.
+        // Canonicalize so the substituted value is absolute and free of
+        // `..` segments. cmd.exe / PowerShell parse paths with embedded
+        // `..` and forward-slash separators inconsistently; an absolute
+        // canonical path side-steps the whole class of bug. Fall back to
+        // the unresolved join only if canonicalize fails (binary not yet
+        // built etc.) so the error surfaces clearly downstream rather
+        // than panicking in the runner.
         let binary = self.config.project.binary.clone().unwrap_or_default();
         let binary_abs = if binary.is_empty() {
             String::new()
-        } else if PathBuf::from(&binary).is_absolute() {
-            binary.clone()
         } else {
-            self.consumer_root.join(&binary).display().to_string()
+            let candidate = if PathBuf::from(&binary).is_absolute() {
+                PathBuf::from(&binary)
+            } else {
+                self.consumer_root.join(&binary)
+            };
+            match std::fs::canonicalize(&candidate) {
+                Ok(p) => p.display().to_string(),
+                Err(_) => candidate.display().to_string(),
+            }
         };
         let mount_command = mount_command.replace("{binary}", &binary_abs);
 
