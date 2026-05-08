@@ -83,7 +83,30 @@ impl TomlAdapter {
                 self.consumer_root.join(&binary)
             };
             match std::fs::canonicalize(&candidate) {
-                Ok(p) => p.display().to_string(),
+                Ok(p) => {
+                    // On Windows, std::fs::canonicalize returns an
+                    // extended-length `\\?\C:\...` path. Win32 APIs
+                    // accept those, but cmd.exe / PowerShell command
+                    // parsers don't, so we strip the prefix. (`dunce`
+                    // does this for you, but we'd rather not pull a
+                    // crate for one if-statement.)
+                    let s = p.display().to_string();
+                    if cfg!(windows) {
+                        if let Some(rest) = s.strip_prefix(r"\\?\") {
+                            // Don't strip the UNC variant `\\?\UNC\...` —
+                            // that one needs more careful handling.
+                            if !rest.starts_with("UNC\\") {
+                                rest.to_string()
+                            } else {
+                                s
+                            }
+                        } else {
+                            s
+                        }
+                    } else {
+                        s
+                    }
+                }
                 Err(_) => candidate.display().to_string(),
             }
         };
