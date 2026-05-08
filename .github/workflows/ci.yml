@@ -1,0 +1,207 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel in-progress runs of the same ref when a new commit arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (shell + cargo + schemas)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck + jsonschema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3-pip
+          # Python 3.12+ on ubuntu-latest is PEP 668 managed; --user keeps
+          # the install out of the system site-packages without needing
+          # --break-system-packages.
+          python3 -m pip install --user --upgrade jsonschema
+
+      - name: bash -n every shell script
+        run: |
+          set -e
+          for f in scripts/*.sh tests/*.sh; do
+            echo "checking: $f"
+            bash -n "$f"
+          done
+
+      - name: shellcheck scripts
+        run: |
+          # `-x` so shellcheck follows `source _lib_harness.sh`.
+          shellcheck -x scripts/*.sh
+
+      - name: shellcheck test scripts
+        run: |
+          shellcheck tests/*.sh
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            runner -> target
+            tests/mock-fs -> target
+
+      - name: cargo fmt --check
+        run: cargo fmt --manifest-path runner/Cargo.toml --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path runner/Cargo.toml --all-targets -- -D warnings
+
+      - name: validate schemas parse and examples match
+        # Uses the Python API (not the deprecated `python -m jsonschema`
+        # CLI) so we keep working when that CLI is removed upstream.
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          import jsonschema
+          from jsonschema import Draft202012Validator
+
+          schemas = {
+              "schemas/test-matrix.schema.json": "matrix",
+              "schemas/harness.schema.json":     "harness",
+          }
+          loaded = {}
+          for path in schemas:
+              with open(path) as f:
+                  s = json.load(f)
+              Draft202012Validator.check_schema(s)
+              loaded[path] = s
+              print(f"OK schema parses: {path}")
+
+          # Validate example + mock matrices against the matrix schema.
+          matrix_schema = loaded["schemas/test-matrix.schema.json"]
+          targets = [
+              "examples/minimal/test-matrix.json",
+              "tests/mock-fs/scenarios/test-matrix.json",
+          ]
+          for t in targets:
+              with open(t) as f:
+                  doc = json.load(f)
+              errors = sorted(
+                  Draft202012Validator(matrix_schema).iter_errors(doc),
+                  key=lambda e: list(e.absolute_path),
+              )
+              if errors:
+                  for e in errors:
+                      print(f"FAIL {t}: {'/'.join(map(str,e.absolute_path))}: {e.message}", file=sys.stderr)
+                  sys.exit(1)
+              print(f"OK {t} matches matrix schema")
+          PY
+
+  runner-unit:
+    name: runner unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: runner -> target
+
+      - name: cargo test
+        run: cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
+
+  state-machine:
+    name: state-machine integration test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n
+        run: bash -n tests/state-machine.sh
+
+      - name: run state-machine self-test
+        run: bash tests/state-machine.sh
+
+  mock-scenario:
+    name: mock-scenario end-to-end (windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        # PowerShell on windows-latest. The harness runner expects `powershell`
+        # to be on PATH; runner already has it.
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            runner -> target
+            tests/mock-fs -> target
+
+      - name: build run-matrix
+        run: cargo build --manifest-path runner/Cargo.toml --release --bin run-matrix
+
+      - name: build mock-fs
+        run: cargo build --manifest-path tests/mock-fs/Cargo.toml --release --bin mock-fs
+
+      - name: run mock matrix end-to-end
+        env:
+          HARNESS_TOML: tests/mock-fs/scenarios/harness.toml
+          HARNESS_CONSUMER_ROOT: tests/mock-fs/scenarios
+          # Image-dir is resolved against PS's cwd at op time, not against
+          # consumer_root. Pin it absolute so the run-scenario.ps1 image
+          # existence check (and the {image} substitution) sees the
+          # fixture mock.img sitting next to harness.toml.
+          HARNESS_IMAGE_DIR: tests/mock-fs/scenarios
+        run: |
+          # The runner spawns scripts/run-scenario.ps1 against mock-fs and
+          # asserts each scenario's VERDICT=passed marker.
+          ./runner/target/release/run-matrix.exe --test-threads=1
+        # Don't bury a failure: surface non-zero as a pipeline failure.
+
+      - name: assert per-scenario manifests are passed
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $names = @('mock-list', 'mock-cat-roundtrip')
+          foreach ($n in $names) {
+              $path = "tests/mock-fs/scenarios/test-diagnostics/matrix/$n/manifest.json"
+              if (-not (Test-Path -LiteralPath $path)) {
+                  throw "missing manifest: $path"
+              }
+              $m = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+              if ("$($m.verdict)" -ne 'passed') {
+                  throw "scenario '$n' verdict='$($m.verdict)' (expected 'passed'). manifest: $path"
+              }
+              Write-Host "  ok: $n -> passed"
+          }
+          Write-Host "all mock scenarios verdict=passed"
+
+      - name: dump diagnostics on failure
+        if: failure()
+        run: |
+          # No artifact upload action allowed by the spec; spill the diag
+          # tree to the job log instead so failures are debuggable from
+          # the workflow run page alone.
+          $root = "tests/mock-fs/scenarios/test-diagnostics"
+          if (Test-Path -LiteralPath $root) {
+              Get-ChildItem -Recurse -Path $root |
+                  ForEach-Object {
+                      Write-Host "----- $($_.FullName) -----"
+                      if ($_.PSIsContainer) { return }
+                      try {
+                          Get-Content -Raw -LiteralPath $_.FullName -EA Stop |
+                              ForEach-Object { Write-Host $_ }
+                      } catch {
+                          Write-Host "(unreadable: $_)"
+                      }
+                  }
+          } else {
+              Write-Host "no diagnostics directory at $root"
+          }
