@@ -478,6 +478,7 @@ mod tests {
             ops: vec![],
             recipe,
             post_verify: None,
+            extra: serde_json::Map::new(),
             status: None,
             attempts: None,
             notes: None,
