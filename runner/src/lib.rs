@@ -17,17 +17,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-mod config;
+pub mod config;
 mod matrix;
 mod report;
+mod substitution;
 mod toml_adapter;
 
 #[cfg(test)]
 mod tests;
 
-pub use config::HarnessConfig;
-pub use matrix::{Matrix, MountSpec, OpSpec, PostVerifySpec, Scenario};
+pub use config::{HarnessConfig, OpDef, OpHost};
+pub use matrix::{Matrix, MountSpec, OpSpec, PostVerifySpec, Scenario, Step};
 pub use report::{RunReport, ScenarioResult};
+pub use substitution::Substitution;
 pub use toml_adapter::TomlAdapter;
 
 /// Loaded view of `harness.toml` + the consumer's matrix file.
