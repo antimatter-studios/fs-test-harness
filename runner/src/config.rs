@@ -1,4 +1,18 @@
 //! `harness.toml` schema (deserialised via `serde` + `toml`).
+//!
+//! Two op-table shapes coexist for back-compat:
+//!
+//! * v1 `[ops]` — `BTreeMap<String, String>`, one command template per
+//!   op-name. Implicit `host = "vm"` for every op (the v1 model spawns
+//!   `run-scenario.ps1` once per scenario, all ops execute VM-side).
+//! * v2 `[ops.<name>]` — structured table with `host`, `command`,
+//!   `expect_exit`, `when`. Each op explicitly declares whether it runs
+//!   on the orchestrator host or the VM. The v2 runner dispatches per
+//!   step rather than batching the whole scenario through PowerShell.
+//!
+//! The harness understands both. Consumers migrate at their own pace;
+//! `_format = "v2"` in `test-matrix.json` opts a scenario into recipe-
+//! shaped execution.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -10,12 +24,120 @@ pub struct HarnessConfig {
     pub vm: VmSection,
     #[serde(default)]
     pub tools: BTreeMap<String, String>,
+    /// Op-name -> definition. Accepts both v1 (bare command string)
+    /// and v2 (table with host/command/expect_exit/when) forms.
     #[serde(default)]
-    pub ops: BTreeMap<String, String>,
+    pub ops: BTreeMap<String, OpDef>,
     #[serde(default)]
     pub mount: Option<MountSection>,
     #[serde(default)]
     pub post_verify: Option<PostVerifySection>,
+}
+
+/// One declared op. Accepts either a bare command-string (v1) or a
+/// table with explicit fields (v2):
+///
+/// ```toml
+/// # v1 form — implicit host=vm, expect_exit=0, no `when`:
+/// [ops]
+/// ls = "{binary} ls {image} {path}"
+///
+/// # v2 form — explicit:
+/// [ops.format]
+/// host = "host"
+/// command = "{binary} format {scenario.image} -L {step.params.label}"
+/// expect_exit = 0
+///
+/// [ops.write-fixtures]
+/// host = "host"
+/// when = "scenario.fixtures"   # only run if scenario.fixtures present
+/// command = "{binary} write-fixtures {scenario.image} ..."
+/// ```
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+#[serde(from = "OpDefRaw", into = "OpDefRaw")]
+pub struct OpDef {
+    /// Where the op runs. v1 forms default to "vm" (matches the
+    /// historical "run-scenario.ps1 does everything" model).
+    pub host: OpHost,
+    /// Command template. Substitution tokens: `{binary}`, `{image}`,
+    /// `{drive}`, `{path}`, `{from}`, `{to}`, `{content}`, `{extra}`,
+    /// `{tools.<name>}`, `{scenario.<dotted.path>}`, `{step.<field>}`,
+    /// and the optional-suffix `{x?}` (yields empty if missing).
+    pub command: String,
+    /// Expected process exit code. Default 0.
+    #[serde(default)]
+    pub expect_exit: Option<i32>,
+    /// Conditional execution: only run this op when the dotted-path
+    /// expression resolves to a non-null, non-empty value. Examples:
+    /// `"scenario.fixtures"`, `"step.path"`, `"scenario.volume_params.label"`.
+    /// Empty / absent => always run.
+    #[serde(default)]
+    pub when: Option<String>,
+}
+
+/// Where an op runs. The runner dispatches per-step on this value.
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OpHost {
+    /// Orchestrator host (Mac, Linux, WSL2 — wherever the runner runs).
+    Host,
+    /// Windows VM reached via SSH.
+    #[default]
+    Vm,
+}
+
+/// Internal raw form for serde — accepts both `"<string>"` and a
+/// table. The public `OpDef` normalises to the table form.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+enum OpDefRaw {
+    /// v1: bare command string, implicit `host = "vm"`.
+    BareCommand(String),
+    /// v2: explicit table.
+    Table {
+        #[serde(default)]
+        host: OpHost,
+        command: String,
+        #[serde(default)]
+        expect_exit: Option<i32>,
+        #[serde(default)]
+        when: Option<String>,
+    },
+}
+
+impl From<OpDefRaw> for OpDef {
+    fn from(raw: OpDefRaw) -> Self {
+        match raw {
+            OpDefRaw::BareCommand(command) => OpDef {
+                host: OpHost::Vm,
+                command,
+                expect_exit: None,
+                when: None,
+            },
+            OpDefRaw::Table {
+                host,
+                command,
+                expect_exit,
+                when,
+            } => OpDef {
+                host,
+                command,
+                expect_exit,
+                when,
+            },
+        }
+    }
+}
+
+impl From<OpDef> for OpDefRaw {
+    fn from(d: OpDef) -> Self {
+        OpDefRaw::Table {
+            host: d.host,
+            command: d.command,
+            expect_exit: d.expect_exit,
+            when: d.when,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]

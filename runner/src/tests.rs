@@ -47,11 +47,11 @@ fn harness_load_round_trips_minimal_example() {
         Some("test-matrix.json")
     );
 
-    // Op templates carried through verbatim.
-    assert_eq!(
-        harness.config.ops.get("ls").map(String::as_str),
-        Some("{binary} ls {image} {path}")
-    );
+    // Op templates carried through verbatim. v1 bare-string form
+    // deserialises into OpDef with the command intact and host=vm.
+    let ls = harness.config.ops.get("ls").expect("ls op");
+    assert_eq!(ls.command, "{binary} ls {image} {path}");
+    assert_eq!(ls.host, crate::config::OpHost::Vm);
     assert!(harness.config.ops.contains_key("cat"));
     assert!(harness.config.ops.contains_key("stat"));
 
@@ -106,6 +106,81 @@ fn matrix_deserialises_ops_and_legacy_operations_alias() {
     );
     assert_eq!(alias_scenario.ops[0]["type"], "cat");
     assert_eq!(alias_scenario.ops[1]["type"], "stat");
+}
+
+#[test]
+fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
+    // v2 recipe shape: per-step host dispatch, free-form step fields,
+    // mutually exclusive with the v1 `ops` array. Demonstrates the
+    // common NTFS pattern of host-prefix + vm-suffix.
+    let raw = r#"
+    {
+      "_format": "v2",
+      "scenarios": {
+        "format-then-chkdsk": {
+          "volume_params": { "size_mib": 256, "label": "TEST", "alloc_unit_size": 4096 },
+          "recipe": [
+            { "host": "host", "op": "format" },
+            { "host": "host", "op": "write", "path": "/hello.txt", "content": "hi" },
+            { "host": "vm",   "op": "mount" },
+            { "host": "vm",   "op": "chkdsk", "verdict": "clean" },
+            { "host": "vm",   "op": "unmount" }
+          ]
+        }
+      }
+    }
+    "#;
+    let matrix: Matrix = serde_json::from_str(raw).expect("v2 matrix parses");
+    let scn = matrix.scenarios.get("format-then-chkdsk").expect("scenario present");
+    assert!(scn.ops.is_empty(), "v2 leaves the v1 `ops` field empty");
+    assert_eq!(scn.recipe.len(), 5);
+    assert_eq!(scn.recipe[0]["host"], "host");
+    assert_eq!(scn.recipe[0]["op"], "format");
+    assert_eq!(scn.recipe[3]["host"], "vm");
+    assert_eq!(scn.recipe[3]["op"], "chkdsk");
+    assert_eq!(scn.recipe[3]["verdict"], "clean");
+}
+
+#[test]
+fn config_op_def_accepts_v1_string_and_v2_table() {
+    use crate::config::{HarnessConfig, OpHost};
+    // v1 + v2 mixed in the same `[ops]` table.
+    let raw = r#"
+[project]
+name = "mixed"
+
+[ops]
+# v1 — bare string, implicit host=vm
+ls = "{binary} ls {image} {path}"
+
+# v2 — table form, explicit host=host
+[ops.format]
+host = "host"
+command = "{binary} format {scenario.image} -L {step.params.label?}"
+expect_exit = 0
+
+# v2 — conditional op
+[ops.write-fixtures]
+host = "host"
+when = "scenario.fixtures"
+command = "{binary} write-fixtures {scenario.image}"
+"#;
+    let cfg: HarnessConfig = toml::from_str(raw).expect("mixed config parses");
+
+    let ls = cfg.ops.get("ls").expect("ls present");
+    assert_eq!(ls.command, "{binary} ls {image} {path}");
+    assert_eq!(ls.host, OpHost::Vm, "v1 string defaults host to vm");
+    assert_eq!(ls.expect_exit, None);
+    assert_eq!(ls.when, None);
+
+    let format = cfg.ops.get("format").expect("format present");
+    assert_eq!(format.host, OpHost::Host);
+    assert_eq!(format.expect_exit, Some(0));
+    assert!(format.command.contains("{step.params.label?}"));
+
+    let wf = cfg.ops.get("write-fixtures").expect("write-fixtures present");
+    assert_eq!(wf.host, OpHost::Host);
+    assert_eq!(wf.when.as_deref(), Some("scenario.fixtures"));
 }
 
 #[test]
