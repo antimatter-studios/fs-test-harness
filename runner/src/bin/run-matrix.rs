@@ -117,12 +117,7 @@ fn main() {
         let _ = std::fs::remove_dir_all(matrix_diag_root(&harness.consumer_root));
     }
 
-    let _ = write_run_manifest(
-        &harness.consumer_root,
-        &project_name,
-        total,
-        runnable,
-    );
+    let _ = write_run_manifest(&harness.consumer_root, &project_name, total, runnable);
 
     let conclusion = libtest_mimic::run(&args, trials);
 
@@ -215,7 +210,10 @@ fn run_scenario_inner(
 
     let ps_script = adapter.run_scenario_ps_path();
     if !ps_script.is_file() {
-        return Err(format!("run-scenario.ps1 not found at {}", ps_script.display()));
+        return Err(format!(
+            "run-scenario.ps1 not found at {}",
+            ps_script.display()
+        ));
     }
     let mut cmd = Command::new("powershell");
     cmd.args([
@@ -227,10 +225,7 @@ fn run_scenario_inner(
     ])
     .arg(&ps_script)
     .args(["-ScenarioName", name])
-    .args([
-        "-ScenarioJson",
-        &scenario_json_path.display().to_string(),
-    ])
+    .args(["-ScenarioJson", &scenario_json_path.display().to_string()])
     .args(["-Diag", &diag.display().to_string()]);
 
     let output = cmd
