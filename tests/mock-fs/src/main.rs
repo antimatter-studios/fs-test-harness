@@ -25,7 +25,7 @@
 //! is passed is recorded but not opened.
 
 use std::env;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 const HELLO_BODY: &str = "hello world\n";
@@ -92,19 +92,13 @@ fn cmd_mount(args: &[String]) -> ExitCode {
     println!("mounted at {drive}");
     let _ = io::stdout().flush();
 
-    // Block forever on stdin. taskkill /T /F from the harness will
-    // tear us down. read_line returning Ok(0) means the parent closed
-    // stdin -- that's also our cue to exit.
-    let stdin = io::stdin();
-    let mut handle = stdin.lock();
-    let mut buf = String::new();
+    // Block forever — the harness's `taskkill /T /F` (Windows) /
+    // SIGTERM (Unix) tears us down at scenario teardown. Don't read
+    // from stdin: `Start-Process` on Windows hands the child a closed
+    // stdin pipe, so a stdin-coupled wait would EOF instantly and we'd
+    // exit before the parent saw the ready_line.
     loop {
-        buf.clear();
-        match handle.read_line(&mut buf) {
-            Ok(0) => return ExitCode::SUCCESS,
-            Ok(_) => continue,
-            Err(_) => return ExitCode::SUCCESS,
-        }
+        std::thread::sleep(std::time::Duration::from_secs(3600));
     }
 }
 
