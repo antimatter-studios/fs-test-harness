@@ -130,6 +130,15 @@ fn run_step(
         })?
         .to_string();
 
+    // Built-in transition ops: these don't appear in `harness.toml [ops]`
+    // because they're harness-domain primitives, not consumer-domain
+    // verbs. The runner recognises them by name and runs them via
+    // `scp`/`ssh` directly. Tokens in their `src`/`dest` fields are
+    // expanded via the same Substitution machinery as user-defined ops.
+    if matches!(op_name.as_str(), "ship-to-vm" | "ship-to-host") {
+        return run_builtin_ship(idx, step, &op_name, scenario_value, config, flat, step_dir);
+    }
+
     let op_def = config.ops.get(&op_name).ok_or_else(|| {
         format!(
             "scenario '{scenario_name}' step {idx}: op '{op_name}' not declared in harness.toml [ops]"
@@ -264,6 +273,97 @@ fn spawn_with_diag(cmd: &mut Command, step_dir: &Path) -> Result<Option<i32>, St
     let _ = std::fs::write(step_dir.join("stdout.txt"), &output.stdout);
     let _ = std::fs::write(step_dir.join("stderr.txt"), &output.stderr);
     Ok(output.status.code())
+}
+
+/// Built-in transition op handler — `ship-to-vm` and `ship-to-host`.
+///
+/// Both take a `src` field (host-side or vm-side path, depending on
+/// direction) and a `dest` field (the destination on the opposite
+/// host). Substitution applies — `src = "{scenario.image}"` works.
+///
+/// Implementation: invokes `scp` with the same SSH options the
+/// dispatcher uses for `ssh`. Single file or directory; consumer's
+/// responsibility to provide a sensible path.
+fn run_builtin_ship(
+    idx: usize,
+    step: &Step,
+    op_name: &str,
+    scenario_value: &serde_json::Value,
+    config: &HarnessConfig,
+    flat: &BTreeMap<String, String>,
+    step_dir: &Path,
+) -> Result<StepResult, String> {
+    let sub = Substitution {
+        flat: flat.clone(),
+        scenario: scenario_value.clone(),
+        step: step.clone(),
+    };
+
+    let src = step
+        .get("src")
+        .and_then(|v| v.as_str())
+        .map(|s| sub.expand(s))
+        .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'src' field"))?;
+    let dest = step
+        .get("dest")
+        .and_then(|v| v.as_str())
+        .map(|s| sub.expand(s))
+        .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'dest' field"))?;
+
+    let vm_host = config
+        .vm
+        .host
+        .as_deref()
+        .ok_or_else(|| format!("step {idx}: '{op_name}' requires harness.toml [vm].host"))?;
+
+    let started = Instant::now();
+    let mut cmd = Command::new("scp");
+    cmd.args([
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+    ]);
+    if let Some(key) = &config.vm.ssh_key {
+        cmd.args(["-i", key.as_str(), "-o", "IdentitiesOnly=yes"]);
+    }
+    cmd.arg("-r"); // tolerate directory shipping; single-file is unaffected.
+    let (label, src_arg, dest_arg) = if op_name == "ship-to-vm" {
+        ("ship-to-vm", src.clone(), format!("{vm_host}:{dest}"))
+    } else {
+        ("ship-to-host", format!("{vm_host}:{src}"), dest.clone())
+    };
+    cmd.arg(&src_arg).arg(&dest_arg);
+
+    let outcome = spawn_with_diag(&mut cmd, step_dir);
+    let duration = started.elapsed();
+
+    match outcome {
+        Ok(exit_code) => Ok(StepResult {
+            index: idx,
+            op: label.to_string(),
+            host: "host", // scp itself runs on the orchestrator host.
+            command: format!("scp {src_arg} {dest_arg}"),
+            exit_code,
+            expected_exit: 0,
+            duration_ms: duration.as_millis(),
+            skipped: false,
+            skip_reason: None,
+            error: None,
+        }),
+        Err(e) => Ok(StepResult {
+            index: idx,
+            op: label.to_string(),
+            host: "host",
+            command: format!("scp {src_arg} {dest_arg}"),
+            exit_code: None,
+            expected_exit: 0,
+            duration_ms: duration.as_millis(),
+            skipped: false,
+            skip_reason: None,
+            error: Some(e),
+        }),
+    }
 }
 
 fn host_name(h: OpHost) -> &'static str {
@@ -425,6 +525,52 @@ mod tests {
         assert!(!result.overall_passed);
         // Recipe should fail-fast on the first non-zero step.
         assert_eq!(result.steps.len(), 1);
+    }
+
+    #[test]
+    fn builtin_ship_recognised_without_ops_table_entry() {
+        // Empty `[ops]` — but the recipe uses `ship-to-vm`, which the
+        // runner recognises as a built-in. No "op not declared" error.
+        let cfg = HarnessConfig {
+            project: ProjectSection {
+                name: "test".into(),
+                binary: None,
+                matrix_path: None,
+            },
+            vm: crate::config::VmSection {
+                // No host configured — the ship op should report a
+                // clear error, not the generic "op not declared".
+                host: None,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let scn = scenario_with_recipe(vec![json!({
+            "op": "ship-to-vm",
+            "src": "/tmp/a",
+            "dest": "/tmp/b"
+        })]);
+        let dir = tempdir();
+        let err = run_recipe("ship-no-vm", &scn, &cfg, &dir, &dir).unwrap_err();
+        assert!(
+            err.contains("[vm].host") && err.contains("ship-to-vm"),
+            "expected vm.host error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn builtin_ship_requires_src_and_dest_fields() {
+        let cfg = config_with_ops(&[]);
+        // Missing src
+        let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-vm", "dest": "/x" })]);
+        let dir = tempdir();
+        let err = run_recipe("no-src", &scn, &cfg, &dir, &dir).unwrap_err();
+        assert!(err.contains("'src' field"), "expected src error, got: {err}");
+
+        // Missing dest
+        let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-host", "src": "/x" })]);
+        let err = run_recipe("no-dest", &scn, &cfg, &dir, &dir).unwrap_err();
+        assert!(err.contains("'dest' field"), "expected dest error, got: {err}");
     }
 
     fn tempdir() -> PathBuf {
