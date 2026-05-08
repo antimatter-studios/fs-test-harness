@@ -61,6 +61,7 @@ Full contract: [`docs/consumer-integration.md`](./docs/consumer-integration.md).
 Architecture overview: [`docs/architecture.md`](./docs/architecture.md).
 Diagnosing a red scenario: [`docs/triage-protocol.md`](./docs/triage-protocol.md).
 Concurrent-agent rules: [`docs/multi-agent-protocol.md`](./docs/multi-agent-protocol.md).
+Substitution vocabulary + cross-driver naming convention: [`docs/vocabulary.md`](./docs/vocabulary.md).
 
 ## Self-test
 
