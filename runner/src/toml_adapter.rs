@@ -37,11 +37,7 @@ impl TomlAdapter {
 
     /// Build the per-scenario JSON the PowerShell runner consumes.
     /// Public so the binary can write it to disk.
-    pub fn build_scenario_json(
-        &self,
-        name: &str,
-        scenario: &Scenario,
-    ) -> serde_json::Value {
+    pub fn build_scenario_json(&self, name: &str, scenario: &Scenario) -> serde_json::Value {
         let rw = scenario.mount_args.iter().any(|a| a == "--rw");
         let image_path = if scenario.image.is_empty() {
             String::new()
@@ -52,11 +48,7 @@ impl TomlAdapter {
         // Resolve mount: scenario override -> harness default. Substitute
         // {binary} and {extra} now (so PS doesn't need the harness.toml).
         let (mount_command, ready_line, mount_extra) = match (&scenario.mount, &self.config.mount) {
-            (Some(s), _) => (
-                s.command.clone(),
-                s.ready_line.clone(),
-                "".to_string(),
-            ),
+            (Some(s), _) => (s.command.clone(), s.ready_line.clone(), "".to_string()),
             (None, Some(m)) => {
                 let extra = scenario.mount_args.join(" ");
                 let extra = if extra.is_empty() {
@@ -131,6 +123,48 @@ impl TomlAdapter {
 
     pub fn run_scenario_ps_path(&self) -> PathBuf {
         self.harness_root.join("scripts").join("run-scenario.ps1")
+    }
+
+    /// Substitute `{token}` placeholders in `template` against `vars`.
+    ///
+    /// This mirrors the `Expand-Template` PowerShell helper used by
+    /// `scripts/run-scenario.ps1`: declared tokens get the supplied
+    /// value (plain string-replace, so backslashes in Windows paths
+    /// pass through unmolested), and any remaining `{...}` placeholder
+    /// matching `[A-Za-z_][A-Za-z0-9_]*` is collapsed to the empty
+    /// string. The schema treats undeclared tokens as empty.
+    ///
+    /// Used in unit tests as a stand-alone fixture; the production
+    /// per-op substitution still happens on the Windows side.
+    pub fn expand_template(template: &str, vars: &[(&str, &str)]) -> String {
+        let mut out = template.to_string();
+        for (k, v) in vars {
+            out = out.replace(&format!("{{{}}}", k), v);
+        }
+        // Collapse any remaining `{ident}` placeholder to empty.
+        let mut result = String::with_capacity(out.len());
+        let bytes = out.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'{' {
+                if let Some(end) = bytes[i + 1..].iter().position(|&b| b == b'}') {
+                    let inner = &bytes[i + 1..i + 1 + end];
+                    let is_ident = !inner.is_empty()
+                        && (inner[0].is_ascii_alphabetic() || inner[0] == b'_')
+                        && inner
+                            .iter()
+                            .all(|&b| b.is_ascii_alphanumeric() || b == b'_');
+                    if is_ident {
+                        // Skip the whole `{ident}` placeholder.
+                        i += end + 2;
+                        continue;
+                    }
+                }
+            }
+            result.push(bytes[i] as char);
+            i += 1;
+        }
+        result
     }
 }
 

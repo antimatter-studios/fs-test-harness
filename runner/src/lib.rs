@@ -22,6 +22,9 @@ mod matrix;
 mod report;
 mod toml_adapter;
 
+#[cfg(test)]
+mod tests;
+
 pub use config::HarnessConfig;
 pub use matrix::{Matrix, MountSpec, OpSpec, PostVerifySpec, Scenario};
 pub use report::{RunReport, ScenarioResult};
@@ -59,12 +62,8 @@ pub trait Adapter {
 
     /// Run a single op against `scenario`. Implementations should write
     /// any per-op artefacts under `diag_dir`.
-    fn run_op(
-        &self,
-        scenario: &Scenario,
-        op: &OpSpec,
-        diag_dir: &Path,
-    ) -> anyhow::Result<OpResult>;
+    fn run_op(&self, scenario: &Scenario, op: &OpSpec, diag_dir: &Path)
+        -> anyhow::Result<OpResult>;
 
     /// Optional: invoked once after the scenario's ops succeed (and
     /// before any post-verify hook). Default no-op.
