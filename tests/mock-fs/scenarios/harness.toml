@@ -1,0 +1,36 @@
+# tests/mock-fs/scenarios/harness.toml -- CI fixture only.
+#
+# Points the harness at the mock-fs CLI built next door under
+# `tests/mock-fs/target/release/mock-fs.exe`. The path is resolved by
+# the runner relative to this file's parent directory (consumer_root),
+# so `../target/release/mock-fs.exe` reaches the cargo target dir.
+#
+# The .github/workflows/ci.yml `mock-scenario` job sets
+# HARNESS_CONSUMER_ROOT and HARNESS_IMAGE_DIR before invoking
+# run-matrix; do not rely on those defaults locally without setting
+# them yourself.
+
+[project]
+name        = "mock-fs-self-test"
+binary      = "../target/release/mock-fs.exe"
+matrix_path = "test-matrix.json"
+
+[vm]
+# image_dir is resolved relative to the consumer_root (this file's
+# parent) when HARNESS_IMAGE_DIR is not set in env. The fixture lives
+# right here, so "." is correct.
+image_dir = "."
+
+[ops]
+ls   = "{binary} ls {image} {path}"
+cat  = "{binary} cat {image} {path}"
+stat = "{binary} stat {image} {path}"
+
+[mount]
+# The mock binary's `mount` subcommand prints "mounted at <drive>" and
+# then blocks on stdin. The harness's run-scenario.ps1 uses ready_line
+# as a regex against mount stdout to declare the mount up.
+command    = "{binary} mount {image} --drive {drive} {extra}"
+ready_line = "mounted at"
+default_extra = ""
+rw_extra      = "--rw"

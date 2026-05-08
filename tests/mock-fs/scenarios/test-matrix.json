@@ -1,0 +1,28 @@
+{
+  "_format": "v1",
+  "_doc": "Two scenarios driven by the in-tree mock-fs CLI. Used by the .github/workflows/ci.yml `mock-scenario` job to prove the harness loop end-to-end without a real filesystem driver.",
+  "scenarios": {
+    "mock-list": {
+      "status": "pending",
+      "image": "mock.img",
+      "ops": [
+        {
+          "type": "ls",
+          "path": "/",
+          "expect_stdout_contains": "hello.txt"
+        }
+      ]
+    },
+    "mock-cat-roundtrip": {
+      "status": "pending",
+      "image": "mock.img",
+      "ops": [
+        {
+          "type": "cat",
+          "path": "/hello.txt",
+          "expect_stdout_contains": "hello world"
+        }
+      ]
+    }
+  }
+}

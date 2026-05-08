@@ -1,0 +1,16 @@
+[package]
+name = "mock-fs"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Stand-in CLI used by fs-test-harness's mock-scenario CI job. Not published; not a real filesystem."
+publish = false
+
+[[bin]]
+name = "mock-fs"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
