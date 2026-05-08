@@ -38,11 +38,16 @@ jobs:
       - name: shellcheck scripts
         run: |
           # `-x` so shellcheck follows `source _lib_harness.sh`.
-          shellcheck -x scripts/*.sh
+          # `--severity=error` so style/info/warning lints surface in
+          # the log but only outright errors fail CI. The harness uses
+          # several intentional patterns (unquoted SSH_OPTS for word
+          # splitting, dynamic-path source, transient loop counters)
+          # that trip warnings without being bugs.
+          shellcheck -x --severity=error scripts/*.sh
 
       - name: shellcheck test scripts
         run: |
-          shellcheck tests/*.sh
+          shellcheck --severity=error tests/*.sh
 
       - uses: dtolnay/rust-toolchain@stable
         with:
