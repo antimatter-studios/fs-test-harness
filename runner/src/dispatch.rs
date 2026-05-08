@@ -388,17 +388,65 @@ fn build_flat_vocab(
 ) -> Result<BTreeMap<String, String>, String> {
     let mut flat = BTreeMap::new();
     if let Some(b) = &config.project.binary {
-        let binary_abs = if PathBuf::from(b).is_absolute() {
-            b.clone()
-        } else {
-            consumer_root.join(b).display().to_string()
-        };
-        flat.insert("binary".to_string(), binary_abs);
+        flat.insert("binary".to_string(), resolve_binary_path(b, consumer_root));
     }
     for (name, value) in &config.tools {
         flat.insert(format!("tools.{name}"), value.clone());
     }
     Ok(flat)
+}
+
+/// Resolve `[project] binary` against the consumer root with two
+/// platform-tolerant fallbacks:
+///
+/// 1. **Canonicalize** the joined path. If it exists, return the
+///    canonical form (Windows extended-path prefix stripped so
+///    `cmd.exe` / shells parse it cleanly).
+/// 2. If the path ended in `.exe` and canonicalize failed, try the
+///    same path without the suffix. Lets a single `harness.toml`
+///    `binary = "...\\foo.exe"` work on non-Windows hosts where
+///    cargo emits the unsuffixed name.
+/// 3. If both fail, return the unresolved join — downstream `Command`
+///    spawn surfaces a clear "no such file" error rather than the
+///    runner panicking.
+fn resolve_binary_path(binary: &str, consumer_root: &Path) -> String {
+    let candidate = if PathBuf::from(binary).is_absolute() {
+        PathBuf::from(binary)
+    } else {
+        consumer_root.join(binary)
+    };
+
+    if let Ok(canon) = std::fs::canonicalize(&candidate) {
+        return strip_windows_extended_prefix(canon.display().to_string());
+    }
+
+    // .exe fallback for non-Windows hosts running a config that hard-
+    // codes the Windows naming.
+    if !cfg!(windows) {
+        if let Some(stripped) = binary.strip_suffix(".exe") {
+            let alt = if PathBuf::from(stripped).is_absolute() {
+                PathBuf::from(stripped)
+            } else {
+                consumer_root.join(stripped)
+            };
+            if let Ok(canon) = std::fs::canonicalize(&alt) {
+                return strip_windows_extended_prefix(canon.display().to_string());
+            }
+        }
+    }
+
+    candidate.display().to_string()
+}
+
+fn strip_windows_extended_prefix(s: String) -> String {
+    if cfg!(windows) {
+        if let Some(rest) = s.strip_prefix(r"\\?\") {
+            if !rest.starts_with("UNC\\") {
+                return rest.to_string();
+            }
+        }
+    }
+    s
 }
 
 #[cfg(test)]
