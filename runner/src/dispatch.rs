@@ -5,11 +5,9 @@
 //! "vm"`) per the matching `[ops.<name>]` declaration in
 //! `harness.toml`.
 //!
-//! Where v1 spawns `run-scenario.ps1` once per scenario (all execution
-//! on a single host), v2 dispatches per step. The runner runs on the
-//! orchestrator (Mac / Linux / WSL2), invokes local subprocesses for
-//! host-steps, and SSHes one command per vm-step. The PowerShell
-//! per-scenario driver is bypassed entirely.
+//! The runner runs on the orchestrator (Mac / Linux / WSL2 / Windows),
+//! invokes local subprocesses for host-steps, and SSHes one command
+//! per vm-step.
 //!
 //! Per-step diag is written under `<diag_dir>/step-<NN>-<op>/` —
 //! one log file each for stdout, stderr, and a JSON record carrying
@@ -120,7 +118,7 @@ fn run_step(
     flat: &BTreeMap<String, String>,
     step_dir: &Path,
 ) -> Result<StepResult, String> {
-    // Resolve op-name: `op` field, fallback `type` (matches v1 alias).
+    // Resolve op-name: prefer `op`, fallback to `type` (alternate alias).
     let op_name = step
         .get("op")
         .and_then(|v| v.as_str())
@@ -372,11 +370,11 @@ fn exit_matches(r: &StepResult) -> bool {
     r.exit_code == Some(r.expected_exit)
 }
 
-/// Compose the v1 flat-vocabulary tokens from `harness.toml`. These
-/// are the values consumers reference as `{binary}`, `{tools.fsck}`,
-/// etc. v2 ops typically prefer dotted-paths (`{scenario.image}`,
-/// `{step.path}`) but the flat surface is preserved for back-compat
-/// and convenience.
+/// Compose the flat-vocabulary tokens from `harness.toml`. These are
+/// the values consumers reference as `{binary}`, `{tools.fsck}`, etc.
+/// Recipe steps typically prefer dotted paths (`{scenario.image}`,
+/// `{step.path}`); the flat surface is the small fixed vocabulary
+/// every op gets for free.
 fn build_flat_vocab(
     config: &HarnessConfig,
     consumer_root: &Path,
@@ -468,9 +466,6 @@ mod tests {
     fn scenario_with_recipe(recipe: Vec<serde_json::Value>) -> Scenario {
         Scenario {
             image: String::new(),
-            mount: None,
-            mount_args: vec![],
-            ops: vec![],
             recipe,
             post_verify: None,
             extra: serde_json::Map::new(),

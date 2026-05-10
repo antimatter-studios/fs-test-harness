@@ -161,8 +161,8 @@ if [[ $# -gt 0 ]]; then
     EXTRA_ARGS=$(printf ' %q' "${TEST_ARGS[@]}")
 fi
 
-# Forward the test-image dir as a generic env var so the runner +
-# run-scenario.ps1 can resolve per-scenario images relative to it.
+# Forward the test-image dir as a generic env var so the runner can
+# resolve per-scenario images relative to it.
 IMAGE_DIR_ESCAPED="${VM_IMAGE_DIR//\\/\\\\}"
 
 # Optional: a consumer-supplied PowerShell prefix appended before the

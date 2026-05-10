@@ -5,15 +5,11 @@
 //! turns each scenario into a libtest-mimic trial; writes per-scenario
 //! diag artefacts under `<consumer_root>/test-diagnostics/matrix/`.
 //!
-//! Each trial:
-//!   1. Builds the scenario JSON via [`TomlAdapter::build_scenario_json`].
-//!   2. Spawns `powershell -File <scripts/run-scenario.ps1> -ScenarioJson ...`.
-//!   3. Parses `VERDICT=` from stdout to decide pass/fail.
-//!
-//! On non-Windows hosts, trials are marked ignored. The binary still
-//! compile-checks so a bad change can't slip through.
+//! Each trial walks `scenario.recipe[]` via [`fs_test_harness::run_recipe`]
+//! — host-side steps spawn locally, vm-side steps go via SSH. Runnable
+//! anywhere with `ssh` in `$PATH`.
 
-use fs_test_harness::{Harness, TomlAdapter};
+use fs_test_harness::Harness;
 use libtest_mimic::{Arguments, Failed, Trial};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -60,43 +56,11 @@ fn main() {
         panic!("load {}: {e}", config_path.display());
     });
 
-    // Image dir: env override > harness.toml [vm.image_dir] > "".
-    let image_dir = std::env::var("HARNESS_IMAGE_DIR")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .or_else(|| harness.config.vm.image_dir.clone())
-        .map(PathBuf::from)
-        .unwrap_or_default();
-
-    // Harness root: assume we're running from the harness/runner crate
-    // OR the consumer linked us. CARGO_MANIFEST_DIR points at this
-    // crate's Cargo.toml, so the harness root is one level up.
-    let harness_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .map(|p| p.to_path_buf())
-        .expect("harness root resolvable");
-
     let project_name = harness.config.project.name.clone();
 
     let total = harness.matrix.scenarios.len();
     let mut runnable = 0usize;
 
-    // Build a TomlAdapter; reused across trials (cheap to clone).
-    let adapter = std::sync::Arc::new(TomlAdapter::new(
-        harness.config.clone(),
-        harness_root.clone(),
-        harness.consumer_root.clone(),
-        image_dir.clone(),
-    ));
-
-    // Runnability rules:
-    //
-    // * v1 (`scn.ops` non-empty) — runs through `run-scenario.ps1`,
-    //   needs the orchestrator to be Windows so it can spawn the PS
-    //   driver locally. (The PS driver in turn SSHes to the VM.)
-    // * v2 (`scn.recipe` non-empty) — runs through `dispatch::run_recipe`
-    //   on the orchestrator (any POSIX). vm-steps go via SSH; host-
-    //   steps spawn locally. Runnable anywhere with `ssh` in `$PATH`.
     let config_for_dispatch = harness.config.clone();
     let consumer_root_for_dispatch = harness.consumer_root.clone();
     let trials: Vec<Trial> = harness
@@ -104,30 +68,18 @@ fn main() {
         .scenarios
         .iter()
         .map(|(name, scn)| {
-            let is_v2 = !scn.recipe.is_empty();
-            let is_v1 = !scn.ops.is_empty();
-            let is_runnable = is_v1 || is_v2;
+            let is_runnable = !scn.recipe.is_empty();
             if is_runnable {
                 runnable += 1;
             }
             let body_name = name.clone();
             let scn = scn.clone();
-            let adapter = adapter.clone();
-            let consumer_root = harness.consumer_root.clone();
             let cfg = config_for_dispatch.clone();
             let cr_disp = consumer_root_for_dispatch.clone();
-            let trial = Trial::test(name, move || {
-                if is_v2 {
-                    run_v2_scenario(&body_name, &scn, &cfg, &cr_disp)
-                } else {
-                    run_scenario(&body_name, &scn, &adapter, &consumer_root)
-                }
-            });
-            // v1 needs a Windows orchestrator (spawns PS locally).
-            // v2 runs anywhere. A non-runnable scenario is ignored
-            // regardless.
-            let needs_windows = is_v1 && !is_v2;
-            if !is_runnable || (needs_windows && !cfg!(target_os = "windows")) {
+            let trial = Trial::test(name, move || run_scenario(&body_name, &scn, &cfg, &cr_disp));
+            // Empty-recipe scenarios (planning placeholders) are
+            // ignored rather than failing the run.
+            if !is_runnable {
                 trial.with_ignored_flag(true)
             } else {
                 trial
@@ -154,151 +106,9 @@ fn matrix_diag_root(consumer_root: &Path) -> PathBuf {
     consumer_root.join("test-diagnostics/matrix")
 }
 
+/// Walk `scenario.recipe` via the per-step dispatcher; record per-step
+/// diag + the aggregate verdict; return a libtest verdict.
 fn run_scenario(
-    name: &str,
-    scn: &fs_test_harness::Scenario,
-    adapter: &TomlAdapter,
-    consumer_root: &Path,
-) -> Result<(), Failed> {
-    let started = std::time::Instant::now();
-    let diag = matrix_diag_root(consumer_root).join(name);
-    std::fs::create_dir_all(&diag).map_err(|e| Failed::from(format!("mkdir diag: {e}")))?;
-
-    let outcome = run_scenario_inner(name, scn, adapter, &diag);
-    let elapsed = started.elapsed().as_secs_f64();
-
-    let result = match &outcome {
-        Ok(()) => ScenarioResult {
-            name: name.to_string(),
-            status: "passed".into(),
-            error: None,
-            diag_dir: diag.display().to_string(),
-            duration_secs: elapsed,
-        },
-        Err(e) => ScenarioResult {
-            name: name.to_string(),
-            status: classify_error(e).into(),
-            error: Some(e.clone()),
-            diag_dir: diag.display().to_string(),
-            duration_secs: elapsed,
-        },
-    };
-    let _ = std::fs::write(
-        diag.join("result.json"),
-        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".into()),
-    );
-
-    match outcome {
-        Ok(()) => Ok(()),
-        Err(msg) => Err(Failed::from(format!("{msg} (diag at {})", diag.display()))),
-    }
-}
-
-fn classify_error(e: &str) -> &'static str {
-    if e.contains("VERDICT=failed") {
-        "failed"
-    } else {
-        "errored"
-    }
-}
-
-fn run_scenario_inner(
-    name: &str,
-    scn: &fs_test_harness::Scenario,
-    adapter: &TomlAdapter,
-    diag: &Path,
-) -> Result<(), String> {
-    // Verify the image (if any) exists before we light up the mount.
-    if !scn.image.is_empty() {
-        let image_abs = adapter.image_dir.join(&scn.image);
-        if !image_abs.is_file() {
-            return Err(format!(
-                "test image not found: {} (set HARNESS_IMAGE_DIR or [vm.image_dir])",
-                image_abs.display()
-            ));
-        }
-    }
-
-    // Materialise the per-scenario JSON the PS runner consumes.
-    let scenario_json = adapter.build_scenario_json(name, scn);
-    let scenario_json_path = diag.join("scenario.json");
-    std::fs::write(
-        &scenario_json_path,
-        serde_json::to_string_pretty(&scenario_json).unwrap_or_else(|_| "{}".into()),
-    )
-    .map_err(|e| format!("write scenario.json: {e}"))?;
-
-    let _guard = MOUNT_LOCK.lock().unwrap_or_else(|p| p.into_inner());
-
-    let ps_script = adapter.run_scenario_ps_path();
-    if !ps_script.is_file() {
-        return Err(format!(
-            "run-scenario.ps1 not found at {}",
-            ps_script.display()
-        ));
-    }
-    let mut cmd = Command::new("powershell");
-    cmd.args([
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-    ])
-    .arg(&ps_script)
-    .args(["-ScenarioName", name])
-    .args(["-ScenarioJson", &scenario_json_path.display().to_string()])
-    .args(["-Diag", &diag.display().to_string()]);
-
-    let output = cmd
-        .output()
-        .map_err(|e| format!("spawn run-scenario.ps1: {e}"))?;
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let _ = std::fs::write(diag.join("ps-stdout.txt"), &stdout);
-    let _ = std::fs::write(diag.join("ps-stderr.txt"), &stderr);
-
-    if !output.status.success() {
-        return Err(format!(
-            "run-scenario.ps1 exit {:?}: {}",
-            output.status.code(),
-            stderr.trim()
-        ));
-    }
-
-    let verdict = stdout
-        .lines()
-        .rev()
-        .find_map(|l| l.trim().strip_prefix("VERDICT="))
-        .unwrap_or("unknown");
-    match verdict {
-        "passed" => Ok(()),
-        "failed" => {
-            let err = stdout
-                .lines()
-                .rev()
-                .find_map(|l| l.trim().strip_prefix("ERROR="))
-                .unwrap_or("(no ERROR= marker)");
-            Err(format!("VERDICT=failed: {err}"))
-        }
-        "errored" => {
-            let err = stdout
-                .lines()
-                .rev()
-                .find_map(|l| l.trim().strip_prefix("ERROR="))
-                .unwrap_or("(no ERROR= marker)");
-            Err(format!("VERDICT=errored: {err}"))
-        }
-        other => Err(format!(
-            "VERDICT={other}: unexpected verdict marker; ps-stdout.txt has full output"
-        )),
-    }
-}
-
-/// v2 path: walk `scenario.recipe` via the per-step dispatcher, no
-/// PowerShell driver involved. Records aggregate verdict + per-step
-/// diag, returns a libtest verdict.
-fn run_v2_scenario(
     name: &str,
     scn: &fs_test_harness::Scenario,
     config: &fs_test_harness::HarnessConfig,
@@ -308,10 +118,10 @@ fn run_v2_scenario(
     let diag = matrix_diag_root(consumer_root).join(name);
     std::fs::create_dir_all(&diag).map_err(|e| Failed::from(format!("mkdir diag: {e}")))?;
 
-    // Hold the global mount lock — vm-steps in v2 can include a
-    // long-running mount lifecycle just like v1, and Windows drive-
-    // letter assignment is process-global on the VM. Cheaper to
-    // serialise here than to track per-recipe.
+    // Hold the global mount lock — vm-steps in a recipe can include a
+    // long-running mount lifecycle, and Windows drive-letter assignment
+    // is process-global on the VM. Cheaper to serialise here than to
+    // track per-recipe.
     let _guard = MOUNT_LOCK.lock().unwrap_or_else(|p| p.into_inner());
 
     let outcome = fs_test_harness::run_recipe(name, scn, config, consumer_root, &diag);
@@ -339,8 +149,6 @@ fn run_v2_scenario(
         Err(e) => ("errored", Some(e.clone())),
     };
 
-    // Emit the same `result.json` shape v1 writes so `aggregate_results`
-    // doesn't need to know which path produced it.
     let result = ScenarioResult {
         name: name.to_string(),
         status: status.to_string(),

@@ -1,18 +1,20 @@
 //! Unit tests for the runner public surface.
 //!
 //! Kept in a single module so the harness builds the whole tree before
-//! running anything; covers the three load-bearing paths the CI
+//! running anything; covers the load-bearing paths the CI
 //! `runner-unit` job relies on:
 //!   1. `Harness::load` round-trips `examples/minimal/harness.toml`.
-//!   2. `Matrix` deserialises both the `ops` field and the legacy
-//!      `operations` alias.
-//!   3. `TomlAdapter::expand_template` substitutes declared tokens and
-//!      collapses undeclared ones to empty (per the schema).
+//!   2. `Matrix` deserialises a recipe with mixed host/vm steps.
+//!   3. Consumer-defined scenario fields round-trip through serde so
+//!      `{scenario.<dotted.path>}` substitution can reach them.
+//!   4. `harness.toml [ops]` accepts both the bare-string shorthand
+//!      (sugar for `command = ..., host = "vm"`) and the full table
+//!      form with `host`, `when`, `expect_exit`.
 //!
 //! No filesystem fixtures are written -- everything either reads the
 //! checked-in example or operates on in-memory strings.
 
-use crate::{Harness, Matrix, TomlAdapter};
+use crate::{Harness, Matrix};
 use std::path::PathBuf;
 
 /// Locate `examples/minimal/harness.toml` relative to this crate.
@@ -47,7 +49,7 @@ fn harness_load_round_trips_minimal_example() {
         Some("test-matrix.json")
     );
 
-    // Op templates carried through verbatim. v1 bare-string form
+    // Op templates carried through verbatim. Bare-string shorthand
     // deserialises into OpDef with the command intact and host=vm.
     let ls = harness.config.ops.get("ls").expect("ls op");
     assert_eq!(ls.command, "{binary} ls {image} {path}");
@@ -55,67 +57,16 @@ fn harness_load_round_trips_minimal_example() {
     assert!(harness.config.ops.contains_key("cat"));
     assert!(harness.config.ops.contains_key("stat"));
 
-    // Mount section parsed.
-    let mount = harness.config.mount.as_ref().expect("mount section");
-    assert!(mount.command.contains("{binary} mount"));
-    assert_eq!(mount.ready_line, "myfs mounted at");
-
     // Matrix file referenced by the toml resolved + parsed.
     assert!(harness.matrix.scenarios.contains_key("minimal-list-root"));
 }
 
 #[test]
-fn matrix_deserialises_ops_and_legacy_operations_alias() {
-    // Two scenarios: one uses `ops`, the other uses `operations`. Serde's
-    // `alias = "operations"` means both should land in `Scenario::ops`.
+fn matrix_deserialises_recipe_with_host_vm_steps() {
+    // Recipe shape: per-step host dispatch, free-form step fields.
+    // Demonstrates the common NTFS pattern of host-prefix + vm-suffix.
     let raw = r#"
     {
-      "_format": "v1",
-      "_doc": "synthetic fixture for the alias test",
-      "scenarios": {
-        "uses-ops": {
-          "image": "fixtures/a.img",
-          "ops": [
-            { "type": "ls", "path": "/" }
-          ]
-        },
-        "uses-operations": {
-          "image": "fixtures/b.img",
-          "operations": [
-            { "type": "cat", "path": "/hello.txt" },
-            { "type": "stat", "path": "/hello.txt" }
-          ]
-        }
-      }
-    }
-    "#;
-    let matrix: Matrix = serde_json::from_str(raw).expect("matrix parses");
-
-    let ops_scenario = matrix.scenarios.get("uses-ops").expect("uses-ops present");
-    assert_eq!(ops_scenario.ops.len(), 1);
-    assert_eq!(ops_scenario.ops[0]["type"], "ls");
-
-    let alias_scenario = matrix
-        .scenarios
-        .get("uses-operations")
-        .expect("uses-operations present");
-    assert_eq!(
-        alias_scenario.ops.len(),
-        2,
-        "legacy `operations` alias must populate ops"
-    );
-    assert_eq!(alias_scenario.ops[0]["type"], "cat");
-    assert_eq!(alias_scenario.ops[1]["type"], "stat");
-}
-
-#[test]
-fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
-    // v2 recipe shape: per-step host dispatch, free-form step fields,
-    // mutually exclusive with the v1 `ops` array. Demonstrates the
-    // common NTFS pattern of host-prefix + vm-suffix.
-    let raw = r#"
-    {
-      "_format": "v2",
       "scenarios": {
         "format-then-chkdsk": {
           "volume_params": { "size_mib": 256, "label": "TEST", "alloc_unit_size": 4096 },
@@ -130,12 +81,11 @@ fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
       }
     }
     "#;
-    let matrix: Matrix = serde_json::from_str(raw).expect("v2 matrix parses");
+    let matrix: Matrix = serde_json::from_str(raw).expect("matrix parses");
     let scn = matrix
         .scenarios
         .get("format-then-chkdsk")
         .expect("scenario present");
-    assert!(scn.ops.is_empty(), "v2 leaves the v1 `ops` field empty");
     assert_eq!(scn.recipe.len(), 5);
     assert_eq!(scn.recipe[0]["host"], "host");
     assert_eq!(scn.recipe[0]["op"], "format");
@@ -148,13 +98,12 @@ fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
 fn scenario_preserves_unknown_consumer_fields_through_round_trip() {
     // Consumer-defined fields on a scenario (volume_params, fixtures,
     // verdict_shape, custom annotations, ...) must round-trip through
-    // serde so v2 substitution `{scenario.<dotted.path>}` can reach
-    // them at op-template-expand time. Without `#[serde(flatten)]`
-    // catch-all on Scenario, these fields are silently dropped on
+    // serde so substitution `{scenario.<dotted.path>}` can reach them
+    // at op-template-expand time. Without `#[serde(flatten)]` catch-
+    // all on Scenario, these fields are silently dropped on
     // deserialise.
     let raw = r#"
     {
-      "_format": "v2",
       "scenarios": {
         "consumer-data": {
           "volume_params": { "size_mib": 256, "label": "T", "alloc_unit_size": 4096 },
@@ -182,7 +131,7 @@ fn scenario_preserves_unknown_consumer_fields_through_round_trip() {
     assert!(scn.extra.contains_key("fixtures"));
 
     // Re-serialising the typed Scenario re-emits the unknown fields
-    // in the JSON output so the v2 dispatcher can substitute against
+    // in the JSON output so the dispatcher can substitute against
     // `{scenario.volume_params.size_mib}` etc. at runtime.
     let re_emitted = serde_json::to_value(scn).expect("re-emit");
     assert_eq!(re_emitted["volume_params"]["size_mib"], 256);
@@ -191,24 +140,24 @@ fn scenario_preserves_unknown_consumer_fields_through_round_trip() {
 }
 
 #[test]
-fn config_op_def_accepts_v1_string_and_v2_table() {
+fn config_op_def_accepts_string_shorthand_and_table_form() {
     use crate::config::{HarnessConfig, OpHost};
-    // v1 + v2 mixed in the same `[ops]` table.
+    // Both shapes mixed in the same `[ops]` table.
     let raw = r#"
 [project]
 name = "mixed"
 
 [ops]
-# v1 — bare string, implicit host=vm
+# bare-string shorthand — implicit host=vm, no expect_exit, no when.
 ls = "{binary} ls {image} {path}"
 
-# v2 — table form, explicit host=host
+# table form — explicit host=host, expect_exit, etc.
 [ops.format]
 host = "host"
 command = "{binary} format {scenario.image} -L {step.params.label?}"
 expect_exit = 0
 
-# v2 — conditional op
+# table form with conditional op (when predicate)
 [ops.write-fixtures]
 host = "host"
 when = "scenario.fixtures"
@@ -218,7 +167,7 @@ command = "{binary} write-fixtures {scenario.image}"
 
     let ls = cfg.ops.get("ls").expect("ls present");
     assert_eq!(ls.command, "{binary} ls {image} {path}");
-    assert_eq!(ls.host, OpHost::Vm, "v1 string defaults host to vm");
+    assert_eq!(ls.host, OpHost::Vm, "bare string defaults host to vm");
     assert_eq!(ls.expect_exit, None);
     assert_eq!(ls.when, None);
 
@@ -233,34 +182,4 @@ command = "{binary} write-fixtures {scenario.image}"
         .expect("write-fixtures present");
     assert_eq!(wf.host, OpHost::Host);
     assert_eq!(wf.when.as_deref(), Some("scenario.fixtures"));
-}
-
-#[test]
-fn expand_template_substitutes_known_and_collapses_unknown_tokens() {
-    let vars = [
-        ("path", "/hello.txt"),
-        ("image", "/srv/images/test.img"),
-        ("drive", "Z:"),
-    ];
-
-    // Known tokens get substituted.
-    let out = TomlAdapter::expand_template("ls {image} {path}", &vars);
-    assert_eq!(out, "ls /srv/images/test.img /hello.txt");
-
-    // Drive substitution preserves trailing colon (Windows path safety).
-    let out = TomlAdapter::expand_template("cd {drive}\\foo", &vars);
-    assert_eq!(out, "cd Z:\\foo");
-
-    // Undeclared token collapses to empty per the schema contract -- and
-    // surrounding whitespace / literal text is preserved.
-    let out = TomlAdapter::expand_template("run {image} {undeclared} end", &vars);
-    assert_eq!(out, "run /srv/images/test.img  end");
-
-    // Mixed: declared + undeclared in the same template.
-    let out = TomlAdapter::expand_template("{drive} {path} extra={extra}", &vars);
-    assert_eq!(out, "Z: /hello.txt extra=");
-
-    // No tokens: passes through unchanged.
-    let out = TomlAdapter::expand_template("plain text", &vars);
-    assert_eq!(out, "plain text");
 }
