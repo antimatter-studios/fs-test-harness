@@ -66,10 +66,27 @@
           ]
         },
         "_attempts":     { "type": "array",  "description": "Agent bookkeeping; runner ignores." },
+        "_doc":          { "type": "string", "description": "Human note about this scenario's intent." },
         "_notes":        { "type": "string", "description": "Free-form description." },
-        "evidence_link": { "type": "string", "description": "Path to the diag dir on success/failure; written by update-scenario-status.sh." }
+        "evidence_link": { "type": "string", "description": "Path to the diag dir on success/failure; written by update-scenario-status.sh." },
+        "recipe": {
+          "type": "array",
+          "description": "v2 recipe shape: ordered op invocations dispatched by name. Each step's `op` field selects a template declared in harness.toml [ops] (or a built-in like `ship-to-vm` / `ship-to-host`); remaining keys are passed through as substitution tokens. v1 scenarios use `ops` / `operations` instead — the runner accepts either.",
+          "items": { "$ref": "#/$defs/recipe_step" }
+        }
       },
       "additionalProperties": false
+    },
+    "recipe_step": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "description": "Op name; must match a key in harness.toml [ops] or a built-in (`ship-to-vm`, `ship-to-host`)."
+        }
+      },
+      "additionalProperties": true
     },
     "op": {
       "type": "object",
