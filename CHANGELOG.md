@@ -3,6 +3,72 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## [3.2.0] - 2026-05-10
+
+Schema relaxation for consumer-defined scenario fields. Additive,
+no breaking changes.
+
+### Added
+
+- `scenario.volume_params` — typed property on the scenario schema
+  (`additionalProperties: true` so each consumer can document its
+  own inner field set). Used by consumers whose recipes build the
+  image at scenario-time and substitute `{scenario.volume_params.<field>}`
+  into op templates (e.g. `mac-format` with size_mib/label/alloc_unit_size).
+
+### Removed
+
+- `scenario.mount` and `scenario.mount_args` from the schema — these
+  were stale after the v3.0.0 runtime removal of `Scenario.mount` /
+  `Scenario.mount_args` / `MountSpec`. v3.0.0 missed the matching
+  schema cleanup; landed here.
+
+### Notes
+
+The deliberate posture: the scenario schema stays
+`additionalProperties: false` (typo-trapping is the win). Consumer-
+defined fields are added explicitly, typed, with a
+`{scenario.<dotted.path>}` substitution rationale documented in
+the schema. Novel consumer-only fields require a one-line schema
+PR — gating prevents grab-bag accumulation.
+
+`_doc`, `_notes`, `_attempts`, `evidence_link` were already present
+since v2.0.0; recipe steps remain `additionalProperties: true` so
+step-level fields don't need schema declarations.
+
+## [3.1.0] - 2026-05-10
+
+Additive feature release on top of v3.0.0. No breaking changes.
+
+### Added
+
+- `scripts/run-tests.sh` — single-entrypoint test runner that
+  detects v2 recipes (any scenario with non-empty `recipe`) and
+  dispatches cargo locally on Mac instead of shipping to VM.
+  Deprecates (but doesn't remove) the prior two-step setup.
+- `{image_dir}` flat token — host-side image resolution; reads
+  `HARNESS_IMAGE_DIR` > `VM_IMAGE_DIR` > `[run].image_dir` >
+  `[vm].image_dir`.
+- `{vm.workdir}` + `{vm.harness_root}` flat tokens — vm-side
+  path substitution surface; `HARNESS_DIR` env override available.
+- 8 fs-agnostic vm-side op scripts under `scripts/win/`
+  (write/mkdir/rmdir/unlink/rename/cat-via-mount/ls-via-mount +
+  `Invoke-WithMount` lifecycle helper). Self-contained
+  mount-do-unmount per call (necessary because the dispatcher
+  does one-SSH-per-step).
+- Env overrides: `VM_HOST` / `VM_WORKDIR` / `SSH_KEY` take
+  precedence over `harness.toml [vm].host` / `.workdir` /
+  `.ssh_key` — matches the per-machine override pattern
+  `run-tests.sh` already used.
+- `run-tests.sh` v2-mode now sources `.test-env`.
+
+### Fixed
+
+- `dispatch` + `run-tests`: treat empty-string config values as
+  unset.
+- `run-tests.sh`: drop v1-mode dispatch — runner is v2-only
+  post-3.0.0.
+
 ## [3.0.0] - 2026-05-10
 
 **Breaking change**: removed the legacy whole-scenario PowerShell
