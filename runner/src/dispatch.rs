@@ -248,10 +248,13 @@ fn run_vm(
     let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
     let env_key  = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
 
+    let cfg_host = vm_host.as_deref().filter(|s| !s.is_empty());
+    let cfg_key  = ssh_key.as_deref().filter(|s| !s.is_empty());
+
     let host_owned = env_host
-        .or_else(|| vm_host.clone())
+        .or_else(|| cfg_host.map(String::from))
         .ok_or_else(|| "vm-step requires VM_HOST env or harness.toml [vm].host".to_string())?;
-    let key_owned  = env_key.or_else(|| ssh_key.clone());
+    let key_owned  = env_key.or_else(|| cfg_key.map(String::from));
 
     let mut cmd = Command::new("ssh");
     cmd.args([
@@ -322,17 +325,25 @@ fn run_builtin_ship(
     // every other dev to edit-and-restore it on each run; the env
     // is the per-machine override.
     let vm_host_env = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
+    let cfg_vm_host = config.vm.host.as_deref().filter(|s| !s.is_empty());
     let vm_host_owned: String = vm_host_env
-        .or_else(|| config.vm.host.clone())
+        .or_else(|| cfg_vm_host.map(String::from))
         .ok_or_else(|| {
             format!("step {idx}: '{op_name}' requires VM_HOST env or harness.toml [vm].host")
         })?;
     let vm_host = vm_host_owned.as_str();
 
+    // SSH_KEY env wins over harness.toml [vm].ssh_key, same as run_vm.
+    // Empty-string config values are treated as unset (matches the
+    // "harness.toml ships placeholders, .test-env supplies actuals" pattern).
+    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
+    let cfg_key = config.vm.ssh_key.as_deref().filter(|s| !s.is_empty());
+    let key_owned = env_key.or_else(|| cfg_key.map(String::from));
+
     let started = Instant::now();
     let mut cmd = Command::new("scp");
     cmd.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]);
-    if let Some(key) = &config.vm.ssh_key {
+    if let Some(key) = &key_owned {
         cmd.args(["-i", key.as_str(), "-o", "IdentitiesOnly=yes"]);
     }
     cmd.arg("-r"); // tolerate directory shipping; single-file is unaffected.
@@ -408,7 +419,16 @@ fn build_flat_vocab(
     let env_dir = std::env::var("HARNESS_IMAGE_DIR")
         .ok()
         .filter(|s| !s.is_empty());
-    let raw_dir = env_dir.as_deref().or(config.vm.image_dir.as_deref());
+    // Empty-string `image_dir` in harness.toml (the unset-default
+    // pattern) must be filtered out — otherwise the empty path joins
+    // against consumer_root and `{image_dir}` resolves to consumer_root
+    // itself, silently misrouting every host-side image lookup.
+    let cfg_dir = config
+        .vm
+        .image_dir
+        .as_deref()
+        .filter(|s| !s.is_empty());
+    let raw_dir = env_dir.as_deref().or(cfg_dir);
     if let Some(d) = raw_dir {
         let resolved = if PathBuf::from(d).is_absolute() {
             d.to_string()
@@ -435,7 +455,8 @@ fn build_flat_vocab(
     // committed harness.toml [vm].workdir. Same per-machine override
     // pattern as VM_HOST / SSH_KEY (see run_vm / run_builtin_ship).
     let env_workdir = std::env::var("VM_WORKDIR").ok().filter(|s| !s.is_empty());
-    let workdir_owned = env_workdir.or_else(|| config.vm.workdir.clone());
+    let cfg_workdir = config.vm.workdir.as_deref().filter(|s| !s.is_empty());
+    let workdir_owned = env_workdir.or_else(|| cfg_workdir.map(String::from));
     if let Some(workdir) = &workdir_owned {
         flat.insert("vm.workdir".to_string(), workdir.clone());
         // Compose harness_root from workdir + harness-relative path.

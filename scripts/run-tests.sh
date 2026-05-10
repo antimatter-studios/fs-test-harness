@@ -266,15 +266,23 @@ EOF
     echo "[run-tests] wrote ${ENV_FILE}"
 }
 
+# Source .test-env unconditionally if it exists — VM_IMAGE_DIR is
+# needed even by host-only scenarios (the runner uses it to resolve
+# `{image_dir}` for verifier ops). VM_HOST / SSH_KEY are unused on
+# pure-host runs but exporting them is harmless.
+if [[ -f "${ENV_FILE}" ]]; then
+    # shellcheck disable=SC1090
+    source "${ENV_FILE}"
+    if [[ -z "${SSH_KEY:-}" && "${SSH_OPTS:-}" == *"-i "* ]]; then
+        SSH_KEY="$(echo "${SSH_OPTS}" | sed -n 's/.*-i \([^ ]*\).*/\1/p')"
+    fi
+    export VM_HOST VM_WORKDIR VM_IMAGE_DIR SSH_KEY SSH_OPTS
+fi
+
 if [[ "${NEEDS_VM}" == "1" ]]; then
     if [[ -f "${ENV_FILE}" ]]; then
-        # shellcheck disable=SC1090
-        source "${ENV_FILE}"
-        # Back-compat: derive SSH_KEY from SSH_OPTS for older .test-env files
-        # (pre-v2 dispatch — wrote SSH_OPTS with -i flag inline).
-        if [[ -z "${SSH_KEY:-}" && "${SSH_OPTS:-}" == *"-i "* ]]; then
-            SSH_KEY="$(echo "${SSH_OPTS}" | sed -n 's/.*-i \([^ ]*\).*/\1/p')"
-        fi
+        # Already sourced above.
+        :
     elif [[ -n "${ARG_VM_HOST}" ]]; then
         bootstrap_from_flags
         build_ssh_opts_from_key
