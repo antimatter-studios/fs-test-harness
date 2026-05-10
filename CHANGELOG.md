@@ -5,10 +5,62 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
-Combines this branch's schema work with the host/vm scripts reorg
+### Added
+
+- **`[vm.packages]` per-package custom installer args.** Entries
+  can be either a bare `"PkgId"` string or a table `{ id = "PkgId",
+  custom_args = "..." }`. `custom_args` is forwarded to the
+  underlying installer via winget's `--override` flag. Motivating
+  case: WinFsp's MSI ships with `F.Developer` (headers + .lib) off
+  by default, which breaks `bindgen` for consumers that build
+  WinFsp bindings on the VM. Declaring `{ id = "WinFsp.WinFsp",
+  custom_args = "ADDLOCAL=F.Main,F.User,F.Developer" }` includes
+  the dev pack. Wired through:
+    - `harness.schema.json` accepts both forms via `oneOf`.
+    - `runner/src/config.rs` deserialises into `Vec<PackageSpec>`
+      (untagged enum: `Bare(String)` or
+      `Table { id, custom_args }`).
+    - `setup-windows-vm.ps1`'s `-ExtraPackages` accepts mixed
+      string + hashtable entries; `Resolve-PackageEntry` normalises
+      them.
+
+- **`setup-windows-vm.ps1 -Reinstall`** switch. Uninstall-then-
+  install every consumer package — winget reconfigure with new
+  ADDLOCAL features against an already-installed MSI returns 1603
+  / "feature not found"; uninstall+install always works. Includes
+  a prelude that kills any hung `winget` /  `AppInstaller*` /
+  `WinGetServer*` / `DesktopAppInstaller*` processes from previous
+  SSH-driven runs and wipes `%LOCALAPPDATA%\Temp\WinGet\` to
+  release file locks — without this, the second `--reinstall`
+  invocation hangs indefinitely behind zombies from the first.
+  Rustup is exempted from the uninstall step (its custom installer
+  hangs over SSH); rustup is installed via direct download from
+  `https://win.rustup.rs/<arch>` rather than through winget.
+
+- **`run-tests.sh --reinstall`** flag. Generates a wrapper.ps1
+  locally with `[vm.packages]` / `[vm.rust_toolchain]` /
+  `[vm.workdir]` from `harness.toml` baked in, scp's both the
+  wrapper and `setup-windows-vm.ps1` to the VM, ssh-invokes
+  `powershell -File` against the wrapper. Continues into the
+  normal ship + run flow on success. Combine with `--no-ship` for
+  bootstrap-only.
+
+### Notes
+
+Backward-compatible: existing bare-string `packages =
+["WinFsp.WinFsp", "LLVM.LLVM"]` entries keep working unchanged.
+Object form is opt-in.
+
+----
+
+Pre-3.5.0 (was [Unreleased] on PR #9 merge — kept here because v3.4.0
+was tagged immediately on top of that merge; the next tag picking this
+section up is v3.5.0).
+
+Combines PR #9's schema work with the host/vm scripts reorg
 already on main. Next tag is up to the maintainer (main was tagged
-v3.3.0 from the post-PR-7 state; this merge brings PR #9's schema
-additions, so v3.4.0 is the natural next semver bump).
+v3.3.0 from the post-PR-7 state; PR #9's merge brought the schema
+additions, tagged v3.4.0).
 
 ### Added
 

@@ -22,7 +22,24 @@
         "ssh_key":        { "type": "string" },
         "workdir":        { "type": "string" },
         "image_dir":      { "type": "string" },
-        "packages":       { "type": "array", "items": { "type": "string" }, "description": "winget package IDs installed by setup-windows-vm.ps1." },
+        "packages":       {
+          "type": "array",
+          "description": "winget packages installed by setup-windows-vm.ps1. Each entry is either a bare PkgId string or a table { id = \"PkgId\", custom_args = \"...\" } where custom_args is forwarded to the underlying installer via winget's --override flag (e.g. ADDLOCAL=F.Core,F.Developer for WinFsp's developer-pack feature).",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id":          { "type": "string", "description": "winget package ID (e.g. \"WinFsp.WinFsp\")." },
+                  "custom_args": { "type": "string", "description": "Args forwarded to the underlying installer via winget --override. Use for non-default MSI/EXE features." }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
         "rust_toolchain": { "type": "string", "description": "rustup channel-target-triple to set as default on the VM, e.g. \"stable-aarch64-pc-windows-gnullvm\"." },
         "env_prefix":     { "type": "string", "description": "PowerShell prefix prepended before the cargo invocation, e.g. setting LIBCLANG_PATH." }
       }

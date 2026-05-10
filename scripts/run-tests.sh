@@ -35,6 +35,19 @@
 #     when you've pre-staged the VM manually (faster iteration during
 #     debugging of a single scenario).
 #
+#   bash <harness>/scripts/run-tests.sh [SCENARIO] --reinstall
+#     Nuclear bootstrap: scp setup-windows-vm.ps1 to the VM and
+#     invoke it with -Reinstall. Uninstalls every package declared in
+#     `harness.toml [vm.packages]`, then reinstalls each one with the
+#     declared `custom_args` (e.g. WinFsp's `ADDLOCAL=F.Main,F.User,
+#     F.Developer` for headers + .lib). Resets the rustup default
+#     toolchain. Use when the VM's package state is partial / wrong
+#     / unknown — easier to nuke and rebuild than to repair partial
+#     installs (e.g. WinFsp installed runtime-only when the consumer
+#     binary's bindgen needs F.Developer headers).
+#     Continues with the normal ship + run flow after the bootstrap
+#     completes; combine with --no-ship if you want bootstrap-only.
+#
 #   bash <harness>/scripts/run-tests.sh --list [PATTERN]
 #     List matrix scenarios matching the optional pattern; don't run.
 #
@@ -88,6 +101,7 @@ DO_BUILD=0
 DO_LIST=0
 DO_RESET=0
 DO_SHIP=1   # default: ship vm-side artefacts whenever NEEDS_VM=1; --no-ship opts out
+DO_REINSTALL=0   # --reinstall: nuclear bootstrap — uninstall+reinstall every package via setup-windows-vm.ps1
 SCENARIO=""
 ARG_VM_HOST=""
 ARG_VM_WORKDIR=""
@@ -106,6 +120,7 @@ for arg in "$@"; do
     case "$arg" in
         --build)            DO_BUILD=1 ;;
         --no-ship)          DO_SHIP=0 ;;
+        --reinstall)        DO_REINSTALL=1 ;;
         --list)             DO_LIST=1 ;;
         --reset)            DO_RESET=1 ;;
         --vm-host=*)        ARG_VM_HOST="${arg#*=}" ;;
@@ -381,6 +396,84 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
     if ! preflight_ssh; then
         echo "[run-tests] preflight failed; aborting before run" >&2
         exit 2
+    fi
+
+    # ── --reinstall: scp setup-windows-vm.ps1 + ssh-invoke ──────
+    # Nuclear bootstrap: uninstall+reinstall every package declared
+    # in [vm.packages] (with their custom_args), reset rustup default
+    # toolchain. Use when the VM's package state is partial / wrong
+    # / unknown and you want to start over from a clean install.
+    if [[ "${DO_REINSTALL}" == "1" ]]; then
+        VM_WORKDIR_PS="${VM_WORKDIR//\//\\}"
+
+        # Build a wrapper.ps1 locally with [vm.packages] from
+        # harness.toml baked in. scp + run as a file rather than
+        # pass through ssh-cmd-powershell argv (multiple layers of
+        # quoting eat single-quoted PS literals; baking into a file
+        # localises the escaping to the python heredoc here).
+        WRAPPER_TMP=$(mktemp -t reinstall-wrapper.XXXXXX)
+        # shellcheck disable=SC2064
+        trap "rm -f '${WRAPPER_TMP}'" EXIT
+
+        PACKAGES_PS=$(python3 - "${harness_toml}" <<'PYEOF'
+import sys, json
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # noqa
+with open(sys.argv[1], 'rb') as f:
+    cfg = tomllib.load(f)
+pkgs = cfg.get('vm', {}).get('packages', [])
+parts = []
+for p in pkgs:
+    if isinstance(p, str):
+        # Single-quoted PS string literal; PS escapes ' as ''.
+        parts.append("'" + p.replace("'", "''") + "'")
+    elif isinstance(p, dict) and p.get('id'):
+        pid = p['id'].replace("'", "''")
+        ca  = p.get('custom_args', '').replace("'", "''")
+        parts.append("@{ id = '" + pid + "'; custom_args = '" + ca + "' }")
+print('@(' + ', '.join(parts) + ')' if parts else '@()')
+PYEOF
+)
+        TC_PS="$(harness_get_or vm.rust_toolchain '')"
+        TC_PS="${TC_PS//\'/\'\'}"
+        VM_WORKDIR_PS_QUOTED="${VM_WORKDIR_PS//\'/\'\'}"
+
+        # Generate wrapper.ps1 — splat all args into setup-windows-vm.ps1.
+        {
+            echo '$invokeArgs = @{'
+            echo "    Workdir       = '${VM_WORKDIR_PS_QUOTED}'"
+            echo '    Reinstall     = $true'
+            echo "    ExtraPackages = ${PACKAGES_PS}"
+            if [[ -n "${TC_PS}" ]]; then
+                echo "    RustToolchain = '${TC_PS}'"
+            fi
+            echo '}'
+            echo '& "$PSScriptRoot\setup-windows-vm.ps1" @invokeArgs'
+        } > "${WRAPPER_TMP}"
+
+        echo "[reinstall] wrapper.ps1:"
+        sed 's/^/  /' "${WRAPPER_TMP}"
+
+        # Ensure VM workdir exists, then scp setup-windows-vm.ps1 +
+        # the wrapper + invoke.
+        # shellcheck disable=SC2086,SC2029
+        ssh ${SSH_OPTS:-} "${VM_HOST}" "if (-not (Test-Path '${VM_WORKDIR_PS}')) { New-Item -ItemType Directory -Path '${VM_WORKDIR_PS}' -Force | Out-Null }"
+        # shellcheck disable=SC2086
+        scp ${SSH_OPTS:-} "${harness_root}/scripts/setup-windows-vm.ps1" "${VM_HOST}:${VM_WORKDIR}/setup-windows-vm.ps1"
+        # shellcheck disable=SC2086
+        scp ${SSH_OPTS:-} "${WRAPPER_TMP}" "${VM_HOST}:${VM_WORKDIR}/reinstall-wrapper.ps1"
+
+        echo "[reinstall] invoking setup-windows-vm.ps1 -Reinstall on ${VM_HOST}"
+        # shellcheck disable=SC2086,SC2029
+        ssh ${SSH_OPTS:-} "${VM_HOST}" "powershell -ExecutionPolicy Bypass -File '${VM_WORKDIR_PS}\\reinstall-wrapper.ps1'"
+        REINSTALL_RC=$?
+        if [[ "${REINSTALL_RC}" -ne 0 ]]; then
+            echo "[reinstall] setup-windows-vm.ps1 failed (rc=${REINSTALL_RC})" >&2
+            exit "${REINSTALL_RC}"
+        fi
+        echo "[reinstall] complete"
     fi
 
     # ── ship phase: vm-side scripts + binary (or full source) ───

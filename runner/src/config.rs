@@ -169,9 +169,14 @@ pub struct VmSection {
     /// Remote dir holding test images; substituted as `{image_dir}`.
     #[serde(default)]
     pub image_dir: Option<String>,
-    /// winget package IDs to install on first VM provisioning.
+    /// winget packages to install on first VM provisioning. Each
+    /// entry is either a bare PkgId string or a table
+    /// `{ id = "PkgId", custom_args = "..." }` where custom_args is
+    /// forwarded to the underlying installer via winget's --override
+    /// flag (e.g. `ADDLOCAL=F.Main,F.User,F.Developer` for WinFsp's
+    /// dev pack). Consumed by `setup-windows-vm.ps1`.
     #[serde(default)]
-    pub packages: Vec<String>,
+    pub packages: Vec<PackageSpec>,
     /// Rustup toolchain triple to set as default on the VM.
     #[serde(default)]
     pub rust_toolchain: Option<String>,
@@ -179,6 +184,23 @@ pub struct VmSection {
     /// (e.g. `$env:LIBCLANG_PATH='C:\\Program Files\\LLVM\\bin';`).
     #[serde(default)]
     pub env_prefix: Option<String>,
+}
+
+/// A `[vm.packages]` entry. Either a bare PkgId string or a table
+/// with `id` + optional `custom_args`. Serde's `untagged` enum
+/// resolution matches by structure.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum PackageSpec {
+    /// `"PkgId"` -- default features.
+    Bare(String),
+    /// `{ id = "PkgId", custom_args = "..." }` -- custom_args is
+    /// forwarded to the underlying installer via winget --override.
+    Table {
+        id: String,
+        #[serde(default)]
+        custom_args: Option<String>,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
