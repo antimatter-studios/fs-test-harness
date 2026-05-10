@@ -2,18 +2,14 @@
 //!
 //! Public API:
 //! - [`Harness`]: loaded `harness.toml` + matrix.json.
-//! - [`Scenario`], [`OpSpec`]: data shape produced from the matrix.
-//! - [`Adapter`]: pluggable behaviour for ops and lifecycle hooks.
-//! - [`TomlAdapter`]: default impl driven entirely by `harness.toml`'s
-//!   `[ops]` template table; used by the `run-matrix` binary.
+//! - [`Scenario`], [`Step`]: data shape produced from the matrix.
+//! - [`run_recipe`]: walks `scenario.recipe[]` dispatching each step
+//!   per its `host` field (host-side spawn or VM-side SSH).
 //!
 //! Most consumers will not need to touch this crate at all -- they
 //! will run the `run-matrix` binary and configure behaviour via
-//! `harness.toml`. Consumers that need real Rust for an op (FFI probe,
-//! in-process mount test, etc) can `impl Adapter for MyDriver` and
-//! drive the loop themselves.
+//! `harness.toml`'s `[ops]` table.
 
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -22,17 +18,15 @@ mod dispatch;
 mod matrix;
 mod report;
 mod substitution;
-mod toml_adapter;
 
 #[cfg(test)]
 mod tests;
 
 pub use config::{HarnessConfig, OpDef, OpHost};
 pub use dispatch::{run_recipe, RecipeResult, StepResult};
-pub use matrix::{Matrix, MountSpec, OpSpec, PostVerifySpec, Scenario, Step};
+pub use matrix::{Matrix, PostVerifySpec, Scenario, Step};
 pub use report::{RunReport, ScenarioResult};
 pub use substitution::Substitution;
-pub use toml_adapter::TomlAdapter;
 
 /// Loaded view of `harness.toml` + the consumer's matrix file.
 pub struct Harness {
@@ -41,39 +35,6 @@ pub struct Harness {
     pub config_path: PathBuf,
     pub matrix_path: PathBuf,
     pub consumer_root: PathBuf,
-}
-
-/// Outcome of running a single op.
-#[derive(Serialize, Deserialize, Clone)]
-pub struct OpResult {
-    pub ok: bool,
-    pub error: Option<String>,
-    pub output: serde_json::Value,
-    pub duration_ms: u64,
-}
-
-/// The pluggable behaviour for executing scenarios.
-///
-/// The default [`TomlAdapter`] is driven by `harness.toml`'s `[ops]`
-/// template table and is good enough for any project whose driver is a
-/// CLI binary. For projects that need real Rust (FFI, in-process
-/// mount), implement this trait directly.
-pub trait Adapter {
-    /// Optional: invoked once before the scenario's ops run. Default no-op.
-    fn pre_fixture(&self, _scenario: &Scenario, _diag_dir: &Path) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    /// Run a single op against `scenario`. Implementations should write
-    /// any per-op artefacts under `diag_dir`.
-    fn run_op(&self, scenario: &Scenario, op: &OpSpec, diag_dir: &Path)
-        -> anyhow::Result<OpResult>;
-
-    /// Optional: invoked once after the scenario's ops succeed (and
-    /// before any post-verify hook). Default no-op.
-    fn post_verify(&self, _scenario: &Scenario, _diag_dir: &Path) -> anyhow::Result<()> {
-        Ok(())
-    }
 }
 
 impl Harness {

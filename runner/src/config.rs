@@ -1,18 +1,16 @@
 //! `harness.toml` schema (deserialised via `serde` + `toml`).
 //!
-//! Two op-table shapes coexist for back-compat:
+//! Two equivalent op-declaration shapes:
 //!
-//! * v1 `[ops]` — `BTreeMap<String, String>`, one command template per
-//!   op-name. Implicit `host = "vm"` for every op (the v1 model spawns
-//!   `run-scenario.ps1` once per scenario, all ops execute VM-side).
-//! * v2 `[ops.<name>]` — structured table with `host`, `command`,
-//!   `expect_exit`, `when`. Each op explicitly declares whether it runs
-//!   on the orchestrator host or the VM. The v2 runner dispatches per
-//!   step rather than batching the whole scenario through PowerShell.
+//! * Bare-string shorthand — `ls = "{binary} ls {image} {path}"`.
+//!   Sugar for `{ host = "vm", command = <string>, expect_exit = 0,
+//!   when = None }`. Convenient for simple ops.
+//! * Table form — `[ops.<name>]` with `host`, `command`,
+//!   `expect_exit`, `when`. Required when the op runs on the
+//!   orchestrator host rather than the VM, when a non-zero exit is
+//!   expected, or when a `when` predicate gates the op.
 //!
-//! The harness understands both. Consumers migrate at their own pace;
-//! `_format = "v2"` in `test-matrix.json` opts a scenario into recipe-
-//! shaped execution.
+//! Both deserialise to the same `OpDef` struct.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -24,25 +22,24 @@ pub struct HarnessConfig {
     pub vm: VmSection,
     #[serde(default)]
     pub tools: BTreeMap<String, String>,
-    /// Op-name -> definition. Accepts both v1 (bare command string)
-    /// and v2 (table with host/command/expect_exit/when) forms.
+    /// Op-name -> definition. Accepts both the bare-string shorthand
+    /// (sugar for `command = ..., host = "vm"`) and the full table
+    /// form with `host`, `command`, `expect_exit`, `when`.
     #[serde(default)]
     pub ops: BTreeMap<String, OpDef>,
-    #[serde(default)]
-    pub mount: Option<MountSection>,
     #[serde(default)]
     pub post_verify: Option<PostVerifySection>,
 }
 
-/// One declared op. Accepts either a bare command-string (v1) or a
-/// table with explicit fields (v2):
+/// One declared op. Accepts either a bare command-string (shorthand)
+/// or a table with explicit fields:
 ///
 /// ```toml
-/// # v1 form — implicit host=vm, expect_exit=0, no `when`:
+/// # bare-string shorthand — implicit host=vm, expect_exit=0, no `when`:
 /// [ops]
 /// ls = "{binary} ls {image} {path}"
 ///
-/// # v2 form — explicit:
+/// # table form — explicit:
 /// [ops.format]
 /// host = "host"
 /// command = "{binary} format {scenario.image} -L {step.params.label}"
@@ -56,8 +53,10 @@ pub struct HarnessConfig {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(from = "OpDefRaw", into = "OpDefRaw")]
 pub struct OpDef {
-    /// Where the op runs. v1 forms default to "vm" (matches the
-    /// historical "run-scenario.ps1 does everything" model).
+    /// Where the op runs. The bare-string shorthand defaults to "vm"
+    /// (matches the typical "this op runs against the mounted volume
+    /// on the test VM" pattern); the table form must declare `host`
+    /// explicitly.
     pub host: OpHost,
     /// Command template. Substitution tokens: `{binary}`, `{image}`,
     /// `{drive}`, `{path}`, `{from}`, `{to}`, `{content}`, `{extra}`,
@@ -91,9 +90,9 @@ pub enum OpHost {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 enum OpDefRaw {
-    /// v1: bare command string, implicit `host = "vm"`.
+    /// Bare-string shorthand, implicit `host = "vm"`.
     BareCommand(String),
-    /// v2: explicit table.
+    /// Explicit table form.
     Table {
         #[serde(default)]
         host: OpHost,
@@ -179,23 +178,6 @@ pub struct VmSection {
     /// (e.g. `$env:LIBCLANG_PATH='C:\\Program Files\\LLVM\\bin';`).
     #[serde(default)]
     pub env_prefix: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct MountSection {
-    /// Command template for spawning the mount. Substitution tokens:
-    /// `{binary}`, `{image}`, `{drive}`, `{extra}`.
-    pub command: String,
-    /// Regex-ish substring the harness greps for in mount stdout to
-    /// declare "mount ready". Empty string => don't wait.
-    #[serde(default)]
-    pub ready_line: String,
-    /// Default `extra` substitution for non-rw scenarios.
-    #[serde(default)]
-    pub default_extra: Option<String>,
-    /// Default `extra` substitution for rw scenarios. Typical: `--rw`.
-    #[serde(default)]
-    pub rw_extra: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]

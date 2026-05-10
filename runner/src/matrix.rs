@@ -1,20 +1,13 @@
 //! `test-matrix.json` schema.
 //!
-//! Two execution shapes coexist for back-compat:
+//! Each scenario carries a `recipe: Vec<Step>` of typed steps. Each
+//! step's `host` field (`"host"` or `"vm"`) tells the runner where to
+//! dispatch it; the runner walks the recipe in order, spawning host-
+//! side commands locally and VM-side commands via SSH.
 //!
-//! * **v1** — flat `ops: Vec<OpSpec>` executed VM-side via a single
-//!   `run-scenario.ps1` invocation per scenario. Implicit `host = "vm"`
-//!   on every op. Suits filesystem drivers whose tests are
-//!   "mount + ls/cat/stat against the mounted volume."
-//! * **v2** — `recipe: Vec<Step>` of typed steps. Each step carries
-//!   `host: "host" | "vm"`; the runner dispatches per step rather than
-//!   batching the whole scenario. Suits filesystem drivers whose tests
-//!   need to interleave host-side and VM-side work
-//!   (`format → write → ship → mount → chkdsk → unmount → verify`).
-//!
-//! A scenario uses one shape or the other. The `_format` field
-//! documents which (`"v1"` is the default; `"v2"` opts a scenario into
-//! recipe execution).
+//! Suits filesystem drivers whose tests need to interleave host-side
+//! and VM-side work (`format → write → ship → mount → chkdsk →
+//! unmount → verify`).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -37,28 +30,11 @@ pub struct Scenario {
     #[serde(default)]
     pub image: String,
 
-    /// Scenario-level mount overrides. Most scenarios leave this empty
-    /// and inherit `[mount]` from `harness.toml`.
-    #[serde(default)]
-    pub mount: Option<MountSpec>,
-
-    /// `["--rw"]` style argv. The default mount template substitutes
-    /// these into `{extra}`. Whether the scenario is RW is inferred
-    /// from the presence of `--rw`.
-    #[serde(default)]
-    pub mount_args: Vec<String>,
-
-    /// **v1**: ordered list of operations to execute on the mounted
-    /// volume. Every op runs VM-side under the legacy
-    /// `run-scenario.ps1` flow. Mutually exclusive with `recipe`.
-    #[serde(default, alias = "operations")]
-    pub ops: Vec<OpSpec>,
-
-    /// **v2**: ordered list of typed steps. Each step is dispatched
-    /// per its `host` field by the runner. Mutually exclusive with
-    /// `ops`. Steps are passed through to op-template substitution
-    /// verbatim; the runner only inspects `host` and the op-name
-    /// (`op` or `type`) to decide where and how to execute.
+    /// Ordered list of typed steps. Each step is dispatched per its
+    /// `host` field by the runner. Steps are passed through to op-
+    /// template substitution verbatim; the runner only inspects `host`
+    /// and the op-name (`op` or `type`) to decide where and how to
+    /// execute.
     ///
     /// See [`crate::config::OpDef`] for the matching `harness.toml`
     /// op declaration shape.
@@ -107,20 +83,7 @@ pub struct Scenario {
     pub evidence_link: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct MountSpec {
-    pub command: String,
-    #[serde(default)]
-    pub ready_line: String,
-}
-
-/// One op in `scenario.ops[]`. Free-form by design: the runner only
-/// needs `type` to look up the right template; the rest of the JSON is
-/// passed through to the PowerShell side, where templates substitute
-/// `{path}`, `{from}`, `{to}`, `{content}`, `{extra}` as available.
-pub type OpSpec = serde_json::Value;
-
-/// One step in `scenario.recipe[]` (v2). Free-form JSON value; the
+/// One step in `scenario.recipe[]`. Free-form JSON value; the
 /// runner only inspects two conventional fields:
 ///
 /// * `host` — `"host"` (orchestrator-local) or `"vm"` (Windows VM via

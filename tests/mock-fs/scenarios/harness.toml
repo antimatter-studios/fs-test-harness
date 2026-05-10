@@ -22,16 +22,8 @@ matrix_path = "test-matrix.json"
 image_dir = "."
 
 [ops]
-# v1 op-templates: bare strings, implicit host=vm. Used by the
-# `mock-list` / `mock-cat-roundtrip` scenarios.
-ls   = "{binary} ls {image} {path}"
-cat  = "{binary} cat {image} {path}"
-stat = "{binary} stat {image} {path}"
-
-# v2 op-defs: structured table form with explicit host. Used by the
-# `v2-recipe-host-only` scenario, which exercises the dispatcher loop
-# without needing a real VM (host-only — runs on the CI runner).
-# Substitution surface: {scenario.image}, {step.path}, {binary}.
+# All scenarios run host-side via the dispatcher loop — no real VM
+# needed. Substitution surface: {scenario.image}, {step.path}, {binary}.
 [ops.host-ls]
 host = "host"
 command = "{binary} ls {scenario.image} {step.path}"
@@ -41,12 +33,3 @@ expect_exit = 0
 host = "host"
 command = "{binary} cat {scenario.image} {step.path}"
 expect_exit = 0
-
-[mount]
-# The mock binary's `mount` subcommand prints "mounted at <drive>" and
-# then blocks on stdin. The harness's run-scenario.ps1 uses ready_line
-# as a regex against mount stdout to declare the mount up.
-command    = "{binary} mount {image} --drive {drive} {extra}"
-ready_line = "mounted at"
-default_extra = ""
-rw_extra      = "--rw"

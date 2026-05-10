@@ -82,7 +82,7 @@ scenarios = {}
 for i in range(n):
     scenarios[f"sc{i:02d}"] = {"status": "pending", "image": "fake.img"}
 with open(path, "w") as f:
-    json.dump({"_format": "v1", "scenarios": scenarios}, f, indent=2)
+    json.dump({"scenarios": scenarios}, f, indent=2)
 PY
 }
 

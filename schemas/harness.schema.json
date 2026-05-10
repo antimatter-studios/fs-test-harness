@@ -30,21 +30,26 @@
     "tools": {
       "type": "object",
       "additionalProperties": { "type": "string" },
-      "description": "Reference tool paths. Substituted into [ops] / [post_verify] / [mount] templates as {tools.<name>}, e.g. {tools.fsck}."
+      "description": "Reference tool paths. Substituted into [ops] / [post_verify] templates as {tools.<name>}, e.g. {tools.fsck}."
     },
     "ops": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
-      "description": "Op-name -> shell command template. Reserved tokens: {binary}, {image}, {drive}, {path}, {from}, {to}, {content}, {extra}, {tools.<name>}."
-    },
-    "mount": {
-      "type": "object",
-      "required": ["command"],
-      "properties": {
-        "command":       { "type": "string", "description": "Spawn template for mount. Tokens: {binary}, {image}, {drive}, {extra}." },
-        "ready_line":    { "type": "string", "description": "Regex matched against mount stdout; mount is considered ready when this matches. Empty => don't wait." },
-        "default_extra": { "type": "string" },
-        "rw_extra":      { "type": "string", "description": "Substituted as {extra} when the scenario's mount_args includes --rw. Typical: \"--rw\"." }
+      "description": "Op-name -> definition. Each value is either a bare command-template string (sugar for `{ host: \"vm\", command: <string>, expect_exit: 0 }`) or a table with explicit `host`, `command`, `expect_exit`, `when` fields. Reserved tokens in the command template: {binary}, {image}, {drive}, {path}, {from}, {to}, {content}, {extra}, {tools.<name>}, {scenario.<dotted.path>}, {step.<field>}, {x?}.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["command"],
+            "properties": {
+              "host":        { "type": "string", "enum": ["host", "vm"] },
+              "command":     { "type": "string" },
+              "expect_exit": { "type": "integer" },
+              "when":        { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        ]
       }
     },
     "post_verify": {

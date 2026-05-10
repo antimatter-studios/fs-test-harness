@@ -1,17 +1,19 @@
-//! Template substitution engine for the v2 recipe model.
+//! Template substitution engine for the recipe-step dispatcher.
 //!
-//! v1 used flat `{token}` substitution against a small fixed
-//! vocabulary (`{binary}`, `{image}`, `{path}` etc.). v2 needs more:
-//! op templates reference fields on the scenario and on the step,
-//! so the namespace becomes hierarchical. Recipe steps may also be
-//! conditionally executed (`when = "scenario.fixtures"`).
+//! Two namespaces in op-template strings:
 //!
-//! This module implements both:
+//! * **Flat tokens** — small fixed vocabulary: `{binary}`, `{image}`,
+//!   `{drive}`, `{path}`, `{from}`, `{to}`, `{content}`, `{extra}`,
+//!   `{tools.<name>}`. Always available.
+//! * **Dotted paths** — `{scenario.<dotted.path>}` and
+//!   `{step.<dotted.path>}` reach into the scenario JSON / step JSON
+//!   respectively. Trailing `?` makes a path optional: missing paths
+//!   yield empty strings instead of `<missing:...>` markers.
 //!
-//! * [`Substitution::expand`] — replace `{dotted.path}` placeholders
-//!   in a template against a context (`scenario`, `step`, plus the
-//!   v1 flat tokens). Trailing `?` makes a path optional: missing
-//!   paths yield empty strings instead of `<missing:...>` markers.
+//! Two entry points:
+//!
+//! * [`Substitution::expand`] — replace `{path}` placeholders in a
+//!   template against the context.
 //! * [`Substitution::evaluate_when`] — evaluate a `when` predicate
 //!   string. Returns `true` iff the dotted path resolves to a
 //!   non-null, non-empty value (truthy in the JSON sense).
@@ -24,13 +26,13 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 /// Substitution context. Holds the JSON values reachable via
-/// `{scenario.*}` and `{step.*}` placeholders, plus the flat v1
-/// tokens (`{binary}`, `{image}`, etc.).
+/// `{scenario.*}` and `{step.*}` placeholders, plus the flat tokens
+/// (`{binary}`, `{image}`, etc.).
 #[derive(Debug, Default)]
 pub struct Substitution {
-    /// Flat tokens from the v1 vocabulary (binary, image, drive,
-    /// path, from, to, content, extra, tools.<name>). Keys are the
-    /// part inside the braces, e.g. `"binary"` or `"tools.fsck"`.
+    /// Flat tokens (binary, image, drive, path, from, to, content,
+    /// extra, tools.<name>). Keys are the part inside the braces,
+    /// e.g. `"binary"` or `"tools.fsck"`.
     pub flat: BTreeMap<String, String>,
     /// Whole-scenario JSON, reached via `{scenario.*}`.
     pub scenario: Value,
@@ -57,7 +59,7 @@ impl Substitution {
     /// 4. If not found:
     ///    * optional → empty string
     ///    * required → empty string with a `<missing:...>` marker
-    ///      embedded for human debugging (this matches the v1
+    ///      embedded for human debugging (matches the documented
     ///      contract that undeclared tokens collapse to empty).
     ///
     /// Example: `"{binary} format {scenario.image} -L {step.params.label?}"`
@@ -78,9 +80,11 @@ impl Substitution {
                             None if optional => { /* yield empty */ }
                             None => {
                                 // Required-but-missing collapses to empty
-                                // (v1 behaviour). Future iteration could
-                                // emit a `<missing:path>` marker; left as
-                                // a follow-up rather than breaking v1.
+                                // for now. Future iteration could emit a
+                                // `<missing:path>` marker; left as a
+                                // follow-up to avoid breaking existing
+                                // consumers that rely on the silent-empty
+                                // contract.
                             }
                         }
                         i += 1 + end_rel + 1;
@@ -122,7 +126,7 @@ impl Substitution {
     fn lookup(&self, path: &str) -> Option<String> {
         // Flat tokens first — they include things like `binary`,
         // `tools.fsck`, etc. These shadow scenario/step paths if both
-        // happen to match (the v1 vocabulary is small and stable).
+        // happen to match (the flat vocabulary is small and stable).
         if let Some(s) = self.flat.get(path) {
             return Some(s.clone());
         }
@@ -255,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn expands_flat_v1_tokens() {
+    fn expands_flat_tokens() {
         let s = fixture();
         assert_eq!(s.expand("ls {image} {drive}"), "ls /srv/images/test.img Z:");
         assert_eq!(s.expand("{binary} format"), "/usr/local/bin/myfs format");
@@ -304,7 +308,7 @@ mod tests {
 
     #[test]
     fn missing_required_path_collapses_to_empty() {
-        // v1 contract: undeclared tokens collapse to empty.
+        // Documented contract: undeclared tokens collapse to empty.
         let s = fixture();
         assert_eq!(s.expand("--unknown {step.params.nope}"), "--unknown ");
     }

@@ -1,7 +1,54 @@
 # Changelog
 
 All notable changes to fs-test-harness will land here. The format
-loosely follows Keep a Changelog; semver applies once we tag `1.0.0`.
+loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
+
+## [3.0.0] - 2026-05-10
+
+**Breaking change**: removed the legacy whole-scenario PowerShell
+dispatch path. The runner now drives every scenario through the
+recipe-step dispatcher introduced in `2.0.0`.
+
+### Removed
+
+- `Scenario.ops` (and the `operations` serde alias) — recipes now
+  use `recipe: Vec<Step>` exclusively.
+- `OpSpec` type alias — superseded by `Step` (free-form JSON value).
+- `TomlAdapter`, the `Adapter` trait, and `OpResult` — the old
+  whole-scenario adapter shape used to spawn `run-scenario.ps1`. No
+  longer needed; consumers writing custom Rust drivers can call
+  `dispatch::run_recipe` directly.
+- `scripts/run-scenario.ps1` — legacy per-scenario PowerShell driver.
+- `MountSpec` (per-scenario) and `MountSection` (in `harness.toml`)
+  — the auto-mount lifecycle is gone; recipes that need a mount
+  declare it as an explicit `op` step.
+- `Scenario.mount_args` (`["--rw"]`-style argv) — same reason.
+- Schema: dropped `ops` / `operations` properties and `$defs/op`
+  from `test-matrix.schema.json`; dropped the `mount` section from
+  `harness.schema.json`.
+
+### Migration
+
+- Replace per-scenario `ops: [...]` with `recipe: [...]`. Each step
+  needs at least an `op` field; `host: "host"` or `host: "vm"` if
+  the op-def doesn't already pin one.
+- Remove `[mount]` from `harness.toml`. Express the mount as a
+  recipe step using an `[ops.mount]` table form (with explicit
+  `host = "vm"` and a `command` template).
+
+### Kept
+
+- The bare-string `[ops]` shorthand (`ls = "{binary} ls {image} {path}"`)
+  — pure config sugar for `{ host: "vm", command: <string>,
+  expect_exit: 0 }`.
+- The `type` field as an alternative spelling of `op` on a recipe
+  step — informal alias preserved.
+
+## [2.0.0] - 2026-05-10
+
+Recipe-shaped scenarios + per-step dispatcher. See the v2 design
+notes in `docs/`. Tagged today as the first stable release of the
+recipe model.
 
 ## [0.1.0] - 2026-05-07
 

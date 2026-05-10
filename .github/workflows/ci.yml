@@ -160,33 +160,33 @@ jobs:
         env:
           HARNESS_TOML: tests/mock-fs/scenarios/harness.toml
           HARNESS_CONSUMER_ROOT: tests/mock-fs/scenarios
-          # Image-dir is resolved against PS's cwd at op time, not against
-          # consumer_root. Pin it absolute so the run-scenario.ps1 image
-          # existence check (and the {image} substitution) sees the
-          # fixture mock.img sitting next to harness.toml.
+          # Image-dir is resolved relative to the dispatcher's cwd at
+          # op time. Pin it explicit so {scenario.image} substitution
+          # finds the fixture mock.img next to harness.toml.
           HARNESS_IMAGE_DIR: tests/mock-fs/scenarios
         run: |
-          # The runner spawns scripts/run-scenario.ps1 against mock-fs and
-          # asserts each scenario's VERDICT=passed marker.
+          # Walks each scenario.recipe via the per-step dispatcher and
+          # writes per-scenario result.json + recipe.json under
+          # test-diagnostics/matrix/<scenario>/.
           ./runner/target/release/run-matrix.exe --test-threads=1
         # Don't bury a failure: surface non-zero as a pipeline failure.
 
-      - name: assert per-scenario manifests are passed
+      - name: assert per-scenario results are passed
         run: |
           $ErrorActionPreference = 'Stop'
-          $names = @('mock-list', 'mock-cat-roundtrip')
+          $names = @('mock-list', 'mock-cat-roundtrip', 'v2-recipe-host-only')
           foreach ($n in $names) {
-              $path = "tests/mock-fs/scenarios/test-diagnostics/matrix/$n/manifest.json"
+              $path = "tests/mock-fs/scenarios/test-diagnostics/matrix/$n/result.json"
               if (-not (Test-Path -LiteralPath $path)) {
-                  throw "missing manifest: $path"
+                  throw "missing result: $path"
               }
               $m = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
-              if ("$($m.verdict)" -ne 'passed') {
-                  throw "scenario '$n' verdict='$($m.verdict)' (expected 'passed'). manifest: $path"
+              if ("$($m.status)" -ne 'passed') {
+                  throw "scenario '$n' status='$($m.status)' (expected 'passed'). result: $path"
               }
               Write-Host "  ok: $n -> passed"
           }
-          Write-Host "all mock scenarios verdict=passed"
+          Write-Host "all mock scenarios status=passed"
 
       - name: dump diagnostics on failure
         if: failure()

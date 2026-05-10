@@ -1,13 +1,13 @@
 {
-  "_format": "v1",
-  "_doc": "Three scenarios driven by the in-tree mock-fs CLI. The first two exercise the v1 PS-driven flow (the `mock-scenario` CI job runs them on windows-latest). The third exercises the v2 recipe dispatcher on any host and runs in CI everywhere — no Windows / VM / WinFsp needed.",
+  "_doc": "Recipe-driven scenarios against the in-tree mock-fs CLI. The CI `mock-scenario` job runs them via the v2 dispatcher on any host — no Windows / VM / WinFsp needed.",
   "scenarios": {
     "mock-list": {
       "status": "pending",
       "image": "mock.img",
-      "ops": [
+      "recipe": [
         {
-          "type": "ls",
+          "host": "host",
+          "op": "host-ls",
           "path": "/",
           "expect_stdout_contains": "hello.txt"
         }
@@ -16,9 +16,10 @@
     "mock-cat-roundtrip": {
       "status": "pending",
       "image": "mock.img",
-      "ops": [
+      "recipe": [
         {
-          "type": "cat",
+          "host": "host",
+          "op": "host-cat",
           "path": "/hello.txt",
           "expect_stdout_contains": "hello world"
         }
@@ -26,7 +27,7 @@
     },
     "v2-recipe-host-only": {
       "status": "pending",
-      "_doc": "v2 recipe shape: every step runs on the orchestrator host. Demonstrates that consumers can drive sequential ops via the dispatcher without a VM, and that `{scenario.image}` / `{step.path}` substitution lands in the resolved command.",
+      "_doc": "Multi-step recipe: every step runs on the orchestrator host. Demonstrates that consumers can drive sequential ops via the dispatcher without a VM, and that `{scenario.image}` / `{step.path}` substitution lands in the resolved command.",
       "image": "mock.img",
       "recipe": [
         { "op": "host-ls",  "path": "/" },
