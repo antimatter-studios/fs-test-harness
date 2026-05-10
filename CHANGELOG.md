@@ -5,10 +5,43 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
-Combines this branch's schema work with the host/vm scripts reorg
+### Added
+
+- **`[vm.packages]` per-package custom installer args.** Entries can
+  now be either a bare `"PkgId"` string (current shape — installed
+  with default features) or a table `{ id = "PkgId", custom_args =
+  "..." }`. `custom_args` is forwarded to the underlying installer
+  via winget's `--override` flag, so consumers can pull in
+  non-default MSI/EXE features without hand-editing the VM. Motivating
+  case: WinFsp's MSI ships with `F.Developer` (headers + .lib)
+  off by default, which breaks `bindgen` when consumers like
+  `ext4-win-driver` / `erofs-win-driver` build their WinFsp
+  bindings on the VM. Declaring `{ id = "WinFsp.WinFsp", custom_args
+  = "ADDLOCAL=F.Core,F.Developer" }` in `[vm.packages]` makes the
+  setup-windows-vm.ps1 install idempotent + complete.
+- `setup-windows-vm.ps1` now accepts the same mixed-form
+  `-ExtraPackages` argv (bare strings + hashtables). Already-
+  installed packages get `winget install --force` re-run when
+  `custom_args` is set, so existing VMs missing the requested
+  features get repaired in place rather than requiring manual
+  uninstall+reinstall.
+
+### Notes
+
+The schema change is backward-compatible: existing bare-string
+`packages = ["WinFsp.WinFsp", "LLVM.LLVM"]` entries keep working
+unchanged. Object form is opt-in for entries that need it.
+
+----
+
+Pre-3.5.0 (was [Unreleased] on PR #9 merge — kept here because v3.4.0
+was tagged immediately on top of that merge; the next tag picking this
+section up is v3.5.0).
+
+Combines PR #9's schema work with the host/vm scripts reorg
 already on main. Next tag is up to the maintainer (main was tagged
-v3.3.0 from the post-PR-7 state; this merge brings PR #9's schema
-additions, so v3.4.0 is the natural next semver bump).
+v3.3.0 from the post-PR-7 state; PR #9's merge brought the schema
+additions, tagged v3.4.0).
 
 ### Added
 

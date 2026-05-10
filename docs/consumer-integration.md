@@ -111,6 +111,27 @@ bash harness/scripts/setup-windows-vm.ps1   # run on the VM, once
 Installs rustup + the toolchain you declared, and any winget packages
 listed in `harness.toml [vm.packages]`. Idempotent.
 
+`[vm.packages]` entries are either bare strings (installed with the
+package's default feature set) or tables for packages that need
+non-default installer features:
+
+```toml
+[vm]
+packages = [
+    "MartinStorsjo.LLVM-MinGW.UCRT",   # bare string — default features
+    "LLVM.LLVM",
+    { id = "WinFsp.WinFsp", custom_args = "ADDLOCAL=F.Core,F.Developer" },
+]
+```
+
+`custom_args` is forwarded to the underlying installer via winget's
+`--override`. The WinFsp example pulls in the `F.Developer` MSI feature
+(headers + `.lib`) alongside the default runtime — required for
+consumers that build WinFsp bindings via `bindgen` (`ext4-win-driver`,
+`erofs-win-driver`). On a VM where the package is already installed
+without those features, re-running `setup-windows-vm.ps1` triggers
+`winget install --force` so the missing features get added in place.
+
 (Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
 on first run — see step 5.)
 

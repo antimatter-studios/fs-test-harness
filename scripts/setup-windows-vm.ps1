@@ -15,14 +15,28 @@
 #       project) or "stable-x86_64-pc-windows-msvc". Default = leave
 #       rustup at its current default.
 #   -ExtraPackages @("WinFsp.WinFsp","LLVM.LLVM",...)
-#       Each is passed verbatim to `winget install --id`.
+#       Each entry is either a bare string (PkgId — installed with
+#       default features) or a hashtable @{ id="PkgId"; custom_args="..." }
+#       where custom_args is forwarded to the installer via winget's
+#       --override flag. Use the object form for packages whose MSI/EXE
+#       has non-default feature flags you need — e.g.
+#       @{ id="WinFsp.WinFsp"; custom_args="ADDLOCAL=F.Core,F.Developer" }
+#       to pull in headers + .lib alongside the runtime.
 #
 # Idempotent: every step checks before installing, so re-running is safe.
+# If a package is already installed but its desired feature set differs
+# from what's on disk (e.g. WinFsp runtime-only when you wanted Developer
+# too), passing custom_args triggers `winget install --force` so the
+# installer re-runs and adds the missing features.
 #
 # Usage (on the VM directly):
 #   powershell -ExecutionPolicy Bypass -File setup-windows-vm.ps1 `
 #       -RustToolchain "stable-aarch64-pc-windows-gnullvm" `
-#       -ExtraPackages @("MartinStorsjo.LLVM-MinGW.UCRT","cloudbase.qemu-img")
+#       -ExtraPackages @(
+#           "MartinStorsjo.LLVM-MinGW.UCRT",
+#           "cloudbase.qemu-img",
+#           @{ id = "WinFsp.WinFsp"; custom_args = "ADDLOCAL=F.Core,F.Developer" }
+#       )
 #
 # Or invoked over SSH from the Mac side:
 #   ssh $VM_HOST 'powershell -ExecutionPolicy Bypass -File <path>\setup-windows-vm.ps1 ...'
@@ -30,7 +44,9 @@
 param(
     [string]$Workdir = "$env:USERPROFILE\dev",
     [string]$RustToolchain = "",
-    [string[]]$ExtraPackages = @()
+    # Bare strings (PkgId) OR hashtables @{ id="PkgId"; custom_args="..." }.
+    # Type is widened from [string[]] so PowerShell accepts the mixed form.
+    [object[]]$ExtraPackages = @()
 )
 
 $ErrorActionPreference = "Continue"  # winget writes progress to stderr
@@ -42,13 +58,32 @@ function Test-WingetPackage {
 }
 
 function Install-IfMissing {
-    param([string]$Id, [string]$Description)
+    param(
+        [string]$Id,
+        [string]$Description,
+        [string]$CustomArgs = ""
+    )
     Write-Host "[setup] $Description ($Id)"
-    if (Test-WingetPackage -Id $Id) {
+    $alreadyInstalled = Test-WingetPackage -Id $Id
+    if ($alreadyInstalled -and -not $CustomArgs) {
         Write-Host "        already installed -- skipping"
         return
     }
-    winget install $Id --accept-source-agreements --accept-package-agreements --silent 2>&1 |
+
+    # Build the winget argv. --override forwards CustomArgs to the
+    # underlying MSI/EXE installer (e.g. ADDLOCAL=F.Core,F.Developer
+    # for WinFsp). --force is needed when the package is already
+    # installed but with a different feature set, because winget
+    # otherwise short-circuits to "already installed".
+    $wargs = @($Id, "--accept-source-agreements", "--accept-package-agreements", "--silent")
+    if ($CustomArgs) {
+        $wargs += @("--override", $CustomArgs)
+        if ($alreadyInstalled) {
+            Write-Host "        already installed -- re-running with --force to apply custom_args"
+            $wargs += "--force"
+        }
+    }
+    winget install @wargs 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Write-Host "        $_" }
 }
 
@@ -74,9 +109,36 @@ if ($RustToolchain) {
 }
 
 # ---------- 2. Consumer extras -------------------------------------------
-foreach ($pkg in $ExtraPackages) {
-    if (-not $pkg) { continue }
-    Install-IfMissing -Id $pkg -Description "consumer-declared package"
+function Resolve-PackageEntry {
+    # Normalise a [vm.packages] entry into @{ Id; CustomArgs }.
+    # Accepts bare string OR hashtable / PSCustomObject with `id` +
+    # optional `custom_args` fields. Returns $null on empty entries
+    # so the caller can `continue`.
+    param([object]$Entry)
+    if (-not $Entry) { return $null }
+    if ($Entry -is [string]) {
+        return @{ Id = $Entry; CustomArgs = "" }
+    }
+    if ($Entry -is [hashtable] -or $Entry -is [PSCustomObject]) {
+        $id = $Entry.id
+        if (-not $id) { $id = $Entry.Id }
+        if (-not $id) {
+            Write-Warning "[setup] package entry has no 'id' field; skipping: $($Entry | ConvertTo-Json -Compress)"
+            return $null
+        }
+        $args_ = ""
+        if ($Entry.custom_args) { $args_ = [string]$Entry.custom_args }
+        elseif ($Entry.CustomArgs) { $args_ = [string]$Entry.CustomArgs }
+        return @{ Id = $id; CustomArgs = $args_ }
+    }
+    Write-Warning "[setup] unsupported package entry type $($Entry.GetType().Name); skipping"
+    return $null
+}
+
+foreach ($entry in $ExtraPackages) {
+    $resolved = Resolve-PackageEntry -Entry $entry
+    if (-not $resolved) { continue }
+    Install-IfMissing -Id $resolved.Id -Description "consumer-declared package" -CustomArgs $resolved.CustomArgs
 }
 
 # ---------- 3. Workdir ---------------------------------------------------
@@ -91,11 +153,13 @@ Write-Host ""
 Write-Host "=== Verification ==="
 & rustc --version 2>&1 | Select-Object -First 1
 & cargo --version 2>&1 | Select-Object -First 1
-foreach ($pkg in $ExtraPackages) {
-    if (Test-WingetPackage -Id $pkg) {
-        Write-Host "$pkg: installed"
+foreach ($entry in $ExtraPackages) {
+    $resolved = Resolve-PackageEntry -Entry $entry
+    if (-not $resolved) { continue }
+    if (Test-WingetPackage -Id $resolved.Id) {
+        Write-Host "$($resolved.Id): installed"
     } else {
-        Write-Host "WARN: $pkg: missing"
+        Write-Host "WARN: $($resolved.Id): missing"
     }
 }
 
