@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # _lib_harness.sh -- shared helpers for the harness scripts.
 #
-# Sourced by setup-local.sh, test-windows-matrix.sh, etc. Defines:
+# Sourced by run-tests.sh and the state-machine helpers. Defines:
 #   harness_root            absolute path to this fs-test-harness checkout
 #   consumer_root           absolute path to the consumer repo (cwd by default)
 #   harness_toml            path to the consumer's harness.toml
@@ -94,4 +94,29 @@ harness_get_or() {
     else
         printf '%s' "${default}"
     fi
+}
+
+# harness_self_version
+# Echoes a one-line identity for *this* fs-test-harness checkout, derived
+# from git in $harness_root. Format: "<describe> (<branch> @ <sha>)".
+# `<describe>` is `git describe --tags --always --dirty`, so a clean tag
+# shows as e.g. "v2.0.0", a few commits past as "v2.0.0-5-g2e4a610", and
+# a working-tree with uncommitted changes appends "-dirty". Branch is
+# "detached" when HEAD isn't on a named branch (e.g. checked out at a
+# tag). Falls back to "unknown" outside a git checkout.
+harness_self_version() {
+    if ! command -v git >/dev/null 2>&1; then
+        printf 'unknown (git not available)'
+        return
+    fi
+    if ! git -C "${harness_root}" rev-parse --git-dir >/dev/null 2>&1; then
+        printf 'unknown (not a git checkout)'
+        return
+    fi
+    local desc branch sha
+    desc=$(git -C "${harness_root}" describe --tags --always --dirty 2>/dev/null || echo "unknown")
+    branch=$(git -C "${harness_root}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+    sha=$(git -C "${harness_root}" rev-parse --short HEAD 2>/dev/null || echo "?")
+    [[ "${branch}" == "HEAD" ]] && branch="detached"
+    printf '%s (%s @ %s)' "${desc}" "${branch}" "${sha}"
 }

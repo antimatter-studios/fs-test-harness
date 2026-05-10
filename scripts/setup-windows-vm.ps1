@@ -101,4 +101,4 @@ foreach ($pkg in $ExtraPackages) {
 
 Write-Host ""
 Write-Host "=== Setup complete ==="
-Write-Host "Run <harness>/scripts/test-windows-matrix.sh from the Mac side."
+Write-Host "Run <harness>/scripts/run-tests.sh from the Mac side."

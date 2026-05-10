@@ -30,7 +30,7 @@ the same shape worked verbatim for an NTFS prototype before it.
 | Path | What lives there |
 | --- | --- |
 | `runner/` | Rust crate. `lib.rs` exposes the `Harness` / `Adapter` API; `bin/run-matrix.rs` is the [libtest-mimic](https://github.com/LukasKalbertodt/libtest-mimic) driver. |
-| `scripts/` | Mac-side bash + Windows-side PowerShell. `claim-scenario.sh`, `update-scenario-status.sh`, `reset-non-passed.sh`, `setup-local.sh`, `test-windows-matrix.sh`, `run-scenario.ps1`. |
+| `scripts/` | Mac-side bash + Windows-side PowerShell. `run-tests.sh` (single entrypoint — bootstrap, preflight, ship, run, diag-pull), plus state-machine helpers `claim-scenario.sh`, `update-scenario-status.sh`, `reset-non-passed.sh`, and `run-scenario.ps1` (the VM-side per-scenario executor). |
 | `schemas/` | JSON Schema for `harness.toml` and `test-matrix.json`. |
 | `docs/` | Long-form: consumer integration, architecture, triage, multi-agent protocol. |
 | `examples/minimal/` | Smallest viable consumer config. |
@@ -50,11 +50,10 @@ cp harness/examples/minimal/harness.toml ./harness.toml
 cp harness/examples/minimal/test-matrix.json ./test-matrix.json
 $EDITOR harness.toml   # point [project.binary] at your driver, fill [vm.*]
 
-# 3. One-time setup: prompts for VM host / key, writes .test-env.
-bash harness/scripts/setup-local.sh
-
-# 4. Run the matrix.
-bash harness/scripts/test-windows-matrix.sh
+# 3. Run the matrix. On first run, prompts for VM details + writes
+#    .test-env; subsequent runs skip straight to the matrix. See
+#    `bash harness/scripts/run-tests.sh --help` for the full surface.
+bash harness/scripts/run-tests.sh
 ```
 
 Full contract: [`docs/consumer-integration.md`](./docs/consumer-integration.md).

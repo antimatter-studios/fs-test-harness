@@ -50,6 +50,25 @@ Recipe-shaped scenarios + per-step dispatcher. See the v2 design
 notes in `docs/`. Tagged today as the first stable release of the
 recipe model.
 
+## [Unreleased]
+
+### Added
+
+- `scripts/run-tests.sh` -- single-entrypoint replacement for the old
+  `setup-local.sh` + `test-windows-matrix.sh` two-step. First-run
+  prompts inline; subsequent runs go straight to ship + run + diag-pull.
+  `--help` is built from the leading comment block (docs and help share
+  one source of truth). Lifts SSH-reachability preflight + actionable
+  error hints from `rust-fs-ntfs/scripts/v2/test`.
+- `harness_self_version` helper in `_lib_harness.sh`; printed at the
+  top of every run as `[harness] fs-test-harness <git-describe>`, so
+  consumers always see which harness checkout is in play.
+
+### Removed
+
+- `scripts/setup-local.sh` -- folded into `run-tests.sh` first-run flow.
+- `scripts/test-windows-matrix.sh` -- replaced by `run-tests.sh`.
+
 ## [0.1.0] - 2026-05-07
 
 Initial extraction from `rust-fs-ntfs` and `ext4-win-driver`. MIT

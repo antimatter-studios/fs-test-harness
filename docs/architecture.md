@@ -7,7 +7,7 @@ state file**.
 
 ```
 +-- Mac (developer laptop) ---------------------+
-| <harness>/scripts/test-windows-matrix.sh      |
+| <harness>/scripts/run-tests.sh                |
 |   tar consumer source -> ssh ->               |
 |   remote `cargo run --bin run-matrix` ->      |
 |   pull test-diagnostics tree                  |
@@ -111,8 +111,8 @@ tested and which op failed without re-running anything.
 - **Per VM**: scenarios serialise via `MOUNT_LOCK` + `--test-threads=1`.
 - **Per agent session**: each agent SHOULD point `VM_WORKDIR` at a
   session-namespaced directory so two concurrent extractions don't
-  trample each other on the same VM. The `setup-local.sh` flow
-  prompts for this.
+  trample each other on the same VM. The `run-tests.sh` first-run
+  bootstrap prompts for this.
 
 ## Re-entrancy
 

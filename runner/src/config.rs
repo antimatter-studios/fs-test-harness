@@ -141,8 +141,8 @@ impl From<OpDef> for OpDefRaw {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ProjectSection {
-    /// Human-readable consumer name. Used in setup-local prompts and
-    /// the diag manifest.
+    /// Human-readable consumer name. Used in `run-tests.sh` bootstrap
+    /// prompts and the diag manifest.
     pub name: String,
     /// Path (relative to harness.toml) to the consumer's binary on the
     /// VM. Substituted into `[ops]` templates as `{binary}`.
@@ -156,7 +156,8 @@ pub struct ProjectSection {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct VmSection {
-    /// Default `user@host` for SSH; `setup-local.sh` uses this as a prompt default.
+    /// Default `user@host` for SSH; `run-tests.sh` uses this as a prompt default
+    /// during the first-run bootstrap.
     #[serde(default)]
     pub host: Option<String>,
     /// Path to SSH private key (relative to harness.toml or absolute).
