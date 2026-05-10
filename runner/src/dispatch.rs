@@ -383,6 +383,25 @@ fn build_flat_vocab(
     if let Some(b) = &config.project.binary {
         flat.insert("binary".to_string(), resolve_binary_path(b, consumer_root));
     }
+    // `{image_dir}` resolves to (in priority order) the
+    // `HARNESS_IMAGE_DIR` env var (matches the v1 override path —
+    // `run-matrix.rs` reads the same var for the v1 adapter's
+    // image_dir), then `[vm].image_dir`. Relative values are joined
+    // against the consumer root so v2 commands can reach the host-
+    // side image without each consumer having to spell the prefix
+    // out per-op. Combine with `{scenario.image}` to get a full path.
+    let env_dir = std::env::var("HARNESS_IMAGE_DIR")
+        .ok()
+        .filter(|s| !s.is_empty());
+    let raw_dir = env_dir.as_deref().or(config.vm.image_dir.as_deref());
+    if let Some(d) = raw_dir {
+        let resolved = if PathBuf::from(d).is_absolute() {
+            d.to_string()
+        } else {
+            consumer_root.join(d).display().to_string()
+        };
+        flat.insert("image_dir".to_string(), resolved);
+    }
     for (name, value) in &config.tools {
         flat.insert(format!("tools.{name}"), value.clone());
     }

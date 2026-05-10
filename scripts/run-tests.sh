@@ -155,6 +155,100 @@ PYEOF
     exit 0
 fi
 
+# ── detect run mode based on what the SCENARIO filter matches ───
+# v1 scenarios use `ops:` and need a Windows orchestrator (the runner
+# spawns `run-scenario.ps1` which only exists on Windows). The legacy
+# path tar+ssh's source to the VM and runs `cargo run --bin run-matrix`
+# there.
+#
+# v2 scenarios use `recipe:` and run through `dispatch::run_recipe`,
+# which only needs a POSIX orchestrator with `ssh` in $PATH. The new
+# path runs `cargo run --bin run-matrix` LOCALLY on the orchestrator
+# host (e.g. Mac); per-step host=vm work tunnels through SSH on demand.
+#
+# Routing is per-invocation, picked from the FILTERED scenario set:
+# if the filter matches any scenario with `recipe`, the whole run uses
+# v2 mode. Otherwise v1 mode. Mixed-shape matrices migrate one
+# scenario at a time; users invoke each shape with the appropriate
+# substring filter during the migration window.
+RUN_MODE="v1"
+matrix_path_for_detect="$(harness_get_or project.matrix_path "test-matrix.json")"
+matrix_full_for_detect="${consumer_root}/${matrix_path_for_detect}"
+if [[ -f "${matrix_full_for_detect}" ]]; then
+    RUN_MODE=$(python3 - "${matrix_full_for_detect}" "${SCENARIO}" <<'PYEOF'
+import json, sys
+try:
+    m = json.load(open(sys.argv[1]))
+except Exception:
+    print("v1"); sys.exit(0)
+pat = sys.argv[2]
+saw_v1 = saw_v2 = False
+for name, s in m.get("scenarios", {}).items():
+    if not isinstance(s, dict): continue
+    if pat and pat not in name: continue
+    if s.get("recipe"):
+        saw_v2 = True
+    elif s.get("ops"):
+        saw_v1 = True
+# Prefer v2 when any v2 is matched; pure-v1 falls back to v1.
+print("v2" if saw_v2 else "v1")
+PYEOF
+)
+fi
+echo "[run-tests] mode: ${RUN_MODE}${SCENARIO:+ (filter=${SCENARIO})}"
+
+# ── v2 mode: cargo run locally; no ship-and-run-on-VM ───────────
+# Pure host-side recipes don't need .test-env / SSH at all. (Once we
+# add v2 scenarios with `host=vm` steps, this branch will need to fall
+# through to bootstrap so SSH config is available for per-step
+# tunnelling. For now every v2 step in this consumer is host-side.)
+if [[ "${RUN_MODE}" == "v2" ]]; then
+    if [[ "${DO_BUILD}" == "1" ]]; then
+        BUILD_COMMAND="$(harness_get_or run.build_command "")"
+        if [[ -z "${BUILD_COMMAND}" ]]; then
+            echo "[run-tests] --build requested but [run].build_command not set in harness.toml; skipping" >&2
+        else
+            echo "[run-tests] === build phase ==="
+            echo "[run-tests] ${BUILD_COMMAND}"
+            ( cd "${consumer_root}" && eval "${BUILD_COMMAND}" )
+        fi
+    fi
+
+    cd "${consumer_root}"
+    EXTRA_ARGS=""
+    [[ -n "${SCENARIO}" ]] && EXTRA_ARGS=$(printf ' %q' "${SCENARIO}")
+
+    # Image-dir resolution priority for v2 mode (host-side):
+    #   HARNESS_IMAGE_DIR env (caller override) >
+    #   VM_IMAGE_DIR from .test-env >
+    #   [run].image_dir from harness.toml (host-side path) >
+    #   [vm].image_dir from harness.toml (v1 default; usually wrong on
+    #     host because it points at the VM-relative path)
+    # The [run] section lets a consumer point host-side ops at a
+    # different physical dir than the v1-shipped [vm].image_dir
+    # without breaking the v1 path. Common when test images live in a
+    # sibling project that the consumer vendors as build artefacts.
+    : "${HARNESS_IMAGE_DIR:=${VM_IMAGE_DIR:-$(harness_get_or run.image_dir "$(harness_get_or vm.image_dir '')")}}"
+    export HARNESS_IMAGE_DIR
+    export HARNESS_CONSUMER_ROOT="${consumer_root}"
+
+    echo "[run]  cargo run --bin run-matrix locally (v2 mode)"
+    echo "[run]  HARNESS_IMAGE_DIR=${HARNESS_IMAGE_DIR}"
+    echo
+    set +e
+    cargo run --manifest-path "${harness_root}/runner/Cargo.toml" \
+              --release --bin run-matrix -- --test-threads=1${EXTRA_ARGS}
+    RUN_EXIT=$?
+    set -e
+
+    echo
+    echo "==============================================================="
+    echo "diagnostics: ${consumer_root}/test-diagnostics/matrix/"
+    echo "test exit:   ${RUN_EXIT}  (0 = all passed/ignored; non-zero = at least one failed)"
+    echo "==============================================================="
+    exit ${RUN_EXIT}
+fi
+
 # ── bootstrap: ensure .test-env exists + populated ──────────────
 # Three paths into a populated env:
 #   (a) .test-env exists -> source it
