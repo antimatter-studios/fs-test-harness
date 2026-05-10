@@ -53,6 +53,46 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   --binary {binary} {scenario.image} {step.path} ...` from your
   `[ops.verify-*]` op-defs.
 
+## [3.1.0] - 2026-05-10
+
+Single-entrypoint + v2 dispatch + vm-side ops + env-overrides. Tagged
+from main after PR #6 merged; backfilled here from the prior
+`[Unreleased]` placeholder (the placeholder was authored before the
+tag and never renamed).
+
+### Added
+
+- `scripts/run-tests.sh` — single-entrypoint replacement for the
+  old `setup-local.sh` + `test-windows-matrix.sh` two-step. First-
+  run prompts inline; subsequent runs go straight to run. `--help`
+  is built from the leading comment block.
+- v2-mode dispatch in `run-tests.sh`: detects matched scenarios
+  with non-empty `recipe`, sources `.test-env` (exports VM_HOST /
+  VM_WORKDIR / VM_IMAGE_DIR / SSH_KEY for the runner), runs
+  `cargo run --bin run-matrix` LOCALLY on the orchestrator. Per-
+  step ssh + scp tunnel to the VM as needed.
+- `scripts/win/_lib.ps1` + 7 generic vm-side ops (`win-write` /
+  `win-mkdir` / `win-rmdir` / `win-unlink` / `win-rename` /
+  `win-cat-via-mount` / `win-ls-via-mount`). Each is self-contained
+  mount-do-unmount within one SSH session, parameterised by
+  `-BinaryCmd` + `-ReadyLine`. (Renamed to `scripts/vm/` in the
+  next release.)
+- Substitution flat tokens: `{image_dir}`, `{vm.workdir}`,
+  `{vm.harness_root}`. `HARNESS_DIR` / `HARNESS_IMAGE_DIR` env
+  overrides for those.
+- `VM_HOST` / `VM_WORKDIR` / `SSH_KEY` env overrides in
+  `dispatch::run_vm` + `dispatch::run_builtin_ship`. Empty-string
+  config values treated as unset (lets `harness.toml` ship
+  placeholder defaults that `.test-env` supplies actuals for).
+- `harness_self_version` helper in `_lib_harness.sh`; printed at
+  the top of every run as `[harness] fs-test-harness
+  <git-describe>` so consumers see which checkout is in play.
+
+### Removed
+
+- `scripts/setup-local.sh` — folded into `run-tests.sh` first-run flow.
+- `scripts/test-windows-matrix.sh` — replaced by `run-tests.sh`.
+
 ## [3.0.0] - 2026-05-10
 
 **Breaking change**: removed the legacy whole-scenario PowerShell
@@ -99,25 +139,6 @@ recipe-step dispatcher introduced in `2.0.0`.
 Recipe-shaped scenarios + per-step dispatcher. See the v2 design
 notes in `docs/`. Tagged today as the first stable release of the
 recipe model.
-
-## [Unreleased]
-
-### Added
-
-- `scripts/run-tests.sh` -- single-entrypoint replacement for the old
-  `setup-local.sh` + `test-windows-matrix.sh` two-step. First-run
-  prompts inline; subsequent runs go straight to ship + run + diag-pull.
-  `--help` is built from the leading comment block (docs and help share
-  one source of truth). Lifts SSH-reachability preflight + actionable
-  error hints from `rust-fs-ntfs/scripts/v2/test`.
-- `harness_self_version` helper in `_lib_harness.sh`; printed at the
-  top of every run as `[harness] fs-test-harness <git-describe>`, so
-  consumers always see which harness checkout is in play.
-
-### Removed
-
-- `scripts/setup-local.sh` -- folded into `run-tests.sh` first-run flow.
-- `scripts/test-windows-matrix.sh` -- replaced by `run-tests.sh`.
 
 ## [0.1.0] - 2026-05-07
 
