@@ -17,14 +17,24 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   off by default, which breaks `bindgen` when consumers like
   `ext4-win-driver` / `erofs-win-driver` build their WinFsp
   bindings on the VM. Declaring `{ id = "WinFsp.WinFsp", custom_args
-  = "ADDLOCAL=F.Core,F.Developer" }` in `[vm.packages]` makes the
-  setup-windows-vm.ps1 install idempotent + complete.
-- `setup-windows-vm.ps1` now accepts the same mixed-form
-  `-ExtraPackages` argv (bare strings + hashtables). Already-
-  installed packages get `winget install --force` re-run when
-  `custom_args` is set, so existing VMs missing the requested
-  features get repaired in place rather than requiring manual
-  uninstall+reinstall.
+  = "ADDLOCAL=F.Main,F.User,F.Developer" }` in `[vm.packages]` makes
+  the setup-windows-vm.ps1 install pull in everything bindgen needs.
+- **`setup-windows-vm.ps1 -Reinstall`** switch. Uninstall-then-install
+  every package (rust toolchain + each consumer package) rather than
+  trying to repair existing installs. Use when the VM's package
+  state is partial / wrong / unknown — easier to nuke than to
+  reconfigure (winget reconfigure with new ADDLOCAL features against
+  an already-installed MSI returns 1603; uninstall+install always
+  works regardless of starting state). Without `-Reinstall` the
+  script just force-installs (works on a fresh VM; may not add new
+  features to existing partial installs).
+- **`run-tests.sh --reinstall`** flag. Drives `setup-windows-vm.ps1
+  -Reinstall` over SSH against the VM. Reads `[vm.packages]`,
+  `[vm.rust_toolchain]`, `[vm.workdir]` from `harness.toml`,
+  generates a wrapper.ps1 with those values baked in, scp's both
+  the wrapper and `setup-windows-vm.ps1` to the VM, runs the wrapper
+  via `powershell -File`. Continues into the normal ship + run flow
+  on success. Combine with `--no-ship` if you want bootstrap-only.
 
 ### Notes
 

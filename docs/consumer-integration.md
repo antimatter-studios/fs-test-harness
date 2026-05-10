@@ -120,17 +120,20 @@ non-default installer features:
 packages = [
     "MartinStorsjo.LLVM-MinGW.UCRT",   # bare string — default features
     "LLVM.LLVM",
-    { id = "WinFsp.WinFsp", custom_args = "ADDLOCAL=F.Core,F.Developer" },
+    { id = "WinFsp.WinFsp", custom_args = "ADDLOCAL=F.Main,F.User,F.Developer" },
 ]
 ```
 
 `custom_args` is forwarded to the underlying installer via winget's
-`--override`. The WinFsp example pulls in the `F.Developer` MSI feature
-(headers + `.lib`) alongside the default runtime — required for
+`--override`. The WinFsp example pulls in `F.Main` + `F.User` (the
+default runtime) + `F.Developer` (headers + `.lib`) — required for
 consumers that build WinFsp bindings via `bindgen` (`ext4-win-driver`,
 `erofs-win-driver`). On a VM where the package is already installed
-without those features, re-running `setup-windows-vm.ps1` triggers
-`winget install --force` so the missing features get added in place.
+without those features, run `bash harness/scripts/run-tests.sh
+--reinstall <scenario>` to drive a clean uninstall+install cycle via
+`setup-windows-vm.ps1 -Reinstall` (winget reconfigure with new
+ADDLOCAL features against an existing install returns 1603 / "feature
+not found"; the only reliable path is uninstall-then-install).
 
 (Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
 on first run — see step 5.)
