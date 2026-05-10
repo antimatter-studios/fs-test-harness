@@ -3,29 +3,77 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
-## [3.2.0] - 2026-05-10
+## [Unreleased]
 
-Schema relaxation for consumer-defined scenario fields. Additive,
-no breaking changes.
+Combines this branch's schema work with the host/vm scripts reorg
+already on main. Next tag is up to the maintainer (main was tagged
+v3.3.0 from the post-PR-7 state; this merge brings PR #9's schema
+additions, so v3.4.0 is the natural next semver bump).
 
 ### Added
 
-- `scenario.volume_params` — typed property on the scenario schema
-  (`additionalProperties: true` so each consumer can document its
-  own inner field set). Used by consumers whose recipes build the
-  image at scenario-time and substitute `{scenario.volume_params.<field>}`
-  into op templates (e.g. `mac-format` with size_mib/label/alloc_unit_size).
+- **`scripts/host/verify-{ls,cat,info,stat,tree,parts}.sh`** —
+  generic host-side ops, parameterized via `--binary <path>`. Each
+  invokes the consumer binary's matching subcommand (`<bin> ls
+  <image> <path>`, etc.) and asserts against expected output.
+  Output-format conventions documented in each script's header
+  (one entry per line for ls; raw bytes for cat; free-form text
+  with a `key: value` convention for stat/info; sha256-of-output
+  for tree). Pulled out of consumer projects (ext4-win-driver,
+  erofs-win-driver) where they were duplicated as fs-locked copies.
+- **`run-tests.sh` ship phase** — when the matched scenario set has
+  any `host: vm` recipe step, the script now ships harness
+  `scripts/vm/` + the consumer's `scripts/vm/` (if present) + the
+  consumer's binary to the VM via tar+ssh / scp. Idempotent;
+  always runs unless `--no-ship` is passed. Closes the gap where
+  fresh consumers / fresh VMs hit "scripts not found" on the first
+  vm-side scenario.
+- **`run-tests.sh --no-ship`** flag — opts out of the ship phase
+  for faster iteration when the VM is pre-staged manually.
+- **`harness.toml [run].vm_build_command`** (optional) — if set,
+  `run-tests.sh` ships the full consumer source tree (excluding
+  `target/`, `.git/`, etc.) and runs `<command>` over SSH from
+  `<vm.workdir>` after ship. Use case: consumers who prefer to
+  build on the VM rather than cross-compile from host.
+- **`scenario.volume_params`** — typed property on the scenario
+  schema (`additionalProperties: true` so each consumer can
+  document its own inner field set). Used by consumers whose
+  recipes build the image at scenario-time and substitute
+  `{scenario.volume_params.<field>}` into op templates (e.g.
+  `mac-format` with size_mib/label/alloc_unit_size).
+
+### Changed
+
+- **`scripts/win/` → `scripts/vm/`** (BREAKING for any consumer
+  that hand-references the path). Rationale: `scripts/host/` and
+  `scripts/vm/` are the two `executed-during-a-test-run`
+  directories; `host`/`vm` mirrors the recipe-step `host:` field.
+  `win/` was never quite right because the ops are technically
+  POSIX-shell-callable wherever the runner can SSH; vm/ describes
+  what they're FOR rather than where they came from.
 
 ### Removed
 
-- `scenario.mount` and `scenario.mount_args` from the schema — these
-  were stale after the v3.0.0 runtime removal of `Scenario.mount` /
-  `Scenario.mount_args` / `MountSpec`. v3.0.0 missed the matching
-  schema cleanup; landed here.
+- `scenario.mount` and `scenario.mount_args` from the schema —
+  these were stale after the v3.0.0 runtime removal of
+  `Scenario.mount` / `Scenario.mount_args` / `MountSpec`. v3.0.0
+  missed the matching schema cleanup; landed here.
+
+### Migration
+
+- After bumping `vendor/fs-test-harness` to this release: open
+  your `harness.toml` and replace any
+  `{vm.harness_root}/scripts/win/` template path with
+  `{vm.harness_root}/scripts/vm/`. Mechanical rename.
+- Optional: drop your consumer-local `scripts/verify-*.sh` files
+  if they were copies of the harness-shipped ones; reference the
+  generic ones via `{harness_root}/scripts/host/verify-*.sh
+  --binary {binary} {scenario.image} {step.path} ...` from your
+  `[ops.verify-*]` op-defs.
 
 ### Notes
 
-The deliberate posture: the scenario schema stays
+The deliberate posture on the schema: the scenario schema stays
 `additionalProperties: false` (typo-trapping is the win). Consumer-
 defined fields are added explicitly, typed, with a
 `{scenario.<dotted.path>}` substitution rationale documented in
@@ -38,36 +86,43 @@ step-level fields don't need schema declarations.
 
 ## [3.1.0] - 2026-05-10
 
-Additive feature release on top of v3.0.0. No breaking changes.
+Single-entrypoint + v2 dispatch + vm-side ops + env-overrides. Tagged
+from main after PR #6 merged; backfilled here from the prior
+`[Unreleased]` placeholder (the placeholder was authored before the
+tag and never renamed).
 
 ### Added
 
-- `scripts/run-tests.sh` — single-entrypoint test runner that
-  detects v2 recipes (any scenario with non-empty `recipe`) and
-  dispatches cargo locally on Mac instead of shipping to VM.
-  Deprecates (but doesn't remove) the prior two-step setup.
-- `{image_dir}` flat token — host-side image resolution; reads
-  `HARNESS_IMAGE_DIR` > `VM_IMAGE_DIR` > `[run].image_dir` >
-  `[vm].image_dir`.
-- `{vm.workdir}` + `{vm.harness_root}` flat tokens — vm-side
-  path substitution surface; `HARNESS_DIR` env override available.
-- 8 fs-agnostic vm-side op scripts under `scripts/win/`
-  (write/mkdir/rmdir/unlink/rename/cat-via-mount/ls-via-mount +
-  `Invoke-WithMount` lifecycle helper). Self-contained
-  mount-do-unmount per call (necessary because the dispatcher
-  does one-SSH-per-step).
-- Env overrides: `VM_HOST` / `VM_WORKDIR` / `SSH_KEY` take
-  precedence over `harness.toml [vm].host` / `.workdir` /
-  `.ssh_key` — matches the per-machine override pattern
-  `run-tests.sh` already used.
-- `run-tests.sh` v2-mode now sources `.test-env`.
+- `scripts/run-tests.sh` — single-entrypoint replacement for the
+  old `setup-local.sh` + `test-windows-matrix.sh` two-step. First-
+  run prompts inline; subsequent runs go straight to run. `--help`
+  is built from the leading comment block.
+- v2-mode dispatch in `run-tests.sh`: detects matched scenarios
+  with non-empty `recipe`, sources `.test-env` (exports VM_HOST /
+  VM_WORKDIR / VM_IMAGE_DIR / SSH_KEY for the runner), runs
+  `cargo run --bin run-matrix` LOCALLY on the orchestrator. Per-
+  step ssh + scp tunnel to the VM as needed.
+- `scripts/win/_lib.ps1` + 7 generic vm-side ops (`win-write` /
+  `win-mkdir` / `win-rmdir` / `win-unlink` / `win-rename` /
+  `win-cat-via-mount` / `win-ls-via-mount`). Each is self-contained
+  mount-do-unmount within one SSH session, parameterised by
+  `-BinaryCmd` + `-ReadyLine`. (Renamed to `scripts/vm/` in the
+  next release.)
+- Substitution flat tokens: `{image_dir}`, `{vm.workdir}`,
+  `{vm.harness_root}`. `HARNESS_DIR` / `HARNESS_IMAGE_DIR` env
+  overrides for those.
+- `VM_HOST` / `VM_WORKDIR` / `SSH_KEY` env overrides in
+  `dispatch::run_vm` + `dispatch::run_builtin_ship`. Empty-string
+  config values treated as unset (lets `harness.toml` ship
+  placeholder defaults that `.test-env` supplies actuals for).
+- `harness_self_version` helper in `_lib_harness.sh`; printed at
+  the top of every run as `[harness] fs-test-harness
+  <git-describe>` so consumers see which checkout is in play.
 
-### Fixed
+### Removed
 
-- `dispatch` + `run-tests`: treat empty-string config values as
-  unset.
-- `run-tests.sh`: drop v1-mode dispatch — runner is v2-only
-  post-3.0.0.
+- `scripts/setup-local.sh` — folded into `run-tests.sh` first-run flow.
+- `scripts/test-windows-matrix.sh` — replaced by `run-tests.sh`.
 
 ## [3.0.0] - 2026-05-10
 
@@ -115,25 +170,6 @@ recipe-step dispatcher introduced in `2.0.0`.
 Recipe-shaped scenarios + per-step dispatcher. See the v2 design
 notes in `docs/`. Tagged today as the first stable release of the
 recipe model.
-
-## [Unreleased]
-
-### Added
-
-- `scripts/run-tests.sh` -- single-entrypoint replacement for the old
-  `setup-local.sh` + `test-windows-matrix.sh` two-step. First-run
-  prompts inline; subsequent runs go straight to ship + run + diag-pull.
-  `--help` is built from the leading comment block (docs and help share
-  one source of truth). Lifts SSH-reachability preflight + actionable
-  error hints from `rust-fs-ntfs/scripts/v2/test`.
-- `harness_self_version` helper in `_lib_harness.sh`; printed at the
-  top of every run as `[harness] fs-test-harness <git-describe>`, so
-  consumers always see which harness checkout is in play.
-
-### Removed
-
-- `scripts/setup-local.sh` -- folded into `run-tests.sh` first-run flow.
-- `scripts/test-windows-matrix.sh` -- replaced by `run-tests.sh`.
 
 ## [0.1.0] - 2026-05-07
 
