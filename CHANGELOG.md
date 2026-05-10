@@ -7,40 +7,49 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ### Added
 
-- **`[vm.packages]` per-package custom installer args.** Entries can
-  now be either a bare `"PkgId"` string (current shape — installed
-  with default features) or a table `{ id = "PkgId", custom_args =
-  "..." }`. `custom_args` is forwarded to the underlying installer
-  via winget's `--override` flag, so consumers can pull in
-  non-default MSI/EXE features without hand-editing the VM. Motivating
-  case: WinFsp's MSI ships with `F.Developer` (headers + .lib)
-  off by default, which breaks `bindgen` when consumers like
-  `ext4-win-driver` / `erofs-win-driver` build their WinFsp
-  bindings on the VM. Declaring `{ id = "WinFsp.WinFsp", custom_args
-  = "ADDLOCAL=F.Main,F.User,F.Developer" }` in `[vm.packages]` makes
-  the setup-windows-vm.ps1 install pull in everything bindgen needs.
-- **`setup-windows-vm.ps1 -Reinstall`** switch. Uninstall-then-install
-  every package (rust toolchain + each consumer package) rather than
-  trying to repair existing installs. Use when the VM's package
-  state is partial / wrong / unknown — easier to nuke than to
-  reconfigure (winget reconfigure with new ADDLOCAL features against
-  an already-installed MSI returns 1603; uninstall+install always
-  works regardless of starting state). Without `-Reinstall` the
-  script just force-installs (works on a fresh VM; may not add new
-  features to existing partial installs).
-- **`run-tests.sh --reinstall`** flag. Drives `setup-windows-vm.ps1
-  -Reinstall` over SSH against the VM. Reads `[vm.packages]`,
-  `[vm.rust_toolchain]`, `[vm.workdir]` from `harness.toml`,
-  generates a wrapper.ps1 with those values baked in, scp's both
-  the wrapper and `setup-windows-vm.ps1` to the VM, runs the wrapper
-  via `powershell -File`. Continues into the normal ship + run flow
-  on success. Combine with `--no-ship` if you want bootstrap-only.
+- **`[vm.packages]` per-package custom installer args.** Entries
+  can be either a bare `"PkgId"` string or a table `{ id = "PkgId",
+  custom_args = "..." }`. `custom_args` is forwarded to the
+  underlying installer via winget's `--override` flag. Motivating
+  case: WinFsp's MSI ships with `F.Developer` (headers + .lib) off
+  by default, which breaks `bindgen` for consumers that build
+  WinFsp bindings on the VM. Declaring `{ id = "WinFsp.WinFsp",
+  custom_args = "ADDLOCAL=F.Main,F.User,F.Developer" }` includes
+  the dev pack. Wired through:
+    - `harness.schema.json` accepts both forms via `oneOf`.
+    - `runner/src/config.rs` deserialises into `Vec<PackageSpec>`
+      (untagged enum: `Bare(String)` or
+      `Table { id, custom_args }`).
+    - `setup-windows-vm.ps1`'s `-ExtraPackages` accepts mixed
+      string + hashtable entries; `Resolve-PackageEntry` normalises
+      them.
+
+- **`setup-windows-vm.ps1 -Reinstall`** switch. Uninstall-then-
+  install every consumer package — winget reconfigure with new
+  ADDLOCAL features against an already-installed MSI returns 1603
+  / "feature not found"; uninstall+install always works. Includes
+  a prelude that kills any hung `winget` /  `AppInstaller*` /
+  `WinGetServer*` / `DesktopAppInstaller*` processes from previous
+  SSH-driven runs and wipes `%LOCALAPPDATA%\Temp\WinGet\` to
+  release file locks — without this, the second `--reinstall`
+  invocation hangs indefinitely behind zombies from the first.
+  Rustup is exempted from the uninstall step (its custom installer
+  hangs over SSH); rustup is installed via direct download from
+  `https://win.rustup.rs/<arch>` rather than through winget.
+
+- **`run-tests.sh --reinstall`** flag. Generates a wrapper.ps1
+  locally with `[vm.packages]` / `[vm.rust_toolchain]` /
+  `[vm.workdir]` from `harness.toml` baked in, scp's both the
+  wrapper and `setup-windows-vm.ps1` to the VM, ssh-invokes
+  `powershell -File` against the wrapper. Continues into the
+  normal ship + run flow on success. Combine with `--no-ship` for
+  bootstrap-only.
 
 ### Notes
 
-The schema change is backward-compatible: existing bare-string
-`packages = ["WinFsp.WinFsp", "LLVM.LLVM"]` entries keep working
-unchanged. Object form is opt-in for entries that need it.
+Backward-compatible: existing bare-string `packages =
+["WinFsp.WinFsp", "LLVM.LLVM"]` entries keep working unchanged.
+Object form is opt-in.
 
 ----
 

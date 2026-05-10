@@ -1,11 +1,11 @@
 # setup-windows-vm.ps1 -- provision a Windows VM as a fs-test-harness target.
 #
 # Two modes:
-#   * default   — install (force-overwrite). Works on a fresh VM. May
+#   * default   -- install (force-overwrite). Works on a fresh VM. May
 #                 fail to add new features to an existing partial
-#                 install (winget reconfigure ≠ winget reinstall).
-#   * -Reinstall — UNINSTALL then install. Works on any starting state.
-#                 The "nuclear button" — drives the VM to the declared
+#                 install (winget reconfigure != winget reinstall).
+#   * -Reinstall -- UNINSTALL then install. Works on any starting state.
+#                 The "nuclear button" -- drives the VM to the declared
 #                 end-state regardless of what's already there.
 #                 Uninstall errors are tolerated (already-absent
 #                 packages are fine).
@@ -21,7 +21,7 @@
 #                     string ("WinFsp.WinFsp") or a hashtable
 #                     @{ id = "PkgId"; custom_args = "..." }. The
 #                     custom_args string is forwarded to the underlying
-#                     MSI/EXE installer via winget's --override flag —
+#                     MSI/EXE installer via winget's --override flag --
 #                     use it for non-default features:
 #
 #                       @{ id = "WinFsp.WinFsp"
@@ -57,32 +57,37 @@ param(
 $ErrorActionPreference = "Continue"  # winget writes progress to stderr
 
 function Uninstall-Package {
-    # Best-effort uninstall. Ignores errors (already-absent packages).
     param([string]$Id)
     Write-Host "[setup] uninstall $Id"
-    winget uninstall $Id --silent --accept-source-agreements 2>&1 |
-        Select-Object -Last 3 | ForEach-Object { Write-Host "        $_" }
+    & winget uninstall --id $Id --exact --silent --verbose 2>&1 |
+        ForEach-Object { Write-Host "        $_" }
+    Write-Host "        exit=$LASTEXITCODE"
 }
 
 function Install-Package {
-    # Force-install. No "already installed" check.
+    # --verbose so a long download (LLVM ~500MB, WinFsp ~3MB) shows
+    # live progress instead of looking indistinguishable from a hang.
     param(
         [string]$Id,
         [string]$CustomArgs = ""
     )
     Write-Host "[setup] install $Id"
     $wargs = @(
-        $Id,
+        "install",
+        "--id", $Id,
+        "--exact",
         "--accept-source-agreements",
         "--accept-package-agreements",
         "--silent",
-        "--force"
+        "--force",
+        "--verbose"
     )
     if ($CustomArgs) {
         $wargs += @("--override", $CustomArgs)
     }
-    winget install @wargs 2>&1 |
-        Select-Object -Last 3 | ForEach-Object { Write-Host "        $_" }
+    & winget @wargs 2>&1 |
+        ForEach-Object { Write-Host "        $_" }
+    Write-Host "        exit=$LASTEXITCODE"
 }
 
 function Resolve-PackageEntry {
@@ -114,12 +119,51 @@ if ($Reinstall) {
     Write-Host "=== Install mode: force-install only (use -Reinstall to nuke first) ==="
 }
 
-# ---------- 1. Rust ------------------------------------------------------
-if ($Reinstall) { Uninstall-Package -Id "Rustlang.Rustup" }
-Install-Package -Id "Rustlang.Rustup"
+# ---------- 0. Clean up any hung winget state ----------------------------
+# An ssh-launched winget can deadlock during init (likely on a COM
+# mutex) and never write a log line or return. The next winget call
+# queues behind the zombie indefinitely, so retries pile up rather
+# than recovering. Also: cached installer files in WinGet's Temp dir
+# can stay file-locked by zombie processes ("file in use" errors on
+# the next install).
+#
+# Clear the slate by killing all winget + companion processes and
+# wiping the WinGet Temp cache before we start.
+$kill = Get-Process -Name "winget","AppInstaller*","WinGetServer*","DesktopAppInstaller*" -ErrorAction SilentlyContinue
+if ($kill) {
+    Write-Host "[setup] killing $($kill.Count) hung winget/AppInstaller process(es) from previous runs"
+    $kill | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+$wingetTemp = Join-Path $env:LOCALAPPDATA "Temp\WinGet"
+if (Test-Path $wingetTemp) {
+    Write-Host "[setup] wiping WinGet Temp cache at $wingetTemp"
+    Remove-Item $wingetTemp -Recurse -Force -ErrorAction SilentlyContinue
+}
 
+# ---------- 1. Rust ------------------------------------------------------
+# Bypass winget for rustup -- rustup-init.exe is a custom installer
+# that hangs over SSH under winget's invocation chain even with
+# --override "-y" + --silent + --accept-*-agreements. Direct-download
+# from rustup's CDN and run rustup-init.exe with -y instead.
+# If rustup is already on PATH, skip -- its self-update path
+# (`rustup self update`) is for the user to invoke when they want.
+# Same answer regardless of -Reinstall: rustup is self-managing.
 $cargoBin = "$env:USERPROFILE\.cargo\bin"
 $env:PATH = "$cargoBin;$env:PATH"
+
+if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+    Write-Host "[setup] install rustup (direct download -- winget hangs on rustup-init)"
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "aarch64" } else { "x86_64" }
+    $url  = "https://win.rustup.rs/$arch"
+    $tmp  = Join-Path $env:TEMP "rustup-init.exe"
+    Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+    & $tmp -y --default-toolchain none --no-modify-path 2>&1 |
+        Select-Object -Last 5 | ForEach-Object { Write-Host "        $_" }
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+} else {
+    Write-Host "[setup] rustup already on PATH -- skipping install"
+}
 
 if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
     throw "rustup not on PATH after install -- shell restart may be needed"
