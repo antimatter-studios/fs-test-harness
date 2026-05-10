@@ -198,11 +198,23 @@ fi
 echo "[run-tests] mode: ${RUN_MODE}${SCENARIO:+ (filter=${SCENARIO})}"
 
 # ── v2 mode: cargo run locally; no ship-and-run-on-VM ───────────
-# Pure host-side recipes don't need .test-env / SSH at all. (Once we
-# add v2 scenarios with `host=vm` steps, this branch will need to fall
-# through to bootstrap so SSH config is available for per-step
-# tunnelling. For now every v2 step in this consumer is host-side.)
+# Pure host-side v2 recipes don't need .test-env / SSH; vm-side v2
+# recipes (mount/RW scenarios) DO — the runner's per-step ssh + scp
+# read VM_HOST / VM_WORKDIR / SSH_KEY env vars. Source .test-env if
+# present + export the values so the cargo subprocess inherits them.
+# Harmless for pure-host runs (env vars unused).
 if [[ "${RUN_MODE}" == "v2" ]]; then
+    if [[ -f "${ENV_FILE}" ]]; then
+        # shellcheck disable=SC1090
+        source "${ENV_FILE}"
+        # Extract -i KEYFILE from SSH_OPTS into SSH_KEY for the v2
+        # dispatcher's env-override path (cleaner than parsing SSH_OPTS
+        # inside the runner).
+        if [[ -z "${SSH_KEY:-}" && "${SSH_OPTS:-}" == *"-i "* ]]; then
+            SSH_KEY="$(echo "${SSH_OPTS}" | sed -n 's/.*-i \([^ ]*\).*/\1/p')"
+        fi
+        export VM_HOST VM_WORKDIR VM_IMAGE_DIR SSH_KEY
+    fi
     if [[ "${DO_BUILD}" == "1" ]]; then
         BUILD_COMMAND="$(harness_get_or run.build_command "")"
         if [[ -z "${BUILD_COMMAND}" ]]; then

@@ -241,9 +241,17 @@ fn run_vm(
     ssh_key: &Option<String>,
     step_dir: &Path,
 ) -> Result<Option<i32>, String> {
-    let host = vm_host
-        .as_deref()
-        .ok_or_else(|| "vm-step requires harness.toml [vm].host".to_string())?;
+    // VM_HOST env wins over harness.toml [vm].host; same for SSH_KEY.
+    // Lets the consumer's run-tests.sh source .test-env once and
+    // export per-machine values without mutating the committed
+    // harness.toml.
+    let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
+    let env_key  = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
+
+    let host_owned = env_host
+        .or_else(|| vm_host.clone())
+        .ok_or_else(|| "vm-step requires VM_HOST env or harness.toml [vm].host".to_string())?;
+    let key_owned  = env_key.or_else(|| ssh_key.clone());
 
     let mut cmd = Command::new("ssh");
     cmd.args([
@@ -256,10 +264,10 @@ fn run_vm(
         "-o",
         "ServerAliveCountMax=4",
     ]);
-    if let Some(key) = ssh_key {
-        cmd.args(["-i", key, "-o", "IdentitiesOnly=yes"]);
+    if let Some(key) = &key_owned {
+        cmd.args(["-i", key.as_str(), "-o", "IdentitiesOnly=yes"]);
     }
-    cmd.arg(host);
+    cmd.arg(&host_owned);
     cmd.arg(command);
 
     spawn_with_diag(&mut cmd, step_dir)
@@ -308,11 +316,18 @@ fn run_builtin_ship(
         .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'dest' field"))?;
 
-    let vm_host = config
-        .vm
-        .host
-        .as_deref()
-        .ok_or_else(|| format!("step {idx}: '{op_name}' requires harness.toml [vm].host"))?;
+    // VM_HOST env var (set by run-tests.sh after sourcing .test-env)
+    // wins over the committed harness.toml [vm].host. Lets a consumer
+    // ship a maintainer-default IP in harness.toml without forcing
+    // every other dev to edit-and-restore it on each run; the env
+    // is the per-machine override.
+    let vm_host_env = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
+    let vm_host_owned: String = vm_host_env
+        .or_else(|| config.vm.host.clone())
+        .ok_or_else(|| {
+            format!("step {idx}: '{op_name}' requires VM_HOST env or harness.toml [vm].host")
+        })?;
+    let vm_host = vm_host_owned.as_str();
 
     let started = Instant::now();
     let mut cmd = Command::new("scp");
@@ -402,6 +417,39 @@ fn build_flat_vocab(
         };
         flat.insert("image_dir".to_string(), resolved);
     }
+
+    // VM-side path tokens. Let consumers spell harness.toml command
+    // templates against these instead of hard-coding maintainer-
+    // specific absolute paths. Two tokens are exposed:
+    //
+    // * `{vm.workdir}`     — the VM-side consumer-root tar location
+    //                        (= harness.toml [vm].workdir, verbatim)
+    // * `{vm.harness_root}` — the VM-side path to the vendored harness
+    //                        checkout. Auto-derived: workdir joined
+    //                        with the harness's path RELATIVE to the
+    //                        consumer root (so the same template
+    //                        works whether the harness is vendored at
+    //                        ./vendor/fs-test-harness/, ./harness/,
+    //                        or anywhere else under the consumer).
+    // VM_WORKDIR env (from .test-env via run-tests.sh) wins over the
+    // committed harness.toml [vm].workdir. Same per-machine override
+    // pattern as VM_HOST / SSH_KEY (see run_vm / run_builtin_ship).
+    let env_workdir = std::env::var("VM_WORKDIR").ok().filter(|s| !s.is_empty());
+    let workdir_owned = env_workdir.or_else(|| config.vm.workdir.clone());
+    if let Some(workdir) = &workdir_owned {
+        flat.insert("vm.workdir".to_string(), workdir.clone());
+        // Compose harness_root from workdir + harness-relative path.
+        // HARNESS_DIR env override lets a consumer vendor the harness
+        // somewhere other than ./vendor/fs-test-harness/ without
+        // editing every op-def template.
+        let harness_dir = std::env::var("HARNESS_DIR")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "vendor/fs-test-harness".to_string());
+        let vm_harness = format!("{}/{}", workdir.trim_end_matches('/'), harness_dir.trim_start_matches('/'));
+        flat.insert("vm.harness_root".to_string(), vm_harness);
+    }
+
     for (name, value) in &config.tools {
         flat.insert(format!("tools.{name}"), value.clone());
     }
