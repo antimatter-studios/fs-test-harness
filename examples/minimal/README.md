@@ -41,5 +41,5 @@ the only difference is that real consumers also have `mount-stdout.txt`,
 ## Next step
 
 Read [`../../docs/consumer-integration.md`](../../docs/consumer-integration.md)
-for the real onboarding flow (SSH setup, `setup-local.sh`, claim/run/update
-loop).
+for the real onboarding flow (SSH setup, `run-tests.sh` first-run
+bootstrap, claim/run/update loop).

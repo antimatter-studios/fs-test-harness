@@ -102,14 +102,7 @@ A first scenario:
 output against the declared expectations; mismatch is a failed verdict.
 Capture real values once with the driver running locally, paste them in.
 
-## 4. One-time setup
-
-```sh
-bash harness/scripts/setup-local.sh
-```
-
-Prompts for VM host, ssh key, workdir; writes `.test-env` (gitignored).
-Defaults come from `harness.toml [vm]`.
+## 4. One-time VM provisioning
 
 ```sh
 bash harness/scripts/setup-windows-vm.ps1   # run on the VM, once
@@ -118,16 +111,28 @@ bash harness/scripts/setup-windows-vm.ps1   # run on the VM, once
 Installs rustup + the toolchain you declared, and any winget packages
 listed in `harness.toml [vm.packages]`. Idempotent.
 
+(Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
+on first run — see step 5.)
+
 ## 5. Run a scenario
 
 ```sh
-bash harness/scripts/test-windows-matrix.sh ro-list-root
+bash harness/scripts/run-tests.sh ro-list-root
 ```
 
-Tars the project source + fixtures, ssh's to the VM, runs
-`run-matrix --filter ro-list-root` over there, retrieves the diag tree
-to `test-diagnostics/run-<UTC>/`. The first run takes longer due to
-cargo build on the VM; subsequent runs reuse the build cache.
+On the very first run, prompts for VM host / ssh key / workdir and
+writes `.test-env` (gitignored). On every run: tars the project source
++ fixtures, ssh's to the VM, runs `run-matrix --filter ro-list-root`
+over there, retrieves the diag tree to `test-diagnostics/run-<UTC>/`.
+The first run takes longer due to cargo build on the VM; subsequent
+runs reuse the build cache.
+
+```sh
+bash harness/scripts/run-tests.sh           # whole matrix
+bash harness/scripts/run-tests.sh --list    # list scenarios
+bash harness/scripts/run-tests.sh --reset   # wipe .test-env, re-prompt
+bash harness/scripts/run-tests.sh --help    # full flag surface
+```
 
 ## 6. Read the diag
 

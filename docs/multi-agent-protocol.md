@@ -38,7 +38,7 @@ What it does:
 
 ```sh
 SCENARIO=$(bash harness/scripts/claim-scenario.sh)
-bash harness/scripts/test-windows-matrix.sh "$SCENARIO"
+bash harness/scripts/run-tests.sh "$SCENARIO"
 ```
 
 ## Run, then update
@@ -110,7 +110,7 @@ their loop with their own watchdog.
 ```sh
 export FS_HARNESS_SESSION="agent-$(uuidgen | head -c 8)"
 while SCENARIO=$(bash harness/scripts/claim-scenario.sh); do
-    if bash harness/scripts/test-windows-matrix.sh "$SCENARIO"; then
+    if bash harness/scripts/run-tests.sh "$SCENARIO"; then
         bash harness/scripts/update-scenario-status.sh "$SCENARIO" \
              "passed-$FS_HARNESS_SESSION"
     else
