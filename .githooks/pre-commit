@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook — runs the two fast checks CI enforces, so a push
+# doesn't fail on something we could have caught locally in <30s.
+#
+# This crate is laid out with the Rust runner under `runner/` (and a
+# mock-fs helper under `tests/mock-fs/`). CI only enforces fmt + clippy
+# on `runner/`, so the hook mirrors that scope via --manifest-path.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+# or:
+#   ./scripts/install-hooks.sh
+#
+# Skip for a single WIP commit (use sparingly):
+#   git commit --no-verify
+
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "[pre-commit] cargo fmt --check (runner/)"
+if ! cargo fmt --manifest-path runner/Cargo.toml --all -- --check; then
+    echo
+    echo "[pre-commit] rustfmt would reformat the above files."
+    echo "[pre-commit] Fix with: cargo fmt --manifest-path runner/Cargo.toml --all"
+    exit 1
+fi
+
+echo "[pre-commit] cargo clippy (runner/)"
+cargo clippy --manifest-path runner/Cargo.toml --all-targets -- -D warnings
+
+echo "[pre-commit] OK"
