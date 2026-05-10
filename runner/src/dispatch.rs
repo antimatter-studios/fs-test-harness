@@ -64,8 +64,8 @@ pub fn run_recipe(
         return Err("run_recipe called with empty recipe".to_string());
     }
 
-    let scenario_value = serde_json::to_value(scenario)
-        .map_err(|e| format!("serialise scenario: {e}"))?;
+    let scenario_value =
+        serde_json::to_value(scenario).map_err(|e| format!("serialise scenario: {e}"))?;
 
     // Build the flat-vocabulary substitution map once. Per-step
     // substitution clones it cheaply (BTreeMap of <100 small strings).
@@ -318,12 +318,7 @@ fn run_builtin_ship(
 
     let started = Instant::now();
     let mut cmd = Command::new("scp");
-    cmd.args([
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "ConnectTimeout=10",
-    ]);
+    cmd.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]);
     if let Some(key) = &config.vm.ssh_key {
         cmd.args(["-i", key.as_str(), "-o", "IdentitiesOnly=yes"]);
     }
@@ -614,12 +609,18 @@ mod tests {
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-vm", "dest": "/x" })]);
         let dir = tempdir();
         let err = run_recipe("no-src", &scn, &cfg, &dir, &dir).unwrap_err();
-        assert!(err.contains("'src' field"), "expected src error, got: {err}");
+        assert!(
+            err.contains("'src' field"),
+            "expected src error, got: {err}"
+        );
 
         // Missing dest
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-host", "src": "/x" })]);
         let err = run_recipe("no-dest", &scn, &cfg, &dir, &dir).unwrap_err();
-        assert!(err.contains("'dest' field"), "expected dest error, got: {err}");
+        assert!(
+            err.contains("'dest' field"),
+            "expected dest error, got: {err}"
+        );
     }
 
     fn tempdir() -> PathBuf {

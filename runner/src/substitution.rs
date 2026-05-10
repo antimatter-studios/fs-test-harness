@@ -259,7 +259,10 @@ mod tests {
         let s = fixture();
         assert_eq!(s.expand("ls {image} {drive}"), "ls /srv/images/test.img Z:");
         assert_eq!(s.expand("{binary} format"), "/usr/local/bin/myfs format");
-        assert_eq!(s.expand("{tools.fsck} {image}"), "fsck.myfs -fn /srv/images/test.img");
+        assert_eq!(
+            s.expand("{tools.fsck} {image}"),
+            "fsck.myfs -fn /srv/images/test.img"
+        );
     }
 
     #[test]
@@ -274,8 +277,14 @@ mod tests {
     #[test]
     fn expands_dotted_step_paths() {
         let s = fixture();
-        assert_eq!(s.expand("--label {step.params.label}"), "--label STEP-LABEL");
-        assert_eq!(s.expand("op={step.op} path={step.path}"), "op=format path=/hello.txt");
+        assert_eq!(
+            s.expand("--label {step.params.label}"),
+            "--label STEP-LABEL"
+        );
+        assert_eq!(
+            s.expand("op={step.op} path={step.path}"),
+            "op=format path=/hello.txt"
+        );
     }
 
     #[test]
@@ -287,7 +296,10 @@ mod tests {
             "--cluster "
         );
         // Truly missing path with `?` collapses to empty.
-        assert_eq!(s.expand("--journal {step.params.journal_mode?}"), "--journal ");
+        assert_eq!(
+            s.expand("--journal {step.params.journal_mode?}"),
+            "--journal "
+        );
     }
 
     #[test]

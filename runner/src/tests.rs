@@ -131,7 +131,10 @@ fn matrix_deserialises_v2_recipe_with_host_vm_steps() {
     }
     "#;
     let matrix: Matrix = serde_json::from_str(raw).expect("v2 matrix parses");
-    let scn = matrix.scenarios.get("format-then-chkdsk").expect("scenario present");
+    let scn = matrix
+        .scenarios
+        .get("format-then-chkdsk")
+        .expect("scenario present");
     assert!(scn.ops.is_empty(), "v2 leaves the v1 `ops` field empty");
     assert_eq!(scn.recipe.len(), 5);
     assert_eq!(scn.recipe[0]["host"], "host");
@@ -167,7 +170,9 @@ fn scenario_preserves_unknown_consumer_fields_through_round_trip() {
 
     // Unknown fields land in the flatten catch-all.
     assert_eq!(
-        scn.extra.get("volume_params").and_then(|v| v.get("size_mib")),
+        scn.extra
+            .get("volume_params")
+            .and_then(|v| v.get("size_mib")),
         Some(&serde_json::json!(256))
     );
     assert_eq!(
@@ -222,7 +227,10 @@ command = "{binary} write-fixtures {scenario.image}"
     assert_eq!(format.expect_exit, Some(0));
     assert!(format.command.contains("{step.params.label?}"));
 
-    let wf = cfg.ops.get("write-fixtures").expect("write-fixtures present");
+    let wf = cfg
+        .ops
+        .get("write-fixtures")
+        .expect("write-fixtures present");
     assert_eq!(wf.host, OpHost::Host);
     assert_eq!(wf.when.as_deref(), Some("scenario.fixtures"));
 }
