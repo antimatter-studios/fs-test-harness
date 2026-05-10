@@ -3,6 +3,56 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## [Unreleased]
+
+### Added
+
+- **`scripts/host/verify-{ls,cat,info,stat,tree,parts}.sh`** —
+  generic host-side ops, parameterized via `--binary <path>`. Each
+  invokes the consumer binary's matching subcommand (`<bin> ls
+  <image> <path>`, etc.) and asserts against expected output.
+  Output-format conventions documented in each script's header
+  (one entry per line for ls; raw bytes for cat; free-form text
+  with a `key: value` convention for stat/info; sha256-of-output
+  for tree). Pulled out of consumer projects (ext4-win-driver,
+  erofs-win-driver) where they were duplicated as fs-locked copies.
+- **`run-tests.sh` ship phase** — when the matched scenario set has
+  any `host: vm` recipe step, the script now ships harness
+  `scripts/vm/` + the consumer's `scripts/vm/` (if present) + the
+  consumer's binary to the VM via tar+ssh / scp. Idempotent;
+  always runs unless `--no-ship` is passed. Closes the gap where
+  fresh consumers / fresh VMs hit "scripts not found" on the first
+  vm-side scenario.
+- **`run-tests.sh --no-ship`** flag — opts out of the ship phase
+  for faster iteration when the VM is pre-staged manually.
+- **`harness.toml [run].vm_build_command`** (optional) — if set,
+  `run-tests.sh` ships the full consumer source tree (excluding
+  `target/`, `.git/`, etc.) and runs `<command>` over SSH from
+  `<vm.workdir>` after ship. Use case: consumers who prefer to
+  build on the VM rather than cross-compile from host.
+
+### Changed
+
+- **`scripts/win/` → `scripts/vm/`** (BREAKING for any consumer
+  that hand-references the path). Rationale: `scripts/host/` and
+  `scripts/vm/` are the two `executed-during-a-test-run`
+  directories; `host`/`vm` mirrors the recipe-step `host:` field.
+  `win/` was never quite right because the ops are technically
+  POSIX-shell-callable wherever the runner can SSH; vm/ describes
+  what they're FOR rather than where they came from.
+
+### Migration
+
+- After bumping `vendor/fs-test-harness` to this release: open
+  your `harness.toml` and replace any
+  `{vm.harness_root}/scripts/win/` template path with
+  `{vm.harness_root}/scripts/vm/`. Mechanical rename.
+- Optional: drop your consumer-local `scripts/verify-*.sh` files
+  if they were copies of the harness-shipped ones; reference the
+  generic ones via `{harness_root}/scripts/host/verify-*.sh
+  --binary {binary} {scenario.image} {step.path} ...` from your
+  `[ops.verify-*]` op-defs.
+
 ## [3.0.0] - 2026-05-10
 
 **Breaking change**: removed the legacy whole-scenario PowerShell

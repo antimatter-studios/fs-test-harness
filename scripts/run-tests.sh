@@ -27,6 +27,14 @@
 #     Rebuild the consumer binary on the host first. Requires
 #     `[run].build_command` in harness.toml; otherwise no-op.
 #
+#   bash <harness>/scripts/run-tests.sh [SCENARIO] --no-ship
+#     Skip the ship phase. The default is to ship harness `scripts/vm/`
+#     + consumer `scripts/vm/` + the consumer binary (or full source
+#     when `[run].vm_build_command` is set) to the VM whenever the
+#     selected scenario set has any vm-side recipe step. Use --no-ship
+#     when you've pre-staged the VM manually (faster iteration during
+#     debugging of a single scenario).
+#
 #   bash <harness>/scripts/run-tests.sh --list [PATTERN]
 #     List matrix scenarios matching the optional pattern; don't run.
 #
@@ -79,6 +87,7 @@ echo "[harness] fs-test-harness $(harness_self_version)"
 DO_BUILD=0
 DO_LIST=0
 DO_RESET=0
+DO_SHIP=1   # default: ship vm-side artefacts whenever NEEDS_VM=1; --no-ship opts out
 SCENARIO=""
 ARG_VM_HOST=""
 ARG_VM_WORKDIR=""
@@ -96,6 +105,7 @@ usage() {
 for arg in "$@"; do
     case "$arg" in
         --build)            DO_BUILD=1 ;;
+        --no-ship)          DO_SHIP=0 ;;
         --list)             DO_LIST=1 ;;
         --reset)            DO_RESET=1 ;;
         --vm-host=*)        ARG_VM_HOST="${arg#*=}" ;;
@@ -371,6 +381,73 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
     if ! preflight_ssh; then
         echo "[run-tests] preflight failed; aborting before run" >&2
         exit 2
+    fi
+
+    # ── ship phase: vm-side scripts + binary (or full source) ───
+    # Idempotent. Always runs when NEEDS_VM=1 unless --no-ship was passed.
+    if [[ "${DO_SHIP}" == "1" ]]; then
+        VM_WORKDIR_PS="${VM_WORKDIR//\//\\}"
+        ssh_run() {
+            # shellcheck disable=SC2086,SC2029
+            ssh ${SSH_OPTS:-} "${VM_HOST}" "$@"
+        }
+        ship_dir() {
+            # ship_dir <local-src> <vm-dest> — tar-pipe a directory tree.
+            local src="$1" dest="$2"
+            local dest_ps="${dest//\//\\}"
+            ssh_run "if (-not (Test-Path '${dest_ps}')) { New-Item -ItemType Directory -Path '${dest_ps}' -Force | Out-Null }"
+            # shellcheck disable=SC2086
+            tar -C "${src}" -cf - . | ssh ${SSH_OPTS:-} "${VM_HOST}" "tar -xf - -C '${dest}'"
+        }
+        ship_file() {
+            # ship_file <local-src> <vm-dest> — single-file scp.
+            local src="$1" dest="$2"
+            local dest_dir; dest_dir="$(dirname "${dest}")"
+            local dest_dir_ps="${dest_dir//\//\\}"
+            ssh_run "if (-not (Test-Path '${dest_dir_ps}')) { New-Item -ItemType Directory -Path '${dest_dir_ps}' -Force | Out-Null }"
+            # shellcheck disable=SC2086
+            scp ${SSH_OPTS:-} "${src}" "${VM_HOST}:${dest}"
+        }
+
+        # Harness scripts/vm/ are needed by every vm-side scenario —
+        # ship them on top of the consumer's vendored harness checkout
+        # so {vm.harness_root}/scripts/vm/ resolves correctly.
+        echo "[ship] harness scripts/vm/"
+        ship_dir "${harness_root}/scripts/vm" "${VM_WORKDIR}/vendor/fs-test-harness/scripts/vm"
+
+        # Consumer scripts/vm/ if they exist (per-consumer fs-specific
+        # ops that don't fit the generic harness-shipped set).
+        if [[ -d "${consumer_root}/scripts/vm" ]]; then
+            echo "[ship] consumer scripts/vm/"
+            ship_dir "${consumer_root}/scripts/vm" "${VM_WORKDIR}/scripts/vm"
+        fi
+
+        # If [run].vm_build_command is set, ship the full source tree
+        # (the build needs sources, not just a binary) and run the
+        # build command on the VM. Otherwise ship just the prebuilt
+        # binary path declared in [project].binary.
+        VM_BUILD_COMMAND="$(harness_get_or run.vm_build_command "")"
+        if [[ -n "${VM_BUILD_COMMAND}" ]]; then
+            echo "[ship] consumer source tree (vm_build_command set)"
+            # shellcheck disable=SC2086
+            tar --exclude='./target' --exclude='./.git' --exclude='./.history' \
+                --exclude='./test-diagnostics' --exclude='./diag' \
+                --exclude='*.swp' --exclude='.DS_Store' \
+                --exclude='./.test-env' \
+                -C "${consumer_root}" -cf - . | \
+                ssh ${SSH_OPTS:-} "${VM_HOST}" "tar -xf - -C '${VM_WORKDIR}'"
+            echo "[vm-build] ${VM_BUILD_COMMAND}"
+            ssh_run "Set-Location '${VM_WORKDIR_PS}'; ${VM_BUILD_COMMAND}"
+        else
+            BINARY_REL="$(harness_get_or project.binary "")"
+            if [[ -n "${BINARY_REL}" && -f "${consumer_root}/${BINARY_REL}" ]]; then
+                echo "[ship] consumer binary ${BINARY_REL}"
+                ship_file "${consumer_root}/${BINARY_REL}" "${VM_WORKDIR}/${BINARY_REL}"
+            elif [[ -n "${BINARY_REL}" ]]; then
+                echo "[ship] WARNING: [project].binary='${BINARY_REL}' not found at ${consumer_root}/${BINARY_REL}" >&2
+                echo "[ship]          vm-side scenarios may fail. Set [run].vm_build_command to build on VM, or run --build first." >&2
+            fi
+        fi
     fi
 fi
 
