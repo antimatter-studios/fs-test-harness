@@ -26,20 +26,10 @@
           "type": "string",
           "description": "Path under harness.toml [vm.image_dir] to the test image. May be empty for scenarios that build their image at scenario-time."
         },
-        "mount_args": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Substituted into the mount template's {extra}. Presence of `--rw` flips the scenario into RW mode."
-        },
-        "mount": {
+        "volume_params": {
           "type": "object",
-          "description": "Per-scenario mount override. Most scenarios omit this and inherit harness.toml [mount].",
-          "properties": {
-            "command":    { "type": "string" },
-            "ready_line": { "type": "string" }
-          },
-          "required": ["command"],
-          "additionalProperties": false
+          "description": "Volume-shape inputs the consumer's recipe substitutes via `{scenario.volume_params.<field>}` into op templates (typical fields: `size_mib`, `label`, `alloc_unit_size`). Used by consumers whose recipes build the image at scenario-time (e.g. `mac-format` ops sizing a fresh .img per scenario). Inner field set is open — each consumer documents its own keys.",
+          "additionalProperties": true
         },
         "post_verify": {
           "oneOf": [

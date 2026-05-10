@@ -246,15 +246,15 @@ fn run_vm(
     // export per-machine values without mutating the committed
     // harness.toml.
     let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
-    let env_key  = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
+    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
 
     let cfg_host = vm_host.as_deref().filter(|s| !s.is_empty());
-    let cfg_key  = ssh_key.as_deref().filter(|s| !s.is_empty());
+    let cfg_key = ssh_key.as_deref().filter(|s| !s.is_empty());
 
     let host_owned = env_host
         .or_else(|| cfg_host.map(String::from))
         .ok_or_else(|| "vm-step requires VM_HOST env or harness.toml [vm].host".to_string())?;
-    let key_owned  = env_key.or_else(|| cfg_key.map(String::from));
+    let key_owned = env_key.or_else(|| cfg_key.map(String::from));
 
     let mut cmd = Command::new("ssh");
     cmd.args([
@@ -423,11 +423,7 @@ fn build_flat_vocab(
     // pattern) must be filtered out — otherwise the empty path joins
     // against consumer_root and `{image_dir}` resolves to consumer_root
     // itself, silently misrouting every host-side image lookup.
-    let cfg_dir = config
-        .vm
-        .image_dir
-        .as_deref()
-        .filter(|s| !s.is_empty());
+    let cfg_dir = config.vm.image_dir.as_deref().filter(|s| !s.is_empty());
     let raw_dir = env_dir.as_deref().or(cfg_dir);
     if let Some(d) = raw_dir {
         let resolved = if PathBuf::from(d).is_absolute() {
@@ -467,7 +463,11 @@ fn build_flat_vocab(
             .ok()
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "vendor/fs-test-harness".to_string());
-        let vm_harness = format!("{}/{}", workdir.trim_end_matches('/'), harness_dir.trim_start_matches('/'));
+        let vm_harness = format!(
+            "{}/{}",
+            workdir.trim_end_matches('/'),
+            harness_dir.trim_start_matches('/')
+        );
         flat.insert("vm.harness_root".to_string(), vm_harness);
     }
 

@@ -5,6 +5,11 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+Combines this branch's schema work with the host/vm scripts reorg
+already on main. Next tag is up to the maintainer (main was tagged
+v3.3.0 from the post-PR-7 state; this merge brings PR #9's schema
+additions, so v3.4.0 is the natural next semver bump).
+
 ### Added
 
 - **`scripts/host/verify-{ls,cat,info,stat,tree,parts}.sh`** —
@@ -30,6 +35,12 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   `target/`, `.git/`, etc.) and runs `<command>` over SSH from
   `<vm.workdir>` after ship. Use case: consumers who prefer to
   build on the VM rather than cross-compile from host.
+- **`scenario.volume_params`** — typed property on the scenario
+  schema (`additionalProperties: true` so each consumer can
+  document its own inner field set). Used by consumers whose
+  recipes build the image at scenario-time and substitute
+  `{scenario.volume_params.<field>}` into op templates (e.g.
+  `mac-format` with size_mib/label/alloc_unit_size).
 
 ### Changed
 
@@ -40,6 +51,13 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   `win/` was never quite right because the ops are technically
   POSIX-shell-callable wherever the runner can SSH; vm/ describes
   what they're FOR rather than where they came from.
+
+### Removed
+
+- `scenario.mount` and `scenario.mount_args` from the schema —
+  these were stale after the v3.0.0 runtime removal of
+  `Scenario.mount` / `Scenario.mount_args` / `MountSpec`. v3.0.0
+  missed the matching schema cleanup; landed here.
 
 ### Migration
 
@@ -52,6 +70,19 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   generic ones via `{harness_root}/scripts/host/verify-*.sh
   --binary {binary} {scenario.image} {step.path} ...` from your
   `[ops.verify-*]` op-defs.
+
+### Notes
+
+The deliberate posture on the schema: the scenario schema stays
+`additionalProperties: false` (typo-trapping is the win). Consumer-
+defined fields are added explicitly, typed, with a
+`{scenario.<dotted.path>}` substitution rationale documented in
+the schema. Novel consumer-only fields require a one-line schema
+PR — gating prevents grab-bag accumulation.
+
+`_doc`, `_notes`, `_attempts`, `evidence_link` were already present
+since v2.0.0; recipe steps remain `additionalProperties: true` so
+step-level fields don't need schema declarations.
 
 ## [3.1.0] - 2026-05-10
 
