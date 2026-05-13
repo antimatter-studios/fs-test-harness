@@ -169,9 +169,29 @@ pub struct VmSection {
     /// Remote dir holding test images; substituted as `{image_dir}`.
     #[serde(default)]
     pub image_dir: Option<String>,
-    /// winget package IDs to install on first VM provisioning.
+    /// winget package specs installed by setup-windows-vm.ps1 on
+    /// first VM provisioning. Two equivalent forms:
+    ///
+    /// ```toml
+    /// # bare-string shorthand — `winget install --id <id>` with default
+    /// # feature set:
+    /// packages = ["LLVM.LLVM", "cloudbase.qemu-img"]
+    ///
+    /// # table form — passes `--override "<custom_args>"` to winget,
+    /// # which the underlying MSI/EXE installer interprets. Required
+    /// # when the default feature set is wrong (e.g. WinFsp.WinFsp's
+    /// # default is runtime-only — no headers/.lib — so consumers
+    /// # building bindgen against it must opt into ADDLOCAL=F.Core,F.Developer):
+    /// [[packages]]
+    /// id          = "WinFsp.WinFsp"
+    /// custom_args = "ADDLOCAL=F.Core,F.Developer"
+    /// ```
+    ///
+    /// Both forms can coexist in the same array. setup-windows-vm.ps1
+    /// receives the resolved spec via `-PackagesJson` (a JSON array
+    /// serialised from this field) and branches per entry.
     #[serde(default)]
-    pub packages: Vec<String>,
+    pub packages: Vec<PackageSpec>,
     /// Rustup toolchain triple to set as default on the VM.
     #[serde(default)]
     pub rust_toolchain: Option<String>,
@@ -179,6 +199,26 @@ pub struct VmSection {
     /// (e.g. `$env:LIBCLANG_PATH='C:\\Program Files\\LLVM\\bin';`).
     #[serde(default)]
     pub env_prefix: Option<String>,
+}
+
+/// A `[vm.packages]` entry. Accepts either a bare winget package ID
+/// (`"WinFsp.WinFsp"`) or a table with explicit `custom_args` to
+/// pass through `winget install --override`.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum PackageSpec {
+    /// Bare ID — sugar for `{ id = "...", custom_args = None }`.
+    /// Maps to `winget install --id <id>` (default feature set).
+    Bare(String),
+    /// Explicit table form. `custom_args` is forwarded to the
+    /// underlying installer via `winget install --override "<args>"`.
+    /// Used when the default feature set is wrong (e.g. WinFsp's
+    /// runtime-only default vs the headers needed for bindgen).
+    WithArgs {
+        id: String,
+        #[serde(default)]
+        custom_args: Option<String>,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]

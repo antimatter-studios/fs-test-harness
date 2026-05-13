@@ -22,7 +22,24 @@
         "ssh_key":        { "type": "string" },
         "workdir":        { "type": "string" },
         "image_dir":      { "type": "string" },
-        "packages":       { "type": "array", "items": { "type": "string" }, "description": "winget package IDs installed by setup-windows-vm.ps1." },
+        "packages": {
+          "type": "array",
+          "description": "winget package specs installed by setup-windows-vm.ps1. Each entry is either a bare ID string (default install) OR an object with `id` + optional `custom_args` (forwarded via `winget --override` for installers that need non-default feature sets — e.g. WinFsp.WinFsp + ADDLOCAL=F.Core,F.Developer for bindgen consumers).",
+          "items": {
+            "oneOf": [
+              { "type": "string", "description": "Bare winget package ID, e.g. \"LLVM.LLVM\"." },
+              {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": false,
+                "properties": {
+                  "id":          { "type": "string", "description": "winget package ID." },
+                  "custom_args": { "type": "string", "description": "String passed verbatim to `winget install --override \"<args>\"`. The underlying MSI/EXE installer interprets it (e.g. `ADDLOCAL=F.Core,F.Developer` for WinFsp)." }
+                }
+              }
+            ]
+          }
+        },
         "rust_toolchain": { "type": "string", "description": "rustup channel-target-triple to set as default on the VM, e.g. \"stable-aarch64-pc-windows-gnullvm\"." },
         "env_prefix":     { "type": "string", "description": "PowerShell prefix prepended before the cargo invocation, e.g. setting LIBCLANG_PATH." }
       }

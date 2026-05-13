@@ -111,6 +111,40 @@ bash harness/scripts/setup-windows-vm.ps1   # run on the VM, once
 Installs rustup + the toolchain you declared, and any winget packages
 listed in `harness.toml [vm.packages]`. Idempotent.
 
+`[vm.packages]` accepts two entry shapes that can be mixed in the
+same array:
+
+```toml
+[vm]
+packages = [
+    # Bare string — `winget install --id <id>` with default features.
+    "LLVM.LLVM",
+    "cloudbase.qemu-img",
+
+    # Object — passes `--override "<custom_args>"` to winget. Use
+    # this when the package's default install is the wrong feature
+    # set for your build. WinFsp.WinFsp's default is runtime-only —
+    # bindgen consumers (ext4-win-driver, erofs-win-driver, …) need
+    # F.Core + F.Developer for headers + .lib:
+    { id = "WinFsp.WinFsp", custom_args = "ADDLOCAL=F.Core,F.Developer" },
+]
+```
+
+When you invoke setup-windows-vm.ps1, pass the packages spec via the
+`-PackagesJson` parameter (a JSON-array string identical to the TOML
+shape):
+
+```sh
+powershell -ExecutionPolicy Bypass -File harness/scripts/setup-windows-vm.ps1 \
+    -RustToolchain "stable-aarch64-pc-windows-gnullvm" \
+    -PackagesJson '[{"id":"WinFsp.WinFsp","custom_args":"ADDLOCAL=F.Core,F.Developer"},"LLVM.LLVM","cloudbase.qemu-img"]'
+```
+
+Re-runs after changing `custom_args` won't on their own change the
+already-installed feature set — the script logs a hint to
+`msiexec /fa <product-code> <custom_args>` for self-repair in that
+case.
+
 (Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
 on first run — see step 5.)
 
