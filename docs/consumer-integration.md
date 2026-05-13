@@ -128,12 +128,21 @@ packages = [
 `--override`. The WinFsp example pulls in `F.Main` + `F.User` (the
 default runtime) + `F.Developer` (headers + `.lib`) — required for
 consumers that build WinFsp bindings via `bindgen` (`ext4-win-driver`,
-`erofs-win-driver`). On a VM where the package is already installed
-without those features, run `bash harness/scripts/run-tests.sh
---reinstall <scenario>` to drive a clean uninstall+install cycle via
-`setup-windows-vm.ps1 -Reinstall` (winget reconfigure with new
-ADDLOCAL features against an existing install returns 1603 / "feature
-not found"; the only reliable path is uninstall-then-install).
+`erofs-win-driver`). When invoking setup-windows-vm.ps1 directly, pass
+the spec via `-PackagesJson` (a JSON array matching the TOML shape):
+
+```sh
+powershell -ExecutionPolicy Bypass -File harness/scripts/setup-windows-vm.ps1 \
+    -RustToolchain "stable-aarch64-pc-windows-gnullvm" \
+    -PackagesJson '[{"id":"WinFsp.WinFsp","custom_args":"ADDLOCAL=F.Main,F.User,F.Developer"},"LLVM.LLVM"]'
+```
+
+On a VM where the package is already installed without the required
+features, run `bash harness/scripts/run-tests.sh --reinstall <scenario>`
+to drive a clean uninstall+install cycle via `setup-windows-vm.ps1
+-Reinstall` (winget reconfigure with new ADDLOCAL features against an
+existing install returns 1603 / "feature not found"; the only reliable
+path is uninstall-then-install).
 
 (Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
 on first run — see step 5.)
