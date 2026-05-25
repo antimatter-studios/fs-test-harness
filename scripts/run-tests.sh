@@ -571,15 +571,20 @@ cd "${consumer_root}"
 EXTRA_ARGS=""
 [[ -n "${SCENARIO}" ]] && EXTRA_ARGS=$(printf ' %q' "${SCENARIO}")
 
-# Parallelism: read runner.test_threads from harness.toml (defaults to 1
-# for consumers that don't set it). The runner's own max_parallel bounds
-# concurrent VHD mounts independently; test_threads just controls how many
-# libtest-mimic test slots to spin up.
-TEST_THREADS="$(harness_get_or runner.test_threads 1)"
+# Derive --test-threads from max_parallel so the libtest-mimic thread pool
+# is never the bottleneck. If max_parallel is "drive-letters" (or any
+# non-integer), fall back to 26 (Windows A-Z upper bound). The runner
+# clamps the actual semaphore to 1..=24 regardless.
+_mp="$(harness_get_or runner.max_parallel "drive-letters")"
+if [[ "${_mp}" =~ ^[0-9]+$ ]]; then
+    TEST_THREADS="${_mp}"
+else
+    TEST_THREADS=26
+fi
 
 echo "[run]  cargo run --bin run-matrix locally"
 echo "[run]  HARNESS_IMAGE_DIR=${HARNESS_IMAGE_DIR}"
-echo "[run]  test_threads=${TEST_THREADS}"
+echo "[run]  test_threads=${TEST_THREADS} (from max_parallel=${_mp})"
 echo
 set +e
 cargo run --manifest-path "${harness_root}/runner/Cargo.toml" \

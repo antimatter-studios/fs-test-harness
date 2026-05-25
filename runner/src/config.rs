@@ -217,19 +217,17 @@ pub struct PostVerifySection {
 /// `[runner]` section — controls scenario-level parallelism.
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct RunnerConfig {
-    /// Serialise all scenarios behind a single global lock.
-    /// Set `true` for user-mode filesystem drivers that cannot host
-    /// multiple mounts simultaneously (e.g. WinFsp-backed drivers
-    /// where the WinFsp host process is a per-instance singleton).
-    /// Default `false` — scenarios run in parallel up to `max_parallel`.
-    #[serde(default)]
-    pub serialize_mounts: bool,
-    /// Maximum concurrently running scenarios when `serialize_mounts = false`.
-    /// `"drive-letters"` (default): query the Windows VM for the count of
-    /// unallocated drive letters at startup and use that as the limit —
-    /// natural bound for VHD-based mounts where each scenario holds one
-    /// letter. An integer sets an explicit cap. Ignored when
-    /// `serialize_mounts = true`.
+    /// Maximum concurrently running scenarios. Clamped to `1..=24` at
+    /// runtime (Windows supports at most 26 drive letters; A and B are
+    /// typically reserved, leaving 24 for VHD mounts).
+    ///
+    /// `1` (default): sequential execution — safe for any consumer.
+    /// `"drive-letters"`: query the Windows VM for available drive-letter
+    /// count at startup and use that as the limit.
+    /// Integer `N`: explicit cap (clamped to `1..=24`).
+    ///
+    /// To serialise all mounts (old `serialize_mounts = true` behaviour),
+    /// set `max_parallel = 1`.
     #[serde(default)]
     pub max_parallel: MaxParallel,
 }
@@ -249,6 +247,6 @@ pub enum MaxParallel {
 
 impl Default for MaxParallel {
     fn default() -> Self {
-        MaxParallel::Named("drive-letters".to_string())
+        MaxParallel::Explicit(1)
     }
 }

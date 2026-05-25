@@ -5,6 +5,18 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+### Changed
+
+- **`serialize_mounts` removed; `max_parallel` default is now `1`
+  (sequential).** `serialize_mounts = true` was equivalent to
+  `max_parallel = 1` — the flag is gone. Consumers that had
+  `serialize_mounts = false` should remove the line; the old
+  `max_parallel = "drive-letters"` / integer form is unchanged.
+  `run-tests.sh` derives `--test-threads` from `max_parallel`
+  automatically (no separate `test_threads` key needed).
+
+----
+
 ### Added
 
 - **`[vm.packages]` per-package custom installer args.** Entries

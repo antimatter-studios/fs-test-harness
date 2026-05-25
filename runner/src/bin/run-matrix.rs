@@ -20,8 +20,7 @@ use std::sync::{Arc, Condvar, Mutex};
 // Counting semaphore — limits concurrent scenario execution.
 //
 // Uses only std primitives (Mutex + Condvar) so no extra dependencies are
-// needed. `serialize_mounts = true` creates a semaphore with 1 permit,
-// reproducing the old global-mutex behaviour exactly.
+// needed. Permit count = resolve_max_parallel(), clamped to 1..=24.
 // ---------------------------------------------------------------------------
 
 struct Semaphore {
@@ -99,17 +98,12 @@ fn main() {
 
     let project_name = harness.config.project.name.clone();
 
-    // Determine parallelism from [runner] config.
+    // Determine parallelism from [runner] config. Clamp to 1..=24:
+    // Windows has 26 drive letters (A-Z); A and B are typically
+    // reserved, leaving 24 available for VHD mounts.
     let runner = &harness.config.runner;
-    let permits = if runner.serialize_mounts {
-        1
-    } else {
-        resolve_max_parallel(&runner.max_parallel, &harness.config.vm)
-    };
-    eprintln!(
-        "runner: max_parallel={permits} (serialize_mounts={})",
-        runner.serialize_mounts
-    );
+    let permits = resolve_max_parallel(&runner.max_parallel, &harness.config.vm).clamp(1, 24);
+    eprintln!("runner: max_parallel={permits}");
     let semaphore = Semaphore::new(permits);
 
     let total = harness.matrix.scenarios.len();
@@ -177,10 +171,8 @@ fn run_scenario(
     std::fs::create_dir_all(&diag).map_err(|e| Failed::from(format!("mkdir diag: {e}")))?;
 
     // Acquire a slot from the semaphore before touching the VM.
-    // With serialize_mounts=true the semaphore has 1 permit (old mutex
-    // behaviour). With serialize_mounts=false it holds max_parallel
-    // permits so that many scenarios run concurrently without overwhelming
-    // the Windows VM's available drive letters.
+    // Acquire a permit from the pool. Blocks if max_parallel concurrent
+    // scenarios are already running, released when _guard is dropped.
     let _guard = semaphore.acquire();
 
     let outcome = fs_test_harness::run_recipe(name, scn, config, consumer_root, &diag);
