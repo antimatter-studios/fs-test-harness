@@ -1,13 +1,12 @@
-//! run-matrix — libtest-mimic runner with exhaustion-only retry.
+//! run-matrix — libtest-mimic runner with multi-pass retry.
 //!
 //! Loads `harness.toml` and the matrix file; runs each scenario via
 //! [`fs_test_harness::run_recipe`]; writes per-scenario diag artefacts
 //! under `<consumer_root>/test-diagnostics/matrix/`.
 //!
-//! Scenarios that fail with "resource exhaustion" (VM drive-letter lock
-//! timeout) are collected after each pass and re-run in a subsequent pass.
-//! All other scenarios run once. Concurrency is reduced by one before each
-//! retry pass; a probe thread restores capacity after 300 s of quiet.
+//! Any scenario that fails is retried up to MAX_RETRIES times. Only
+//! scenarios that fail every attempt are reported as permanently broken.
+//! Failure output includes the last failing step's stderr/stdout.
 
 use fs_test_harness::{Harness, MaxParallel, VmSection};
 use libtest_mimic::{Arguments, Failed, Trial};
@@ -19,11 +18,6 @@ use std::sync::{Arc, Condvar, Mutex};
 
 // ---------------------------------------------------------------------------
 // Counting semaphore — limits concurrent scenario execution.
-//
-// `reduce_capacity`: back off one slot on exhaustion (floor = max(1, in_use)).
-// `try_probe_up`:   add one slot back after N seconds of quiet.
-// Drop clamps releases to the current capacity so reductions take effect
-// as running scenarios finish naturally.
 // ---------------------------------------------------------------------------
 
 struct SemState {
