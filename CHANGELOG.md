@@ -5,6 +5,10 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+----
+
+## [3.7.0] — 2026-05-25
+
 ### Changed
 
 - **`serialize_mounts` removed; `max_parallel` default is now `1`
@@ -14,6 +18,8 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   `max_parallel = "drive-letters"` / integer form is unchanged.
   `run-tests.sh` derives `--test-threads` from `max_parallel`
   automatically (no separate `test_threads` key needed).
+  Clamped to `1..=24` in the runner (Windows has 26 drive letters;
+  A and B are reserved).
 
 ----
 
