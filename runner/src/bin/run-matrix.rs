@@ -21,29 +21,103 @@ use std::sync::{Arc, Condvar, Mutex};
 //
 // Uses only std primitives (Mutex + Condvar) so no extra dependencies are
 // needed. Permit count = resolve_max_parallel(), clamped to 1..=24.
+//
+// `reduce_capacity` backs off by one slot when resource exhaustion is
+// detected (VM out of drive letters). The cap never drops below 1.
+// Drop clamps releases to the current capacity so the reduction takes
+// effect as running scenarios finish.
 // ---------------------------------------------------------------------------
 
+struct SemState {
+    available: usize,
+    capacity: usize,
+    /// The ceiling we started with; probe-up never exceeds this.
+    initial_capacity: usize,
+    /// When the last resource-exhaustion event was recorded.
+    last_exhaustion: Option<std::time::Instant>,
+}
+
 struct Semaphore {
-    available: Mutex<usize>,
+    state: Mutex<SemState>,
     condvar: Condvar,
 }
 
 impl Semaphore {
     fn new(permits: usize) -> Arc<Self> {
         Arc::new(Self {
-            available: Mutex::new(permits),
+            state: Mutex::new(SemState {
+                available: permits,
+                capacity: permits,
+                initial_capacity: permits,
+                last_exhaustion: None,
+            }),
             condvar: Condvar::new(),
         })
     }
 
     fn acquire(self: &Arc<Self>) -> SemaphoreGuard {
-        let mut available = self.available.lock().unwrap();
-        while *available == 0 {
-            available = self.condvar.wait(available).unwrap();
+        let mut state = self.state.lock().unwrap();
+        while state.available == 0 {
+            state = self.condvar.wait(state).unwrap();
         }
-        *available -= 1;
+        state.available -= 1;
         SemaphoreGuard {
             sem: Arc::clone(self),
+        }
+    }
+
+    /// Reduce capacity by one when resource exhaustion is detected.
+    ///
+    /// Floor is `max(1, in_use)`: we never claw back permits already held
+    /// by running scenarios, and we keep at least 1 so the run makes
+    /// progress. Records the event time so `try_probe_up` can backoff.
+    fn reduce_capacity(&self) {
+        let mut state = self.state.lock().unwrap();
+        let in_use = state.capacity.saturating_sub(state.available);
+        let floor = in_use.max(1);
+        state.last_exhaustion = Some(std::time::Instant::now());
+        if state.capacity > floor {
+            state.capacity -= 1;
+            state.available = state.available.min(state.capacity);
+            eprintln!(
+                "runner: resource exhaustion — reducing max_parallel to {} (floor={floor})",
+                state.capacity
+            );
+        } else {
+            eprintln!(
+                "runner: resource exhaustion — max_parallel already at floor ({floor}), cannot reduce"
+            );
+        }
+    }
+
+    /// Probe capacity up by one if no exhaustion has occurred in the last
+    /// `grace_secs` seconds and we are below the initial ceiling.
+    /// Called by the probe thread every `grace_secs` seconds.
+    fn try_probe_up(&self, grace_secs: u64) {
+        let notify = {
+            let mut state = self.state.lock().unwrap();
+            if state.capacity >= state.initial_capacity {
+                return;
+            }
+            let quiet_secs = state
+                .last_exhaustion
+                .map(|t| t.elapsed().as_secs())
+                .unwrap_or(u64::MAX);
+            if quiet_secs >= grace_secs {
+                state.capacity += 1;
+                state.available += 1;
+                state.last_exhaustion = None;
+                eprintln!(
+                    "runner: quiet for {quiet_secs}s — raising max_parallel to {}",
+                    state.capacity
+                );
+                true
+            } else {
+                false
+            }
+        };
+        if notify {
+            self.condvar.notify_one();
         }
     }
 }
@@ -54,8 +128,9 @@ struct SemaphoreGuard {
 
 impl Drop for SemaphoreGuard {
     fn drop(&mut self) {
-        let mut available = self.sem.available.lock().unwrap();
-        *available += 1;
+        let mut state = self.sem.state.lock().unwrap();
+        // Clamp to capacity so reductions take effect as slots are released.
+        state.available = (state.available + 1).min(state.capacity);
         self.sem.condvar.notify_one();
     }
 }
@@ -105,6 +180,17 @@ fn main() {
     let permits = resolve_max_parallel(&runner.max_parallel, &harness.config.vm).clamp(1, 24);
     eprintln!("runner: max_parallel={permits}");
     let semaphore = Semaphore::new(permits);
+
+    // Probe-up thread: every 300 s without resource exhaustion, increment
+    // capacity by one toward the original ceiling. This recovers from
+    // over-aggressive backoff without human intervention.
+    if permits > 1 {
+        let sem_probe = Arc::clone(&semaphore);
+        std::thread::spawn(move || loop {
+            std::thread::sleep(std::time::Duration::from_secs(300));
+            sem_probe.try_probe_up(300);
+        });
+    }
 
     let total = harness.matrix.scenarios.len();
     let mut runnable = 0usize;
@@ -177,6 +263,12 @@ fn run_scenario(
 
     let outcome = fs_test_harness::run_recipe(name, scn, config, consumer_root, &diag);
     let elapsed = started.elapsed().as_secs_f64();
+
+    // Backpressure: if the VM rejected this scenario due to drive-letter
+    // exhaustion, reduce concurrency so subsequent scenarios don't pile up.
+    if step_diag_contains(&diag, "resource exhaustion") {
+        semaphore.reduce_capacity();
+    }
 
     let (status, error) = match &outcome {
         Ok(r) if r.overall_passed => ("passed", None),
@@ -358,6 +450,24 @@ fn git_sha(consumer_root: &Path) -> Option<String> {
         .ok()
         .filter(|o| o.status.success())
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+}
+
+/// Scan step diag subdirectories under `scenario_diag` for `needle` in
+/// any `stderr.txt`. Used to detect VM-side "resource exhaustion" messages
+/// from the drive-letter lock without requiring a special exit code.
+fn step_diag_contains(scenario_diag: &Path, needle: &str) -> bool {
+    let Ok(entries) = std::fs::read_dir(scenario_diag) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let stderr = entry.path().join("stderr.txt");
+        if let Ok(text) = std::fs::read_to_string(&stderr) {
+            if text.contains(needle) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn now_iso8601() -> String {
