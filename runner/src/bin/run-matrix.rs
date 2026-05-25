@@ -252,7 +252,34 @@ fn main() {
                     let exec_start = std::time::Instant::now();
                     eprintln!("[{}] start  {name}", now_hms());
 
-                    let outcome = fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag);
+                    let step_start_ref =
+                        std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
+                    let name_cb = name.clone();
+                    let outcome = fs_test_harness::run_recipe(
+                        &name,
+                        &scn,
+                        &cfg,
+                        &cr,
+                        &diag,
+                        |idx, op, passed, _dur_ms| {
+                            let elapsed = {
+                                let t = step_start_ref.lock().unwrap();
+                                t.elapsed().as_secs()
+                            };
+                            let mark = if passed { "ok  " } else { "FAIL" };
+                            eprintln!(
+                                "[{}]   step {:02} {}  {}  +{}",
+                                now_hms(),
+                                idx,
+                                op,
+                                mark,
+                                fmt_elapsed(elapsed),
+                            );
+                            // Reset the per-step timer for the next step's "+elapsed".
+                            *step_start_ref.lock().unwrap() = std::time::Instant::now();
+                            let _ = &name_cb; // keep alive
+                        },
+                    );
                     let exec_secs = exec_start.elapsed().as_secs();
                     let total_secs = wait_start.elapsed().as_secs_f64();
 
@@ -315,6 +342,20 @@ fn main() {
             break; // All passed this pass — done.
         }
 
+        // Accounting before retry.
+        eprintln!("----------------------------------------------------------------");
+        eprintln!(
+            "[{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
+            now_hms(),
+            attempt + 1,
+            pass_total - retry_names.len(),
+            retry_names.len(),
+        );
+        for n in &retry_names {
+            eprintln!("  ✗ {n}");
+        }
+        eprintln!("----------------------------------------------------------------");
+
         if attempt + 1 >= MAX_RETRIES {
             eprintln!(
                 "runner: {} scenario(s) failed all {MAX_RETRIES} attempts — genuinely broken",
@@ -324,6 +365,11 @@ fn main() {
             break;
         }
 
+        eprintln!(
+            "[{}] retrying {} scenario(s)…",
+            now_hms(),
+            retry_names.len()
+        );
         pending_names = retry_names;
     }
 

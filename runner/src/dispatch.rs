@@ -46,6 +46,10 @@ pub struct RecipeResult {
 
 /// Walk `scenario.recipe` and dispatch each step.
 ///
+/// `on_step` is called after every step with `(index, op_name, passed,
+/// duration_ms)`. Use it for live progress output; pass `|_, _, _, _| {}`
+/// to suppress.
+///
 /// Returns `Ok(RecipeResult)` even on step failure — the caller
 /// inspects `overall_passed` to decide test verdict. Only genuine
 /// runner-internal errors (failed to compose substitution context,
@@ -57,6 +61,7 @@ pub fn run_recipe(
     config: &HarnessConfig,
     consumer_root: &Path,
     diag_dir: &Path,
+    on_step: impl Fn(usize, &str, bool, u128),
 ) -> Result<RecipeResult, String> {
     if scenario.recipe.is_empty() {
         return Err("run_recipe called with empty recipe".to_string());
@@ -91,6 +96,9 @@ pub fn run_recipe(
             step_dir.join("step.json"),
             serde_json::to_string_pretty(&result).unwrap_or_default(),
         );
+
+        let step_passed = result.skipped || (result.error.is_none() && exit_matches(&result));
+        on_step(idx, &result.op, step_passed, result.duration_ms);
 
         if !result.skipped && (result.error.is_some() || !exit_matches(&result)) {
             overall_passed = false;
@@ -569,7 +577,7 @@ mod tests {
         let cfg = config_with_ops(&[]);
         let scn = scenario_with_recipe(vec![]);
         let dir = tempdir();
-        let result = run_recipe("empty", &scn, &cfg, &dir, &dir);
+        let result = run_recipe("empty", &scn, &cfg, &dir, &dir, |_, _, _, _| {});
         assert!(result.is_err());
     }
 
@@ -586,7 +594,8 @@ mod tests {
         )]);
         let scn = scenario_with_recipe(vec![json!({ "op": "noop" })]);
         let dir = tempdir();
-        let result = run_recipe("host-noop", &scn, &cfg, &dir, &dir).expect("recipe runs");
+        let result =
+            run_recipe("host-noop", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).expect("recipe runs");
         assert!(result.overall_passed);
         assert_eq!(result.steps.len(), 1);
         assert_eq!(result.steps[0].host, "host");
@@ -608,7 +617,8 @@ mod tests {
         // No `fixtures` field on scenario => `when` is false => skip.
         let scn = scenario_with_recipe(vec![json!({ "op": "needs-fixtures" })]);
         let dir = tempdir();
-        let result = run_recipe("skipped", &scn, &cfg, &dir, &dir).expect("recipe runs");
+        let result =
+            run_recipe("skipped", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).expect("recipe runs");
         assert!(result.overall_passed);
         assert_eq!(result.steps.len(), 1);
         assert!(result.steps[0].skipped);
@@ -620,7 +630,7 @@ mod tests {
         let cfg = config_with_ops(&[]);
         let scn = scenario_with_recipe(vec![json!({ "op": "doesnt-exist" })]);
         let dir = tempdir();
-        let err = run_recipe("unknown", &scn, &cfg, &dir, &dir).unwrap_err();
+        let err = run_recipe("unknown", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).unwrap_err();
         assert!(err.contains("doesnt-exist"));
     }
 
@@ -648,7 +658,8 @@ mod tests {
         ]);
         let scn = scenario_with_recipe(vec![json!({ "op": "fail" }), json!({ "op": "after" })]);
         let dir = tempdir();
-        let result = run_recipe("fail-fast", &scn, &cfg, &dir, &dir).expect("recipe runs");
+        let result =
+            run_recipe("fail-fast", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).expect("recipe runs");
         assert!(!result.overall_passed);
         // Recipe should fail-fast on the first non-zero step.
         assert_eq!(result.steps.len(), 1);
@@ -678,7 +689,7 @@ mod tests {
             "dest": "/tmp/b"
         })]);
         let dir = tempdir();
-        let err = run_recipe("ship-no-vm", &scn, &cfg, &dir, &dir).unwrap_err();
+        let err = run_recipe("ship-no-vm", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).unwrap_err();
         assert!(
             err.contains("[vm].host") && err.contains("ship-to-vm"),
             "expected vm.host error, got: {err}"
@@ -691,7 +702,7 @@ mod tests {
         // Missing src
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-vm", "dest": "/x" })]);
         let dir = tempdir();
-        let err = run_recipe("no-src", &scn, &cfg, &dir, &dir).unwrap_err();
+        let err = run_recipe("no-src", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).unwrap_err();
         assert!(
             err.contains("'src' field"),
             "expected src error, got: {err}"
@@ -699,7 +710,7 @@ mod tests {
 
         // Missing dest
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-host", "src": "/x" })]);
-        let err = run_recipe("no-dest", &scn, &cfg, &dir, &dir).unwrap_err();
+        let err = run_recipe("no-dest", &scn, &cfg, &dir, &dir, |_, _, _, _| {}).unwrap_err();
         assert!(
             err.contains("'dest' field"),
             "expected dest error, got: {err}"
