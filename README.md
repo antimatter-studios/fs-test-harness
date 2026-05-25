@@ -1,36 +1,36 @@
 # fs-test-harness
 
-> Reusable Mac-orchestrator + Windows-VM-agent test harness for filesystem driver projects.
+> Reusable Unix/Linux/macOS orchestrator + Windows VM agent test harness for filesystem driver projects.
 
 [![CI](https://github.com/antimatter-studios/fs-test-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/antimatter-studios/fs-test-harness/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Rust 1.79+](https://img.shields.io/badge/rust-1.79%2B-orange.svg)](https://www.rust-lang.org)
-[![Status: alpha](https://img.shields.io/badge/status-alpha%20(0.1.0)-yellow.svg)](./CHANGELOG.md)
+[![Status: v3.6.0](https://img.shields.io/badge/status-v3.6.0-green.svg)](./CHANGELOG.md)
 
 ## What is this
 
 A drop-in test harness for people writing **filesystem drivers** on
-macOS that have to run on Windows. You point a `harness.toml` at your
-binary, write a `test-matrix.json` of scenarios, and the harness
+Unix/Linux/macOS that have to run on Windows. You point a `harness.toml`
+at your binary, write a `test-matrix.json` of scenarios, and the harness
 takes care of the rest: tar your source to a Windows VM over SSH,
 shell out to your driver, mount images, run ops on the mounted volume,
 compare results, capture per-scenario diagnostics, and pull everything
-back to your laptop.
+back to your machine.
 
 The state machine is atomic — `claim` / `update-status` / `reset` over
 JSON — so multiple agents can fan out across one matrix without
 clobbering each other. Driver-specific knowledge stays in the
 consumer's `harness.toml` (op templates, mount command, ready-line
 regex), so this repo stays filesystem-agnostic. Today it backs
-[ext4-win-driver](https://github.com/antimatter-studios/ext4-win-driver);
-the same shape worked verbatim for an NTFS prototype before it.
+[rust-fs-ntfs](https://github.com/antimatter-studios/rust-fs-ntfs) and
+[ext4-win-driver](https://github.com/antimatter-studios/ext4-win-driver).
 
 ## At a glance
 
 | Path | What lives there |
 | --- | --- |
 | `runner/` | Rust crate. `lib.rs` exposes the `Harness` / `Adapter` API; `bin/run-matrix.rs` is the [libtest-mimic](https://github.com/LukasKalbertodt/libtest-mimic) driver. |
-| `scripts/` | Mac-side bash + Windows-side PowerShell. `run-tests.sh` (single entrypoint — bootstrap, preflight, ship, run, diag-pull), plus state-machine helpers `claim-scenario.sh`, `update-scenario-status.sh`, `reset-non-passed.sh`, and `run-scenario.ps1` (the VM-side per-scenario executor). |
+| `scripts/` | Host-side bash + Windows-side PowerShell. `run-tests.sh` (single entrypoint — bootstrap, preflight, ship, run, diag-pull), plus state-machine helpers `claim-scenario.sh`, `update-scenario-status.sh`, `reset-non-passed.sh`, and `run-scenario.ps1` (the VM-side per-scenario executor). |
 | `schemas/` | JSON Schema for `harness.toml` and `test-matrix.json`. |
 | `docs/` | Long-form: consumer integration, architecture, triage, multi-agent protocol. |
 | `examples/minimal/` | Smallest viable consumer config. |
@@ -110,6 +110,4 @@ shape was lifted into this repo and the FS-specific bits pushed into
 `harness.toml`. The harness itself doesn't know or care which
 filesystem it's testing.
 
-Version is `0.1.0` — extraction is complete and the harness backs
-`ext4-win-driver`'s migration in progress; expect minor breaking
-changes until `1.0`.
+Current version is `v3.6.0`; semver applies from `2.0.0` onward.

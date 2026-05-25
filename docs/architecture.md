@@ -1,12 +1,13 @@
 # Architecture
 
-A three-layer system: **Mac orchestrator + Windows VM agent + shared
-state file**.
+A three-layer system: **host orchestrator + Windows VM agent + shared
+state file**. The host can be any Unix/Linux/macOS machine with bash,
+ssh, and cargo available.
 
 ## Topology
 
 ```
-+-- Mac (developer laptop) ---------------------+
++-- Host (Unix/Linux/macOS) --------------------+
 | <harness>/scripts/run-tests.sh                |
 |   tar consumer source -> ssh ->               |
 |   remote `cargo run --bin run-matrix` ->      |
@@ -77,7 +78,7 @@ attempts.
 
 ## Diagnostics layout
 
-Pulled to `<consumer-root>/test-diagnostics/run-<UTC>/` after each Mac
+Pulled to `<consumer-root>/test-diagnostics/run-<UTC>/` after each host
 invocation:
 
 ```

@@ -147,9 +147,9 @@ fields don't appear here.
 
 | Generic name | Concept | Drivers using it |
 |---|---|---|
-| `size_mib` | Volume size in mebibytes | (prospective) |
-| `label` | Volume label | (prospective) |
-| `alloc_unit_size` | Smallest addressable on-disk unit (cluster / block / sector) | (prospective: NTFS as `cluster_size`, ext4 as `block_size`) |
+| `size_mib` | Volume size in mebibytes | rust-fs-ntfs |
+| `label` | Volume label | rust-fs-ntfs |
+| `alloc_unit_size` | Smallest addressable on-disk unit (cluster / block / sector) | rust-fs-ntfs |
 | `verdict_shape` | Pass/fail/repair contract for the scenario's verifier | (prospective) |
 | `operations[].type` (v1) / `recipe[].op` (v2) | Generic op verb | all consumers |
 
