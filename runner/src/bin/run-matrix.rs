@@ -293,7 +293,7 @@ fn main() {
                     }
 
                     // Permanently settled — record result.
-                    let (status, error) = outcome_status(&outcome);
+                    let (status, error) = outcome_status(&outcome, &diag);
                     let result = ScenarioResult {
                         name: name.clone(),
                         status: status.to_string(),
@@ -366,8 +366,13 @@ fn matrix_diag_root(consumer_root: &Path) -> PathBuf {
 }
 
 /// Extract a `(status, error_message)` pair from a recipe outcome.
+///
+/// When a step fails, the step's `stderr.txt` and `stdout.txt` from the diag
+/// directory are appended (truncated to 4 KB each) so failures are self-contained
+/// in the libtest-mimic output without needing to open separate log files.
 fn outcome_status(
     outcome: &Result<fs_test_harness::RecipeResult, String>,
+    diag: &Path,
 ) -> (&'static str, Option<String>) {
     match outcome {
         Ok(r) if r.overall_passed => ("passed", None),
@@ -376,19 +381,48 @@ fn outcome_status(
                 .steps
                 .last()
                 .map(|s| {
-                    if let Some(e) = &s.error {
+                    let header = if let Some(e) = &s.error {
                         format!("step {} ({}) errored: {e}", s.index, s.op)
                     } else {
                         format!(
                             "step {} ({}) exit {:?} != expected {}",
                             s.index, s.op, s.exit_code, s.expected_exit
                         )
+                    };
+                    let step_dir = diag.join(format!("step-{:02}", s.index));
+                    let stderr = read_tail(&step_dir.join("stderr.txt"), 4096);
+                    let stdout = read_tail(&step_dir.join("stdout.txt"), 4096);
+                    let mut full = header;
+                    if !stderr.is_empty() {
+                        full.push_str("\n--- stderr ---\n");
+                        full.push_str(&stderr);
                     }
+                    if !stdout.is_empty() {
+                        full.push_str("\n--- stdout ---\n");
+                        full.push_str(&stdout);
+                    }
+                    full
                 })
                 .unwrap_or_else(|| "recipe failed (no step results)".to_string());
             ("failed", Some(msg))
         }
         Err(e) => ("errored", Some(e.clone())),
+    }
+}
+
+/// Read up to `max_bytes` from the end of a file (tail), trimmed.
+fn read_tail(path: &Path, max_bytes: usize) -> String {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return String::new();
+    };
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if trimmed.len() <= max_bytes {
+        trimmed.to_string()
+    } else {
+        format!("...(truncated)\n{}", &trimmed[trimmed.len() - max_bytes..])
     }
 }
 
