@@ -5,6 +5,28 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-05-25
+
+### Changed
+
+- README, architecture, and vocabulary docs updated to reflect that the
+  orchestrator host can be any Unix/Linux/macOS machine, not Mac-only.
+- Cross-driver vocabulary table: `size_mib`, `label`, `alloc_unit_size`
+  graduated from prospective to active (rust-fs-ntfs uses all three).
+- Historical CHANGELOG entries backfilled with correct version headings
+  (3.3.0–3.6.0 were previously lumped under `[Unreleased]`).
+
+## [3.6.0] - 2026-05-25
+
+### Added
+
+- **`[runner] parallel`** — configurable scenario parallelism via a
+  new `[runner]` section in `harness.toml`. Scenarios can fan out
+  across multiple threads on the VM runner rather than being forced
+  to `--test-threads=1`.
+
+## [3.5.0] - 2026-05-11
+
 ### Added
 
 - **`[vm.packages]` per-package custom installer args.** Entries
@@ -51,16 +73,38 @@ Backward-compatible: existing bare-string `packages =
 ["WinFsp.WinFsp", "LLVM.LLVM"]` entries keep working unchanged.
 Object form is opt-in.
 
-----
+## [3.4.0] - 2026-05-10
 
-Pre-3.5.0 (was [Unreleased] on PR #9 merge — kept here because v3.4.0
-was tagged immediately on top of that merge; the next tag picking this
-section up is v3.5.0).
+### Added
 
-Combines PR #9's schema work with the host/vm scripts reorg
-already on main. Next tag is up to the maintainer (main was tagged
-v3.3.0 from the post-PR-7 state; PR #9's merge brought the schema
-additions, tagged v3.4.0).
+- **`scenario.volume_params`** — typed property on the scenario
+  schema (`additionalProperties: true` so each consumer can
+  document its own inner field set). Used by consumers whose
+  recipes build the image at scenario-time and substitute
+  `{scenario.volume_params.<field>}` into op templates (e.g.
+  `mac-format` with size_mib/label/alloc_unit_size).
+
+### Removed
+
+- `scenario.mount` and `scenario.mount_args` from the schema —
+  these were stale after the v3.0.0 runtime removal of
+  `Scenario.mount` / `Scenario.mount_args` / `MountSpec`. v3.0.0
+  missed the matching schema cleanup; landed here.
+
+### Notes
+
+The deliberate posture on the schema: the scenario schema stays
+`additionalProperties: false` (typo-trapping is the win). Consumer-
+defined fields are added explicitly, typed, with a
+`{scenario.<dotted.path>}` substitution rationale documented in
+the schema. Novel consumer-only fields require a one-line schema
+PR — gating prevents grab-bag accumulation.
+
+`_doc`, `_notes`, `_attempts`, `evidence_link` were already present
+since v2.0.0; recipe steps remain `additionalProperties: true` so
+step-level fields don't need schema declarations.
+
+## [3.3.0] - 2026-05-10
 
 ### Added
 
@@ -87,12 +131,6 @@ additions, tagged v3.4.0).
   `target/`, `.git/`, etc.) and runs `<command>` over SSH from
   `<vm.workdir>` after ship. Use case: consumers who prefer to
   build on the VM rather than cross-compile from host.
-- **`scenario.volume_params`** — typed property on the scenario
-  schema (`additionalProperties: true` so each consumer can
-  document its own inner field set). Used by consumers whose
-  recipes build the image at scenario-time and substitute
-  `{scenario.volume_params.<field>}` into op templates (e.g.
-  `mac-format` with size_mib/label/alloc_unit_size).
 
 ### Changed
 
@@ -103,13 +141,6 @@ additions, tagged v3.4.0).
   `win/` was never quite right because the ops are technically
   POSIX-shell-callable wherever the runner can SSH; vm/ describes
   what they're FOR rather than where they came from.
-
-### Removed
-
-- `scenario.mount` and `scenario.mount_args` from the schema —
-  these were stale after the v3.0.0 runtime removal of
-  `Scenario.mount` / `Scenario.mount_args` / `MountSpec`. v3.0.0
-  missed the matching schema cleanup; landed here.
 
 ### Migration
 
@@ -122,19 +153,6 @@ additions, tagged v3.4.0).
   generic ones via `{harness_root}/scripts/host/verify-*.sh
   --binary {binary} {scenario.image} {step.path} ...` from your
   `[ops.verify-*]` op-defs.
-
-### Notes
-
-The deliberate posture on the schema: the scenario schema stays
-`additionalProperties: false` (typo-trapping is the win). Consumer-
-defined fields are added explicitly, typed, with a
-`{scenario.<dotted.path>}` substitution rationale documented in
-the schema. Novel consumer-only fields require a one-line schema
-PR — gating prevents grab-bag accumulation.
-
-`_doc`, `_notes`, `_attempts`, `evidence_link` were already present
-since v2.0.0; recipe steps remain `additionalProperties: true` so
-step-level fields don't need schema declarations.
 
 ## [3.1.0] - 2026-05-10
 
@@ -217,7 +235,7 @@ recipe-step dispatcher introduced in `2.0.0`.
 - The `type` field as an alternative spelling of `op` on a recipe
   step — informal alias preserved.
 
-## [2.0.0] - 2026-05-10
+## [2.0.0] - 2026-05-08
 
 Recipe-shaped scenarios + per-step dispatcher. See the v2 design
 notes in `docs/`. Tagged today as the first stable release of the
@@ -230,7 +248,7 @@ licensed.
 
 ### Added
 
-- `scripts/` Mac-side orchestration: `claim-scenario.sh`,
+- `scripts/` host-side orchestration: `claim-scenario.sh`,
   `update-scenario-status.sh`, `reset-non-passed.sh`, `setup-local.sh`,
   `test-windows-matrix.sh`.
 - `scripts/setup-windows-vm.ps1` one-time VM provisioning; consumers
@@ -252,7 +270,7 @@ licensed.
   marked ignored on macOS / Linux but compile-check.
 - Post-verify hooks (`fsck`, `chkdsk`) are configured via
   `[tools]` in `harness.toml`; we do not yet stream the post-RW image
-  back to the Mac for off-VM verification, that is the consumer's
+  back to the host for off-VM verification, that is the consumer's
   responsibility.
 - `setup-windows-vm.ps1` ships only the cross-consumer essentials
   (rustup, gnullvm toolchain, optional winget packages). Consumers
