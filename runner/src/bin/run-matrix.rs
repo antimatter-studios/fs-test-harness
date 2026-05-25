@@ -240,9 +240,7 @@ fn run_scenario(
 fn resolve_max_parallel(mp: &MaxParallel, vm: &VmSection) -> usize {
     match mp {
         MaxParallel::Explicit(n) => *n,
-        MaxParallel::Named(name) if name == "drive-letters" => {
-            query_available_drive_letters(vm)
-        }
+        MaxParallel::Named(name) if name == "drive-letters" => query_available_drive_letters(vm),
         MaxParallel::Named(other) => {
             eprintln!("runner: unknown max_parallel value '{other}', defaulting to 4");
             4
@@ -274,8 +272,7 @@ fn query_available_drive_letters(vm: &VmSection) -> usize {
 
     // Count file-system drive letters currently in use; subtract from 26
     // to get those available for new VHD mounts.
-    let ps_cmd =
-        "powershell -NoProfile -NonInteractive -Command \
+    let ps_cmd = "powershell -NoProfile -NonInteractive -Command \
         (26 - (Get-PSDrive -PSProvider FileSystem | Measure-Object).Count)";
 
     let mut cmd = Command::new("ssh");

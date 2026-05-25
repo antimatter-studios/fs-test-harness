@@ -571,12 +571,19 @@ cd "${consumer_root}"
 EXTRA_ARGS=""
 [[ -n "${SCENARIO}" ]] && EXTRA_ARGS=$(printf ' %q' "${SCENARIO}")
 
+# Parallelism: read runner.test_threads from harness.toml (defaults to 1
+# for consumers that don't set it). The runner's own max_parallel bounds
+# concurrent VHD mounts independently; test_threads just controls how many
+# libtest-mimic test slots to spin up.
+TEST_THREADS="$(harness_get_or runner.test_threads 1)"
+
 echo "[run]  cargo run --bin run-matrix locally"
 echo "[run]  HARNESS_IMAGE_DIR=${HARNESS_IMAGE_DIR}"
+echo "[run]  test_threads=${TEST_THREADS}"
 echo
 set +e
 cargo run --manifest-path "${harness_root}/runner/Cargo.toml" \
-          --release --bin run-matrix -- --test-threads=1${EXTRA_ARGS}
+          --release --bin run-matrix -- --test-threads="${TEST_THREADS}"${EXTRA_ARGS}
 RUN_EXIT=$?
 set -e
 
