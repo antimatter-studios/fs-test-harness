@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
 // ---------------------------------------------------------------------------
@@ -30,10 +29,6 @@ use std::sync::{Arc, Condvar, Mutex};
 struct SemState {
     available: usize,
     capacity: usize,
-    /// Ceiling we started with; probe-up never exceeds this.
-    initial_capacity: usize,
-    /// Timestamp of the most recent resource-exhaustion event.
-    last_exhaustion: Option<std::time::Instant>,
 }
 
 struct Semaphore {
@@ -47,8 +42,6 @@ impl Semaphore {
             state: Mutex::new(SemState {
                 available: permits,
                 capacity: permits,
-                initial_capacity: permits,
-                last_exhaustion: None,
             }),
             condvar: Condvar::new(),
         })
@@ -63,57 +56,6 @@ impl Semaphore {
         SemaphoreGuard {
             sem: Arc::clone(self),
         }
-    }
-
-    fn reduce_capacity(&self) {
-        let mut state = self.state.lock().unwrap();
-        let in_use = state.capacity.saturating_sub(state.available);
-        let floor = in_use.max(1);
-        state.last_exhaustion = Some(std::time::Instant::now());
-        if state.capacity > floor {
-            state.capacity -= 1;
-            state.available = state.available.min(state.capacity);
-            eprintln!(
-                "runner: resource exhaustion — reducing max_parallel to {} (floor={floor})",
-                state.capacity
-            );
-        } else {
-            eprintln!(
-                "runner: resource exhaustion — max_parallel already at floor ({floor}), cannot reduce"
-            );
-        }
-    }
-
-    fn try_probe_up(&self, grace_secs: u64) {
-        let notify = {
-            let mut state = self.state.lock().unwrap();
-            if state.capacity >= state.initial_capacity {
-                return;
-            }
-            let quiet_secs = state
-                .last_exhaustion
-                .map(|t| t.elapsed().as_secs())
-                .unwrap_or(u64::MAX);
-            if quiet_secs >= grace_secs {
-                state.capacity += 1;
-                state.available += 1;
-                state.last_exhaustion = None;
-                eprintln!(
-                    "runner: quiet for {quiet_secs}s — raising max_parallel to {}",
-                    state.capacity
-                );
-                true
-            } else {
-                false
-            }
-        };
-        if notify {
-            self.condvar.notify_one();
-        }
-    }
-
-    fn current_capacity(&self) -> usize {
-        self.state.lock().unwrap().capacity
     }
 }
 
@@ -178,15 +120,6 @@ fn main() {
 
     let semaphore = Semaphore::new(permits);
 
-    // Probe-up thread: recover from over-aggressive backoff after 300 s of quiet.
-    if permits > 1 {
-        let sem_probe = Arc::clone(&semaphore);
-        std::thread::spawn(move || loop {
-            std::thread::sleep(std::time::Duration::from_secs(300));
-            sem_probe.try_probe_up(300);
-        });
-    }
-
     let total = harness.matrix.scenarios.len();
 
     // Partition into runnable / ignored, applying the --filter arg.
@@ -238,33 +171,30 @@ fn main() {
     let config_arc = Arc::new(harness.config.clone());
     let cr_arc = Arc::new(consumer_root.clone());
 
+    // Any scenario that fails a pass is retried up to MAX_RETRIES times total.
+    // A scenario that passes on any attempt counts as passed. Only scenarios
+    // that fail all MAX_RETRIES attempts are genuinely broken.
     const MAX_RETRIES: u8 = 5;
-    let any_genuine_failure = Arc::new(AtomicBool::new(false));
 
-    // First pass runs all runnable scenarios; retry passes run only the
-    // exhausted subset.
     let mut pending_names: Vec<String> = {
         let mut names: Vec<String> = all_scenarios.keys().cloned().collect();
         names.sort();
         names
     };
 
+    let mut permanently_failed: Vec<String> = Vec::new();
+
     for attempt in 0u8..MAX_RETRIES {
         if attempt > 0 {
-            // Reduce capacity before the retry pass.
-            semaphore.reduce_capacity();
-            let cap = semaphore.current_capacity();
-            args.test_threads = Some(cap);
             eprintln!(
-                "runner: {} scenario(s) retrying \
-                 (attempt {}/{MAX_RETRIES}, max_parallel={cap})",
+                "runner: {} scenario(s) failed — retrying (attempt {}/{MAX_RETRIES})",
                 pending_names.len(),
                 attempt + 1
             );
         }
 
-        // Tracks which scenarios in this pass hit resource exhaustion.
-        let exhausted: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
+        // Tracks which scenarios failed this pass and need another attempt.
+        let failed_this_pass: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
 
         let mut trials: Vec<Trial> = pending_names
             .iter()
@@ -274,8 +204,7 @@ fn main() {
                 let cfg = Arc::clone(&config_arc);
                 let cr = Arc::clone(&cr_arc);
                 let sem = Arc::clone(&semaphore);
-                let exh = Arc::clone(&exhausted);
-                let fail_flag = Arc::clone(&any_genuine_failure);
+                let retry_set = Arc::clone(&failed_this_pass);
 
                 Trial::test(name.clone(), move || {
                     let step_start = std::time::Instant::now();
@@ -286,13 +215,6 @@ fn main() {
                     let outcome = fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag);
                     let elapsed = step_start.elapsed().as_secs_f64();
 
-                    // Resource exhaustion: mark for retry, don't record a result yet.
-                    if step_diag_contains(&diag, "resource exhaustion") {
-                        exh.lock().unwrap().insert(name.clone());
-                        return Err(Failed::without_message());
-                    }
-
-                    // Permanently settled — record result.
                     let (status, error) = outcome_status(&outcome, &diag);
                     let result = ScenarioResult {
                         name: name.clone(),
@@ -313,7 +235,7 @@ fn main() {
                     }
 
                     if status != "passed" {
-                        fail_flag.store(true, Ordering::Relaxed);
+                        retry_set.lock().unwrap().insert(name.clone());
                         return Err(Failed::from(error.unwrap_or_else(|| "failed".into())));
                     }
                     Ok(())
@@ -328,26 +250,24 @@ fn main() {
             }
         }
 
-        // Run — we own the Conclusion but don't exit on it; our fail_flag tracks
-        // genuine failures independently of exhaustion retries.
         let _ = libtest_mimic::run(&args, trials);
 
-        let retry_names: Vec<String> = {
-            let mut names: Vec<String> = exhausted.lock().unwrap().iter().cloned().collect();
+        let mut retry_names: Vec<String> = {
+            let mut names: Vec<String> = failed_this_pass.lock().unwrap().iter().cloned().collect();
             names.sort();
             names
         };
 
         if retry_names.is_empty() {
-            break; // No exhaustion this pass — done.
+            break; // All passed this pass — done.
         }
 
         if attempt + 1 >= MAX_RETRIES {
             eprintln!(
-                "runner: {} scenario(s) still resource-exhausted after {MAX_RETRIES} attempts",
+                "runner: {} scenario(s) failed all {MAX_RETRIES} attempts — genuinely broken",
                 retry_names.len()
             );
-            any_genuine_failure.store(true, Ordering::Relaxed);
+            permanently_failed.append(&mut retry_names);
             break;
         }
 
@@ -356,7 +276,7 @@ fn main() {
 
     let _ = aggregate_results(&consumer_root);
 
-    if any_genuine_failure.load(Ordering::Relaxed) {
+    if !permanently_failed.is_empty() {
         std::process::exit(101);
     }
 }
@@ -548,23 +468,6 @@ fn git_sha(consumer_root: &Path) -> Option<String> {
         .ok()
         .filter(|o| o.status.success())
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-}
-
-/// Scan step diag subdirectories for `needle` in any `stderr.txt`.
-/// Used to detect VM-side "resource exhaustion" without a special exit code.
-fn step_diag_contains(scenario_diag: &Path, needle: &str) -> bool {
-    let Ok(entries) = std::fs::read_dir(scenario_diag) else {
-        return false;
-    };
-    for entry in entries.flatten() {
-        let stderr = entry.path().join("stderr.txt");
-        if let Ok(text) = std::fs::read_to_string(&stderr) {
-            if text.contains(needle) {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 fn now_iso8601() -> String {
