@@ -234,8 +234,8 @@ fn resolve_max_parallel(mp: &MaxParallel, vm: &VmSection) -> usize {
         MaxParallel::Explicit(n) => *n,
         MaxParallel::Named(name) if name == "drive-letters" => query_available_drive_letters(vm),
         MaxParallel::Named(other) => {
-            eprintln!("runner: unknown max_parallel value '{other}', defaulting to 4");
-            4
+            eprintln!("runner: unknown max_parallel value '{other}', defaulting to 1");
+            1
         }
     }
 }
@@ -256,8 +256,8 @@ fn query_available_drive_letters(vm: &VmSection) -> usize {
     let host = match env_host.or_else(|| cfg_host.map(String::from)) {
         Some(h) => h,
         None => {
-            eprintln!("runner: no VM configured — defaulting max_parallel to 4");
-            return 4;
+            eprintln!("runner: no VM configured — defaulting max_parallel to 1");
+            return 1;
         }
     };
     let key = env_key.or_else(|| cfg_key.map(String::from));
@@ -293,15 +293,15 @@ fn query_available_drive_letters(vm: &VmSection) -> usize {
                 }
                 _ => {
                     eprintln!(
-                        "runner: unexpected drive-letter count '{s}' — defaulting max_parallel to 4"
+                        "runner: unexpected drive-letter count '{s}' — defaulting max_parallel to 1"
                     );
-                    4
+                    1
                 }
             }
         }
         _ => {
-            eprintln!("runner: could not query VM drive letters — defaulting max_parallel to 4");
-            4
+            eprintln!("runner: could not query VM drive letters — defaulting max_parallel to 1");
+            1
         }
     }
 }
