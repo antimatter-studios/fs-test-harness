@@ -163,6 +163,10 @@ fn main() {
     );
     eprintln!("================================================================");
 
+    // All progress lines use T+elapsed so log readers see how long each
+    // event took relative to the start of the run, not the wall clock.
+    let run_start = std::time::Instant::now();
+
     // Store scenarios in Arc so Trial closures can reference them across passes.
     let all_scenarios: Arc<HashMap<String, Arc<fs_test_harness::Scenario>>> = Arc::new(
         runnable
@@ -209,12 +213,11 @@ fn main() {
             format!("retry {}/{MAX_RETRIES}", attempt + 1)
         };
 
-        // Heartbeat thread: guaranteed progress output even if libtest-mimic
-        // buffers Trial stderr. Prints every 30 s until the pass completes.
+        // Heartbeat thread: guaranteed progress output every 30 s.
         {
             let completed_hb = Arc::clone(&completed);
             let label = pass_label.clone();
-            let pass_start = std::time::Instant::now();
+            let rs = run_start;
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 let done = completed_hb.load(Ordering::Relaxed);
@@ -222,12 +225,11 @@ fn main() {
                     break;
                 }
                 eprintln!(
-                    "[{}] {} — {}/{} done  ({})",
-                    now_hms(),
+                    "[T+{}] {} — {}/{} done",
+                    fmt_elapsed(rs.elapsed().as_secs()),
                     label,
                     done,
                     pass_total,
-                    fmt_elapsed(pass_start.elapsed().as_secs()),
                 );
             });
         }
@@ -242,6 +244,7 @@ fn main() {
                 let sem = Arc::clone(&semaphore);
                 let retry_set = Arc::clone(&failed_this_pass);
                 let done_ctr = Arc::clone(&completed);
+                let rs = run_start;
 
                 Trial::test(name.clone(), move || {
                     let wait_start = std::time::Instant::now();
@@ -250,36 +253,37 @@ fn main() {
 
                     let _guard = sem.acquire();
                     let exec_start = std::time::Instant::now();
-                    eprintln!("[{}] start  {name}", now_hms());
+                    eprintln!(
+                        "\n[T+{:>7}] >>> {name}",
+                        fmt_elapsed(rs.elapsed().as_secs())
+                    );
 
                     let step_start_ref =
                         std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
                     let name_cb = name.clone();
-                    let outcome = fs_test_harness::run_recipe(
-                        &name,
-                        &scn,
-                        &cfg,
-                        &cr,
-                        &diag,
-                        |idx, op, passed, _dur_ms| {
-                            let elapsed = {
+                    let outcome =
+                        fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag, |step_result| {
+                            let step_secs = {
                                 let t = step_start_ref.lock().unwrap();
                                 t.elapsed().as_secs()
                             };
+                            let passed = step_result.skipped
+                                || (step_result.error.is_none()
+                                    && step_result.exit_code == Some(step_result.expected_exit));
                             let mark = if passed { "ok  " } else { "FAIL" };
+                            let detail = step_detail(step_result);
                             eprintln!(
-                                "[{}]   step {:02} {}  {}  +{}",
-                                now_hms(),
-                                idx,
-                                op,
+                                "[T+{:>7}]   {:02} {:<20} {}  {}{}",
+                                fmt_elapsed(rs.elapsed().as_secs()),
+                                step_result.index,
+                                step_result.op,
                                 mark,
-                                fmt_elapsed(elapsed),
+                                fmt_elapsed(step_secs),
+                                detail,
                             );
-                            // Reset the per-step timer for the next step's "+elapsed".
                             *step_start_ref.lock().unwrap() = std::time::Instant::now();
-                            let _ = &name_cb; // keep alive
-                        },
-                    );
+                            let _ = &name_cb;
+                        });
                     let exec_secs = exec_start.elapsed().as_secs();
                     let total_secs = wait_start.elapsed().as_secs_f64();
 
@@ -306,17 +310,17 @@ fn main() {
 
                     if status != "passed" {
                         eprintln!(
-                            "[{}] FAIL   {name}  ({})",
-                            now_hms(),
-                            fmt_elapsed(exec_secs)
+                            "[T+{:>7}] FAIL {name}  (total {})\n",
+                            fmt_elapsed(rs.elapsed().as_secs()),
+                            fmt_elapsed(exec_secs),
                         );
                         retry_set.lock().unwrap().insert(name.clone());
                         return Err(Failed::from(error.unwrap_or_else(|| "failed".into())));
                     }
                     eprintln!(
-                        "[{}] pass   {name}  ({})",
-                        now_hms(),
-                        fmt_elapsed(exec_secs)
+                        "[T+{:>7}] pass {name}  (total {})\n",
+                        fmt_elapsed(rs.elapsed().as_secs()),
+                        fmt_elapsed(exec_secs),
                     );
                     Ok(())
                 })
@@ -345,8 +349,8 @@ fn main() {
         // Accounting before retry.
         eprintln!("----------------------------------------------------------------");
         eprintln!(
-            "[{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
-            now_hms(),
+            "[T+{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
+            fmt_elapsed(run_start.elapsed().as_secs()),
             attempt + 1,
             pass_total - retry_names.len(),
             retry_names.len(),
@@ -366,9 +370,9 @@ fn main() {
         }
 
         eprintln!(
-            "[{}] retrying {} scenario(s)…",
-            now_hms(),
-            retry_names.len()
+            "[T+{}] retrying {} scenario(s)…",
+            fmt_elapsed(run_start.elapsed().as_secs()),
+            retry_names.len(),
         );
         pending_names = retry_names;
     }
@@ -578,21 +582,6 @@ fn now_iso8601() -> String {
     format!("{secs}")
 }
 
-/// `HH:MM:SS` (UTC) — used in per-scenario progress lines.
-fn now_hms() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!(
-        "{:02}:{:02}:{:02}Z",
-        (secs / 3600) % 24,
-        (secs / 60) % 60,
-        secs % 60
-    )
-}
-
 /// Human-readable date+time for the banner (calls `date -u`; falls back to epoch secs).
 fn now_human_readable() -> String {
     Command::new("date")
@@ -605,6 +594,27 @@ fn now_human_readable() -> String {
 }
 
 /// Format a duration in seconds as `Xm Ys` or `Xs`.
+/// Return a short parenthetical detail for a step — image filename for
+/// ship ops, last path component of the command for others.
+fn step_detail(r: &fs_test_harness::StepResult) -> String {
+    if r.command.is_empty() || r.skipped {
+        return String::new();
+    }
+    // For ship ops the command is "scp <src> <dest>"; show just the
+    // source filename so it's clear what image is being transferred.
+    if r.op.starts_with("ship-") {
+        let src = r
+            .command
+            .split_whitespace()
+            .find(|t| !t.starts_with('-') && *t != "scp");
+        if let Some(s) = src {
+            let fname = s.rsplit('/').next().unwrap_or(s);
+            return format!("  ({fname})");
+        }
+    }
+    String::new()
+}
+
 fn fmt_elapsed(secs: u64) -> String {
     if secs < 60 {
         format!("{secs}s")
