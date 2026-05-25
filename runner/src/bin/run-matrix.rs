@@ -1,19 +1,18 @@
-//! run-matrix -- retry-aware parallel scenario runner.
+//! run-matrix — libtest-mimic runner with exhaustion-only retry.
 //!
-//! Loads `harness.toml` (resolved from `$HARNESS_TOML` or
-//! `<consumer_root>/harness.toml`) and the matrix file it points to;
-//! runs each scenario via [`fs_test_harness::run_recipe`]; writes
-//! per-scenario diag artefacts under `<consumer_root>/test-diagnostics/matrix/`.
+//! Loads `harness.toml` and the matrix file; runs each scenario via
+//! [`fs_test_harness::run_recipe`]; writes per-scenario diag artefacts
+//! under `<consumer_root>/test-diagnostics/matrix/`.
 //!
 //! Scenarios that fail with "resource exhaustion" (VM drive-letter lock
-//! timeout) are pushed to the back of a shared work queue so smaller tests
-//! can run first. Concurrency is reduced by one on each exhaustion event and
-//! probed back up every 300 s of quiet.
+//! timeout) are collected after each pass and re-run in a subsequent pass.
+//! All other scenarios run once. Concurrency is reduced by one before each
+//! retry pass; a probe thread restores capacity after 300 s of quiet.
 
 use fs_test_harness::{Harness, MaxParallel, VmSection};
-use libtest_mimic::{Arguments, Trial};
+use libtest_mimic::{Arguments, Failed, Trial};
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -66,10 +65,6 @@ impl Semaphore {
         }
     }
 
-    /// Reduce capacity by one when resource exhaustion is detected.
-    ///
-    /// Floor is `max(1, in_use)`: we never claw back permits already held
-    /// by running scenarios, and we keep at least 1 so the run makes progress.
     fn reduce_capacity(&self) {
         let mut state = self.state.lock().unwrap();
         let in_use = state.capacity.saturating_sub(state.available);
@@ -89,8 +84,6 @@ impl Semaphore {
         }
     }
 
-    /// Probe capacity up by one if no exhaustion in the last `grace_secs`
-    /// seconds and we are below the initial ceiling. Called by the probe thread.
     fn try_probe_up(&self, grace_secs: u64) {
         let notify = {
             let mut state = self.state.lock().unwrap();
@@ -118,6 +111,10 @@ impl Semaphore {
             self.condvar.notify_one();
         }
     }
+
+    fn current_capacity(&self) -> usize {
+        self.state.lock().unwrap().capacity
+    }
 }
 
 struct SemaphoreGuard {
@@ -131,21 +128,6 @@ impl Drop for SemaphoreGuard {
         state.available = (state.available + 1).min(state.capacity);
         self.sem.condvar.notify_one();
     }
-}
-
-// ---------------------------------------------------------------------------
-// Work queue — pending scenarios with retry counts.
-//
-// `remaining` counts scenarios not yet permanently settled (success,
-// non-exhaustion failure, or exhaustion after MAX_RETRIES). Workers block
-// on the Condvar when the deque is empty but remaining > 0 (there are
-// in-flight scenarios that may be pushed back for retry).
-// ---------------------------------------------------------------------------
-
-struct WorkQueue {
-    deque: VecDeque<(String, fs_test_harness::Scenario, u8)>,
-    /// Unsettled scenario count. Reaches 0 when the run is complete.
-    remaining: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +152,7 @@ struct RunManifest {
 }
 
 fn main() {
-    let args = Arguments::from_args();
+    let mut args = Arguments::from_args();
 
     // Resolve consumer root + harness.toml.
     let consumer_root = std::env::var("HARNESS_CONSUMER_ROOT")
@@ -187,9 +169,13 @@ fn main() {
     let project_name = harness.config.project.name.clone();
 
     // Determine parallelism. Clamp to 1..=24 (26 drive letters minus A, B).
-    let runner = &harness.config.runner;
-    let permits = resolve_max_parallel(&runner.max_parallel, &harness.config.vm).clamp(1, 24);
+    let permits =
+        resolve_max_parallel(&harness.config.runner.max_parallel, &harness.config.vm).clamp(1, 24);
     eprintln!("runner: max_parallel={permits}");
+
+    // Tell libtest-mimic's thread pool to match our semaphore capacity.
+    args.test_threads = Some(permits);
+
     let semaphore = Semaphore::new(permits);
 
     // Probe-up thread: recover from over-aggressive backoff after 300 s of quiet.
@@ -222,7 +208,6 @@ fn main() {
         .partition(|(_, scn)| !scn.recipe.is_empty());
 
     let n_runnable = runnable.len();
-    let n_ignored = ignored.len();
 
     // --list: use libtest-mimic's formatting then exit.
     if args.list {
@@ -241,162 +226,138 @@ fn main() {
     let _ = std::fs::remove_dir_all(matrix_diag_root(&consumer_root));
     let _ = write_run_manifest(&consumer_root, &project_name, total, n_runnable);
 
-    // ---------------------------------------------------------------------------
-    // Custom retry-aware executor.
-    //
-    // Each worker pops from a shared VecDeque. If a scenario fails with
-    // "resource exhaustion" and has retries left, it is pushed to the *back*
-    // of the queue so other scenarios can run first.  The semaphore guard is
-    // dropped before re-queuing so the slot is available to other workers.
-    // ---------------------------------------------------------------------------
-
-    println!("\nrunning {n_runnable} tests");
-
-    let work = Arc::new((
-        Mutex::new(WorkQueue {
-            deque: runnable
-                .into_iter()
-                .map(|(n, s)| (n, s, 0u8))
-                .collect::<VecDeque<_>>(),
-            remaining: n_runnable,
-        }),
-        Condvar::new(),
-    ));
-
-    let all_results: Arc<Mutex<Vec<ScenarioResult>>> = Arc::new(Mutex::new(Vec::new()));
-    let any_failed = Arc::new(AtomicBool::new(false));
-    let run_start = std::time::Instant::now();
+    // Store scenarios in Arc so Trial closures can reference them across passes.
+    let all_scenarios: Arc<HashMap<String, Arc<fs_test_harness::Scenario>>> = Arc::new(
+        runnable
+            .into_iter()
+            .map(|(n, s)| (n, Arc::new(s)))
+            .collect(),
+    );
+    let ignored_names: Vec<String> = ignored.into_iter().map(|(n, _)| n).collect();
 
     let config_arc = Arc::new(harness.config.clone());
     let cr_arc = Arc::new(consumer_root.clone());
 
-    // Worker count equals initial permits; extra threads would only block on
-    // the semaphore and provide no throughput benefit.
-    let mut handles = Vec::new();
-    for _ in 0..permits {
-        let work = Arc::clone(&work);
-        let sem = Arc::clone(&semaphore);
-        let cfg = Arc::clone(&config_arc);
-        let cr = Arc::clone(&cr_arc);
-        let results = Arc::clone(&all_results);
-        let failed_flag = Arc::clone(&any_failed);
+    const MAX_RETRIES: u8 = 5;
+    let any_genuine_failure = Arc::new(AtomicBool::new(false));
 
-        handles.push(std::thread::spawn(move || {
-            // A scenario may be re-queued this many times before permanently failing.
-            const MAX_RETRIES: u8 = 5;
-            let (queue_mu, condvar) = &*work;
+    // First pass runs all runnable scenarios; retry passes run only the
+    // exhausted subset.
+    let mut pending_names: Vec<String> = {
+        let mut names: Vec<String> = all_scenarios.keys().cloned().collect();
+        names.sort();
+        names
+    };
 
-            loop {
-                // Pop next scenario, or wait if in-flight scenarios may re-queue.
-                let (name, scn, attempts) = {
-                    let mut wq = queue_mu.lock().unwrap();
-                    loop {
-                        if wq.remaining == 0 {
-                            return; // all scenarios settled
-                        }
-                        if let Some(item) = wq.deque.pop_front() {
-                            break item;
-                        }
-                        // Queue empty but remaining > 0: an in-flight scenario
-                        // might push something back. Wait for notification.
-                        wq = condvar.wait(wq).unwrap();
-                    }
-                };
-
-                let step_start = std::time::Instant::now();
-                let diag = matrix_diag_root(&cr).join(&name);
-                let _ = std::fs::create_dir_all(&diag);
-
-                // Acquire a semaphore slot before touching the VM.
-                let _guard = sem.acquire();
-
-                let outcome = fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag);
-                let elapsed = step_start.elapsed().as_secs_f64();
-
-                // Resource exhaustion: re-queue at back; reduce concurrency.
-                if step_diag_contains(&diag, "resource exhaustion") && attempts < MAX_RETRIES {
-                    sem.reduce_capacity();
-                    eprintln!(
-                        "runner: {name} — resource exhaustion \
-                         (attempt {}/{}), re-queuing at back of queue",
-                        attempts + 1,
-                        MAX_RETRIES
-                    );
-                    drop(_guard); // release slot before re-queuing
-                    let mut wq = queue_mu.lock().unwrap();
-                    wq.deque.push_back((name, scn, attempts + 1));
-                    condvar.notify_one();
-                    continue;
-                }
-
-                // Permanently settled — record result.
-                let (status, error) = outcome_status(&outcome);
-                let passed = status == "passed";
-                println!("test {name} ... {}", if passed { "ok" } else { "FAILED" });
-                if !passed {
-                    failed_flag.store(true, Ordering::Relaxed);
-                }
-
-                let result = ScenarioResult {
-                    name: name.clone(),
-                    status: status.to_string(),
-                    error: error.clone(),
-                    diag_dir: diag.display().to_string(),
-                    duration_secs: elapsed,
-                };
-                let _ = std::fs::write(
-                    diag.join("result.json"),
-                    serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".into()),
-                );
-                if let Ok(r) = &outcome {
-                    let _ = std::fs::write(
-                        diag.join("recipe.json"),
-                        serde_json::to_string_pretty(r).unwrap_or_default(),
-                    );
-                }
-                results.lock().unwrap().push(result);
-
-                // Decrement remaining; wake other workers if run is now complete.
-                let mut wq = queue_mu.lock().unwrap();
-                wq.remaining -= 1;
-                if wq.remaining == 0 {
-                    condvar.notify_all();
-                }
-            }
-        }));
-    }
-
-    for h in handles {
-        h.join().expect("worker thread panicked");
-    }
-
-    let total_elapsed = run_start.elapsed().as_secs_f64();
-    let _ = aggregate_results(&consumer_root);
-
-    // Print libtest-style summary.
-    let results = all_results.lock().unwrap();
-    let n_passed = results.iter().filter(|r| r.status == "passed").count();
-    let n_failed = results.iter().filter(|r| r.status != "passed").count();
-
-    if any_failed.load(Ordering::Relaxed) {
-        println!("\nfailures:\n");
-        for r in results.iter().filter(|r| r.status != "passed") {
-            println!(
-                "---- {} ----\n{}\n",
-                r.name,
-                r.error.as_deref().unwrap_or("(no error message)")
+    for attempt in 0u8..MAX_RETRIES {
+        if attempt > 0 {
+            // Reduce capacity before the retry pass.
+            semaphore.reduce_capacity();
+            let cap = semaphore.current_capacity();
+            args.test_threads = Some(cap);
+            eprintln!(
+                "runner: {} scenario(s) retrying \
+                 (attempt {}/{MAX_RETRIES}, max_parallel={cap})",
+                pending_names.len(),
+                attempt + 1
             );
         }
-        println!(
-            "test result: FAILED. {n_passed} passed; {n_failed} failed; \
-             {n_ignored} ignored; finished in {total_elapsed:.2}s\n"
-        );
+
+        // Tracks which scenarios in this pass hit resource exhaustion.
+        let exhausted: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
+
+        let mut trials: Vec<Trial> = pending_names
+            .iter()
+            .map(|name| {
+                let name = name.clone();
+                let scn = Arc::clone(all_scenarios.get(&name).unwrap());
+                let cfg = Arc::clone(&config_arc);
+                let cr = Arc::clone(&cr_arc);
+                let sem = Arc::clone(&semaphore);
+                let exh = Arc::clone(&exhausted);
+                let fail_flag = Arc::clone(&any_genuine_failure);
+
+                Trial::test(name.clone(), move || {
+                    let step_start = std::time::Instant::now();
+                    let diag = matrix_diag_root(&cr).join(&name);
+                    let _ = std::fs::create_dir_all(&diag);
+
+                    let _guard = sem.acquire();
+                    let outcome = fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag);
+                    let elapsed = step_start.elapsed().as_secs_f64();
+
+                    // Resource exhaustion: mark for retry, don't record a result yet.
+                    if step_diag_contains(&diag, "resource exhaustion") {
+                        exh.lock().unwrap().insert(name.clone());
+                        return Err(Failed::without_message());
+                    }
+
+                    // Permanently settled — record result.
+                    let (status, error) = outcome_status(&outcome);
+                    let result = ScenarioResult {
+                        name: name.clone(),
+                        status: status.to_string(),
+                        error: error.clone(),
+                        diag_dir: diag.display().to_string(),
+                        duration_secs: elapsed,
+                    };
+                    let _ = std::fs::write(
+                        diag.join("result.json"),
+                        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".into()),
+                    );
+                    if let Ok(r) = &outcome {
+                        let _ = std::fs::write(
+                            diag.join("recipe.json"),
+                            serde_json::to_string_pretty(r).unwrap_or_default(),
+                        );
+                    }
+
+                    if status != "passed" {
+                        fail_flag.store(true, Ordering::Relaxed);
+                        return Err(Failed::from(error.unwrap_or_else(|| "failed".into())));
+                    }
+                    Ok(())
+                })
+            })
+            .collect();
+
+        // Include ignored trials on the first pass for the correct summary count.
+        if attempt == 0 {
+            for name in &ignored_names {
+                trials.push(Trial::test(name, || Ok(())).with_ignored_flag(true));
+            }
+        }
+
+        // Run — we own the Conclusion but don't exit on it; our fail_flag tracks
+        // genuine failures independently of exhaustion retries.
+        let _ = libtest_mimic::run(&args, trials);
+
+        let retry_names: Vec<String> = {
+            let mut names: Vec<String> = exhausted.lock().unwrap().iter().cloned().collect();
+            names.sort();
+            names
+        };
+
+        if retry_names.is_empty() {
+            break; // No exhaustion this pass — done.
+        }
+
+        if attempt + 1 >= MAX_RETRIES {
+            eprintln!(
+                "runner: {} scenario(s) still resource-exhausted after {MAX_RETRIES} attempts",
+                retry_names.len()
+            );
+            any_genuine_failure.store(true, Ordering::Relaxed);
+            break;
+        }
+
+        pending_names = retry_names;
+    }
+
+    let _ = aggregate_results(&consumer_root);
+
+    if any_genuine_failure.load(Ordering::Relaxed) {
         std::process::exit(101);
-    } else {
-        println!(
-            "\ntest result: ok. {n_passed} passed; 0 failed; \
-             {n_ignored} ignored; finished in {total_elapsed:.2}s\n"
-        );
     }
 }
 
