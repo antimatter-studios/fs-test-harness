@@ -9,6 +9,24 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [3.7.0] — 2026-05-25
 
+### Added
+
+- **Retry-aware work queue with adaptive concurrency.** Scenarios that
+  fail with "resource exhaustion" (VM drive-letter lock timeout) are
+  pushed to the *back* of a shared `VecDeque`, so smaller tests run
+  first instead of queuing behind a stuck large one. Concurrency is
+  reduced by one on each exhaustion event (floor = `max(1, in_use)`);
+  a probe thread restores one slot every 300 s of quiet so the runner
+  doesn't stay clamped at 1 forever. `MAX_RETRIES = 5` before a
+  scenario is permanently failed.
+
+- **File-based drive-letter mutex on the VM** (`$env:TEMP\vhd-mount.lock`).
+  `Acquire-DriveLock` in `_lib.ps1` uses `FileMode.CreateNew` (atomic on
+  NTFS) to serialise the snapshot→mount→confirm window across concurrent
+  SSH sessions. Retries 6 × 30 s (3 min total); clears stale locks older
+  than 60 s. Lock file records holder + PID for diagnostics. Throws
+  "resource exhaustion" on timeout — caught by the Rust retry queue.
+
 ### Changed
 
 - **`serialize_mounts` removed; `max_parallel` default is now `1`
