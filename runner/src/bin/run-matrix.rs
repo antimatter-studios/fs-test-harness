@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
 // ---------------------------------------------------------------------------
@@ -153,6 +154,15 @@ fn main() {
     let _ = std::fs::remove_dir_all(matrix_diag_root(&consumer_root));
     let _ = write_run_manifest(&consumer_root, &project_name, total, n_runnable);
 
+    // Banner — print before any scenario work so the log has a clear start marker.
+    eprintln!("================================================================");
+    eprintln!(
+        "{project_name} — test matrix  |  {}  |  {} scenarios  |  parallel {permits}",
+        now_human_readable(),
+        n_runnable
+    );
+    eprintln!("================================================================");
+
     // Store scenarios in Arc so Trial closures can reference them across passes.
     let all_scenarios: Arc<HashMap<String, Arc<fs_test_harness::Scenario>>> = Arc::new(
         runnable
@@ -190,6 +200,38 @@ fn main() {
         // Tracks which scenarios failed this pass and need another attempt.
         let failed_this_pass: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
 
+        // Progress counter — incremented by each Trial on completion.
+        let completed: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        let pass_total = pending_names.len();
+        let pass_label = if attempt == 0 {
+            format!("pass 1/{MAX_RETRIES}")
+        } else {
+            format!("retry {}/{MAX_RETRIES}", attempt + 1)
+        };
+
+        // Heartbeat thread: guaranteed progress output even if libtest-mimic
+        // buffers Trial stderr. Prints every 30 s until the pass completes.
+        {
+            let completed_hb = Arc::clone(&completed);
+            let label = pass_label.clone();
+            let pass_start = std::time::Instant::now();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                let done = completed_hb.load(Ordering::Relaxed);
+                if done >= pass_total {
+                    break;
+                }
+                eprintln!(
+                    "[{}] {} — {}/{} done  ({})",
+                    now_hms(),
+                    label,
+                    done,
+                    pass_total,
+                    fmt_elapsed(pass_start.elapsed().as_secs()),
+                );
+            });
+        }
+
         let mut trials: Vec<Trial> = pending_names
             .iter()
             .map(|name| {
@@ -199,15 +241,22 @@ fn main() {
                 let cr = Arc::clone(&cr_arc);
                 let sem = Arc::clone(&semaphore);
                 let retry_set = Arc::clone(&failed_this_pass);
+                let done_ctr = Arc::clone(&completed);
 
                 Trial::test(name.clone(), move || {
-                    let step_start = std::time::Instant::now();
+                    let wait_start = std::time::Instant::now();
                     let diag = matrix_diag_root(&cr).join(&name);
                     let _ = std::fs::create_dir_all(&diag);
 
                     let _guard = sem.acquire();
+                    let exec_start = std::time::Instant::now();
+                    eprintln!("[{}] start  {name}", now_hms());
+
                     let outcome = fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag);
-                    let elapsed = step_start.elapsed().as_secs_f64();
+                    let exec_secs = exec_start.elapsed().as_secs();
+                    let total_secs = wait_start.elapsed().as_secs_f64();
+
+                    done_ctr.fetch_add(1, Ordering::Relaxed);
 
                     let (status, error) = outcome_status(&outcome, &diag);
                     let result = ScenarioResult {
@@ -215,7 +264,7 @@ fn main() {
                         status: status.to_string(),
                         error: error.clone(),
                         diag_dir: diag.display().to_string(),
-                        duration_secs: elapsed,
+                        duration_secs: total_secs,
                     };
                     let _ = std::fs::write(
                         diag.join("result.json"),
@@ -229,9 +278,19 @@ fn main() {
                     }
 
                     if status != "passed" {
+                        eprintln!(
+                            "[{}] FAIL   {name}  ({})",
+                            now_hms(),
+                            fmt_elapsed(exec_secs)
+                        );
                         retry_set.lock().unwrap().insert(name.clone());
                         return Err(Failed::from(error.unwrap_or_else(|| "failed".into())));
                     }
+                    eprintln!(
+                        "[{}] pass   {name}  ({})",
+                        now_hms(),
+                        fmt_elapsed(exec_secs)
+                    );
                     Ok(())
                 })
             })
@@ -471,4 +530,39 @@ fn now_iso8601() -> String {
         .map(|d| d.as_secs())
         .unwrap_or(0);
     format!("{secs}")
+}
+
+/// `HH:MM:SS` (UTC) — used in per-scenario progress lines.
+fn now_hms() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!(
+        "{:02}:{:02}:{:02}Z",
+        (secs / 3600) % 24,
+        (secs / 60) % 60,
+        secs % 60
+    )
+}
+
+/// Human-readable date+time for the banner (calls `date -u`; falls back to epoch secs).
+fn now_human_readable() -> String {
+    Command::new("date")
+        .args(["-u", "+%Y-%m-%d %H:%M:%S UTC"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(now_iso8601)
+}
+
+/// Format a duration in seconds as `Xm Ys` or `Xs`.
+fn fmt_elapsed(secs: u64) -> String {
+    if secs < 60 {
+        format!("{secs}s")
+    } else {
+        format!("{}m {}s", secs / 60, secs % 60)
+    }
 }
