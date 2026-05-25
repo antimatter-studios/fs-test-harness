@@ -29,6 +29,8 @@ pub struct HarnessConfig {
     pub ops: BTreeMap<String, OpDef>,
     #[serde(default)]
     pub post_verify: Option<PostVerifySection>,
+    #[serde(default)]
+    pub runner: RunnerConfig,
 }
 
 /// One declared op. Accepts either a bare command-string (shorthand)
@@ -210,4 +212,43 @@ pub struct PostVerifySection {
     /// Expected exit code. Default 0.
     #[serde(default)]
     pub expect_exit: Option<i32>,
+}
+
+/// `[runner]` section — controls scenario-level parallelism.
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct RunnerConfig {
+    /// Serialise all scenarios behind a single global lock.
+    /// Set `true` for user-mode filesystem drivers that cannot host
+    /// multiple mounts simultaneously (e.g. WinFsp-backed drivers
+    /// where the WinFsp host process is a per-instance singleton).
+    /// Default `false` — scenarios run in parallel up to `max_parallel`.
+    #[serde(default)]
+    pub serialize_mounts: bool,
+    /// Maximum concurrently running scenarios when `serialize_mounts = false`.
+    /// `"drive-letters"` (default): query the Windows VM for the count of
+    /// unallocated drive letters at startup and use that as the limit —
+    /// natural bound for VHD-based mounts where each scenario holds one
+    /// letter. An integer sets an explicit cap. Ignored when
+    /// `serialize_mounts = true`.
+    #[serde(default)]
+    pub max_parallel: MaxParallel,
+}
+
+/// Parallelism limit for concurrent scenario execution.
+///
+/// TOML: `max_parallel = "drive-letters"` or `max_parallel = 8`.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum MaxParallel {
+    /// Explicit upper bound (integer in TOML).
+    Explicit(usize),
+    /// Named mode (string in TOML). Only `"drive-letters"` is recognised;
+    /// queries the Windows VM for available drive-letter count at startup.
+    Named(String),
+}
+
+impl Default for MaxParallel {
+    fn default() -> Self {
+        MaxParallel::Named("drive-letters".to_string())
+    }
 }

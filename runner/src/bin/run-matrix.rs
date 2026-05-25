@@ -9,18 +9,59 @@
 //! — host-side steps spawn locally, vm-side steps go via SSH. Runnable
 //! anywhere with `ssh` in `$PATH`.
 
-use fs_test_harness::Harness;
+use fs_test_harness::{Harness, MaxParallel, VmSection};
 use libtest_mimic::{Arguments, Failed, Trial};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{Arc, Condvar, Mutex};
 
-// Mount lifecycle is process-global on Windows (drive letter assignment,
-// WinFsp host singletons), so serialise scenarios within a single
-// `run-matrix` invocation. Concurrent invocations on different VMs are
-// independent.
-static MOUNT_LOCK: Mutex<()> = Mutex::new(());
+// ---------------------------------------------------------------------------
+// Counting semaphore — limits concurrent scenario execution.
+//
+// Uses only std primitives (Mutex + Condvar) so no extra dependencies are
+// needed. `serialize_mounts = true` creates a semaphore with 1 permit,
+// reproducing the old global-mutex behaviour exactly.
+// ---------------------------------------------------------------------------
+
+struct Semaphore {
+    available: Mutex<usize>,
+    condvar: Condvar,
+}
+
+impl Semaphore {
+    fn new(permits: usize) -> Arc<Self> {
+        Arc::new(Self {
+            available: Mutex::new(permits),
+            condvar: Condvar::new(),
+        })
+    }
+
+    fn acquire(self: &Arc<Self>) -> SemaphoreGuard {
+        let mut available = self.available.lock().unwrap();
+        while *available == 0 {
+            available = self.condvar.wait(available).unwrap();
+        }
+        *available -= 1;
+        SemaphoreGuard {
+            sem: Arc::clone(self),
+        }
+    }
+}
+
+struct SemaphoreGuard {
+    sem: Arc<Semaphore>,
+}
+
+impl Drop for SemaphoreGuard {
+    fn drop(&mut self) {
+        let mut available = self.sem.available.lock().unwrap();
+        *available += 1;
+        self.sem.condvar.notify_one();
+    }
+}
+
+// ---------------------------------------------------------------------------
 
 #[derive(Serialize, Deserialize, Clone)]
 struct ScenarioResult {
@@ -58,6 +99,19 @@ fn main() {
 
     let project_name = harness.config.project.name.clone();
 
+    // Determine parallelism from [runner] config.
+    let runner = &harness.config.runner;
+    let permits = if runner.serialize_mounts {
+        1
+    } else {
+        resolve_max_parallel(&runner.max_parallel, &harness.config.vm)
+    };
+    eprintln!(
+        "runner: max_parallel={permits} (serialize_mounts={})",
+        runner.serialize_mounts
+    );
+    let semaphore = Semaphore::new(permits);
+
     let total = harness.matrix.scenarios.len();
     let mut runnable = 0usize;
 
@@ -76,7 +130,10 @@ fn main() {
             let scn = scn.clone();
             let cfg = config_for_dispatch.clone();
             let cr_disp = consumer_root_for_dispatch.clone();
-            let trial = Trial::test(name, move || run_scenario(&body_name, &scn, &cfg, &cr_disp));
+            let sem = Arc::clone(&semaphore);
+            let trial = Trial::test(name, move || {
+                run_scenario(&body_name, &scn, &cfg, &cr_disp, &sem)
+            });
             // Empty-recipe scenarios (planning placeholders) are
             // ignored rather than failing the run.
             if !is_runnable {
@@ -113,16 +170,18 @@ fn run_scenario(
     scn: &fs_test_harness::Scenario,
     config: &fs_test_harness::HarnessConfig,
     consumer_root: &Path,
+    semaphore: &Arc<Semaphore>,
 ) -> Result<(), Failed> {
     let started = std::time::Instant::now();
     let diag = matrix_diag_root(consumer_root).join(name);
     std::fs::create_dir_all(&diag).map_err(|e| Failed::from(format!("mkdir diag: {e}")))?;
 
-    // Hold the global mount lock — vm-steps in a recipe can include a
-    // long-running mount lifecycle, and Windows drive-letter assignment
-    // is process-global on the VM. Cheaper to serialise here than to
-    // track per-recipe.
-    let _guard = MOUNT_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+    // Acquire a slot from the semaphore before touching the VM.
+    // With serialize_mounts=true the semaphore has 1 permit (old mutex
+    // behaviour). With serialize_mounts=false it holds max_parallel
+    // permits so that many scenarios run concurrently without overwhelming
+    // the Windows VM's available drive letters.
+    let _guard = semaphore.acquire();
 
     let outcome = fs_test_harness::run_recipe(name, scn, config, consumer_root, &diag);
     let elapsed = started.elapsed().as_secs_f64();
@@ -174,6 +233,87 @@ fn run_scenario(
             "recipe failed (diag at {})",
             diag.display()
         ))),
+    }
+}
+
+/// Resolve `max_parallel` to a concrete permit count.
+fn resolve_max_parallel(mp: &MaxParallel, vm: &VmSection) -> usize {
+    match mp {
+        MaxParallel::Explicit(n) => *n,
+        MaxParallel::Named(name) if name == "drive-letters" => {
+            query_available_drive_letters(vm)
+        }
+        MaxParallel::Named(other) => {
+            eprintln!("runner: unknown max_parallel value '{other}', defaulting to 4");
+            4
+        }
+    }
+}
+
+/// SSH to the Windows VM and count unallocated drive letters.
+///
+/// Each concurrently running scenario that calls a win-* op holds one
+/// Windows drive letter for the duration of the VHD mount. Counting
+/// unused letters at startup gives the natural parallelism upper bound.
+///
+/// Falls back to 4 if the VM is unreachable or the query fails.
+fn query_available_drive_letters(vm: &VmSection) -> usize {
+    let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
+    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
+    let cfg_host = vm.host.as_deref().filter(|s| !s.is_empty());
+    let cfg_key = vm.ssh_key.as_deref().filter(|s| !s.is_empty());
+
+    let host = match env_host.or_else(|| cfg_host.map(String::from)) {
+        Some(h) => h,
+        None => {
+            eprintln!("runner: no VM configured — defaulting max_parallel to 4");
+            return 4;
+        }
+    };
+    let key = env_key.or_else(|| cfg_key.map(String::from));
+
+    // Count file-system drive letters currently in use; subtract from 26
+    // to get those available for new VHD mounts.
+    let ps_cmd =
+        "powershell -NoProfile -NonInteractive -Command \
+        (26 - (Get-PSDrive -PSProvider FileSystem | Measure-Object).Count)";
+
+    let mut cmd = Command::new("ssh");
+    cmd.args([
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "-o",
+        "ServerAliveInterval=10",
+        "-o",
+        "ServerAliveCountMax=2",
+    ]);
+    if let Some(k) = &key {
+        cmd.args(["-i", k.as_str(), "-o", "IdentitiesOnly=yes"]);
+    }
+    cmd.arg(&host).arg(ps_cmd);
+
+    match cmd.output() {
+        Ok(out) if out.status.success() => {
+            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            match s.parse::<usize>() {
+                Ok(n) if n > 0 => {
+                    eprintln!("runner: {n} drive letters available on VM — using as max_parallel");
+                    n
+                }
+                _ => {
+                    eprintln!(
+                        "runner: unexpected drive-letter count '{s}' — defaulting max_parallel to 4"
+                    );
+                    4
+                }
+            }
+        }
+        _ => {
+            eprintln!("runner: could not query VM drive letters — defaulting max_parallel to 4");
+            4
+        }
     }
 }
 

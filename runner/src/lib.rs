@@ -22,7 +22,7 @@ mod substitution;
 #[cfg(test)]
 mod tests;
 
-pub use config::{HarnessConfig, OpDef, OpHost};
+pub use config::{HarnessConfig, MaxParallel, OpDef, OpHost, RunnerConfig, VmSection};
 pub use dispatch::{run_recipe, RecipeResult, StepResult};
 pub use matrix::{Matrix, PostVerifySpec, Scenario, Step};
 pub use report::{RunReport, ScenarioResult};
