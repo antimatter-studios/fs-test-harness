@@ -340,6 +340,17 @@ fn run_builtin_ship(
         .filter(|s| !s.is_empty())
         .map(String::from);
 
+    // For ship-to-host, ensure the local destination directory exists
+    // so scp doesn't fail when {image_dir}/{run_id}/ hasn't been created
+    // yet (e.g. win-format scenarios that skip init-image on the host).
+    if op_name == "ship-to-host" {
+        if let Some(parent) = std::path::Path::new(&dest).parent() {
+            if !parent.as_os_str().is_empty() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+        }
+    }
+
     let started = Instant::now();
     let mut cmd = Command::new("scp");
     cmd.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]);
