@@ -225,7 +225,7 @@ fn main() {
                     break;
                 }
                 eprintln!(
-                    "[{}][+{}] {} — {}/{} done",
+                    "[{}][+{:>7}] {} — {}/{} done",
                     now_clock(),
                     fmt_elapsed(rs.elapsed().as_secs()),
                     label,
@@ -354,7 +354,7 @@ fn main() {
         // Accounting before retry.
         eprintln!("----------------------------------------------------------------");
         eprintln!(
-            "[{}][+{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
+            "[{}][+{:>7}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
             now_clock(),
             fmt_elapsed(run_start.elapsed().as_secs()),
             attempt + 1,
@@ -376,7 +376,7 @@ fn main() {
         }
 
         eprintln!(
-            "[{}][+{}] retrying {} scenario(s)…",
+            "[{}][+{:>7}] retrying {} scenario(s)…",
             now_clock(),
             fmt_elapsed(run_start.elapsed().as_secs()),
             retry_names.len(),
