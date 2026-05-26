@@ -225,7 +225,8 @@ fn main() {
                     break;
                 }
                 eprintln!(
-                    "[T+{}] {} — {}/{} done",
+                    "[{}][+{}] {} — {}/{} done",
+                    now_clock(),
                     fmt_elapsed(rs.elapsed().as_secs()),
                     label,
                     done,
@@ -254,7 +255,8 @@ fn main() {
                     let _guard = sem.acquire();
                     let exec_start = std::time::Instant::now();
                     eprintln!(
-                        "\n[T+{:>7}] >>> {name}",
+                        "\n[{}][+{:>7}] >>> {name}",
+                        now_clock(),
                         fmt_elapsed(rs.elapsed().as_secs())
                     );
 
@@ -273,7 +275,8 @@ fn main() {
                             let mark = if passed { "ok  " } else { "FAIL" };
                             let detail = step_detail(step_result);
                             eprintln!(
-                                "[T+{:>7}]   {:02} {:<20} {}  {}{}",
+                                "[{}][+{:>7}]   {:02} {:<20} {}  {}{}",
+                                now_clock(),
                                 fmt_elapsed(rs.elapsed().as_secs()),
                                 step_result.index,
                                 step_result.op,
@@ -310,7 +313,8 @@ fn main() {
 
                     if status != "passed" {
                         eprintln!(
-                            "[T+{:>7}] FAIL {name}  (total {})\n",
+                            "[{}][+{:>7}] FAIL {name}  (total {})\n",
+                            now_clock(),
                             fmt_elapsed(rs.elapsed().as_secs()),
                             fmt_elapsed(exec_secs),
                         );
@@ -318,7 +322,8 @@ fn main() {
                         return Err(Failed::from(error.unwrap_or_else(|| "failed".into())));
                     }
                     eprintln!(
-                        "[T+{:>7}] pass {name}  (total {})\n",
+                        "[{}][+{:>7}] pass {name}  (total {})\n",
+                        now_clock(),
                         fmt_elapsed(rs.elapsed().as_secs()),
                         fmt_elapsed(exec_secs),
                     );
@@ -349,7 +354,8 @@ fn main() {
         // Accounting before retry.
         eprintln!("----------------------------------------------------------------");
         eprintln!(
-            "[T+{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
+            "[{}][+{}] pass {}/{MAX_RETRIES} done: {} passed, {} failed",
+            now_clock(),
             fmt_elapsed(run_start.elapsed().as_secs()),
             attempt + 1,
             pass_total - retry_names.len(),
@@ -370,7 +376,8 @@ fn main() {
         }
 
         eprintln!(
-            "[T+{}] retrying {} scenario(s)…",
+            "[{}][+{}] retrying {} scenario(s)…",
+            now_clock(),
             fmt_elapsed(run_start.elapsed().as_secs()),
             retry_names.len(),
         );
@@ -621,4 +628,17 @@ fn fmt_elapsed(secs: u64) -> String {
     } else {
         format!("{}m {}s", secs / 60, secs % 60)
     }
+}
+
+/// Current wall-clock time as `HH:MM:SS` (UTC).
+fn now_clock() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let h = (secs / 3600) % 24;
+    let m = (secs / 60) % 60;
+    let s = secs % 60;
+    format!("{h:02}:{m:02}:{s:02}")
 }
