@@ -12,6 +12,7 @@
 //!
 //! Both deserialise to the same `OpDef` struct.
 
+use crate::local_config::LocalConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -31,6 +32,23 @@ pub struct HarnessConfig {
     pub post_verify: Option<PostVerifySection>,
     #[serde(default)]
     pub runner: RunnerConfig,
+    /// Named scenario groups — `[groups]` in harness.toml.
+    ///
+    /// A group is an ordered list of exact scenario names. When the
+    /// filter string passed to `run-matrix` matches no scenario by
+    /// substring, the runner checks this map: if the filter equals a
+    /// group key, only the listed scenarios are run (in parallel, using
+    /// the normal semaphore). Useful for defining curated subsets such
+    /// as a fast smoke set without renaming or tagging individual
+    /// scenarios.
+    ///
+    /// Example:
+    /// ```toml
+    /// [groups]
+    /// smoke = ["mac-format-basic-256mib", "mac-format-tiny-32mib"]
+    /// ```
+    #[serde(default)]
+    pub groups: BTreeMap<String, Vec<String>>,
 }
 
 /// One declared op. Accepts either a bare command-string (shorthand)
@@ -194,6 +212,25 @@ pub struct VmSection {
     pub scripts_dir: Option<String>,
 }
 
+impl VmSection {
+    /// Expand `${VAR}` / `${VAR:-default}` references in all string fields
+    /// using values from `.test-env` via `LocalConfig`.
+    pub fn apply(&mut self, lc: &LocalConfig) {
+        let expand = |opt: &Option<String>| -> Option<String> {
+            opt.as_deref()
+                .map(|s| lc.expand(s))
+                .filter(|s| !s.is_empty())
+        };
+        self.host = expand(&self.host);
+        self.ssh_key = expand(&self.ssh_key);
+        self.workdir = expand(&self.workdir);
+        self.image_dir = expand(&self.image_dir);
+        self.rust_toolchain = expand(&self.rust_toolchain);
+        self.env_prefix = expand(&self.env_prefix);
+        self.scripts_dir = expand(&self.scripts_dir);
+    }
+}
+
 /// A `[vm.packages]` entry. Either a bare PkgId string or a table
 /// with `id` + optional `custom_args`. Serde's `untagged` enum
 /// resolution matches by structure.
@@ -231,9 +268,6 @@ pub struct RunnerConfig {
     /// `"drive-letters"`: query the Windows VM for available drive-letter
     /// count at startup and use that as the limit.
     /// Integer `N`: explicit cap (clamped to `1..=24`).
-    ///
-    /// To serialise all mounts (old `serialize_mounts = true` behaviour),
-    /// set `max_parallel = 1`.
     #[serde(default)]
     pub max_parallel: MaxParallel,
 }

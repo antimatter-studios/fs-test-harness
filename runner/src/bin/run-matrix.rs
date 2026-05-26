@@ -118,19 +118,61 @@ fn main() {
     let total = harness.matrix.scenarios.len();
 
     // Partition into runnable / ignored, applying the --filter arg.
+    //
+    // Filter resolution order:
+    //   1. Empty filter → all scenarios.
+    //   2. Non-empty filter that matches at least one scenario name
+    //      (exact or substring) → normal filter behaviour.
+    //   3. Non-empty filter that matches NO scenario → check
+    //      `harness.toml [groups]` for a matching group key and expand
+    //      to that group's explicit scenario list. Emits a diagnostic
+    //      so the caller can see which path was taken.
     let filter = args.filter.as_deref().unwrap_or("");
     let filter_exact = args.exact;
+
+    let apply_filter = |name: &str| -> bool {
+        if filter.is_empty() {
+            true
+        } else if filter_exact {
+            name == filter
+        } else {
+            name.contains(filter)
+        }
+    };
+
+    // Check whether any scenario matches the filter before consuming
+    // the map. If none match and a group with that name exists, use it.
+    let group_set: Option<HashSet<String>> =
+        if !filter.is_empty() && !harness.matrix.scenarios.keys().any(|n| apply_filter(n)) {
+            if let Some(names) = harness.config.groups.get(filter) {
+                eprintln!(
+                    "runner: filter '{filter}' matched no scenarios — \
+                 expanding group '{}' ({} scenario{})",
+                    filter,
+                    names.len(),
+                    if names.len() == 1 { "" } else { "s" },
+                );
+                Some(names.iter().cloned().collect())
+            } else {
+                eprintln!(
+                    "runner: warning: filter '{filter}' matched no scenarios \
+                 and is not a defined group in harness.toml [groups]"
+                );
+                None
+            }
+        } else {
+            None
+        };
+
     let (runnable, ignored): (Vec<_>, Vec<_>) = harness
         .matrix
         .scenarios
         .into_iter()
         .filter(|(name, _)| {
-            if filter.is_empty() {
-                true
-            } else if filter_exact {
-                name == filter
+            if let Some(ref gs) = group_set {
+                gs.contains(name)
             } else {
-                name.contains(filter)
+                apply_filter(name)
             }
         })
         .partition(|(_, scn)| !scn.recipe.is_empty());
@@ -177,7 +219,9 @@ fn main() {
     let ignored_names: Vec<String> = ignored.into_iter().map(|(n, _)| n).collect();
 
     let config_arc = Arc::new(harness.config.clone());
+    let local_config_arc = Arc::new(harness.local_config.clone());
     let cr_arc = Arc::new(consumer_root.clone());
+    let run_id = harness.run_id;
 
     // Any scenario that fails a pass is retried up to MAX_RETRIES times total.
     // A scenario that passes on any attempt counts as passed. Only scenarios
@@ -241,6 +285,7 @@ fn main() {
                 let name = name.clone();
                 let scn = Arc::clone(all_scenarios.get(&name).unwrap());
                 let cfg = Arc::clone(&config_arc);
+                let lc = Arc::clone(&local_config_arc);
                 let cr = Arc::clone(&cr_arc);
                 let sem = Arc::clone(&semaphore);
                 let retry_set = Arc::clone(&failed_this_pass);
@@ -263,8 +308,15 @@ fn main() {
                     let step_start_ref =
                         std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
                     let name_cb = name.clone();
-                    let outcome =
-                        fs_test_harness::run_recipe(&name, &scn, &cfg, &cr, &diag, |step_result| {
+                    let outcome = fs_test_harness::run_recipe(
+                        &name,
+                        &scn,
+                        &cfg,
+                        &lc,
+                        &cr,
+                        &diag,
+                        run_id,
+                        |step_result| {
                             let step_secs = {
                                 let t = step_start_ref.lock().unwrap();
                                 t.elapsed().as_secs()
@@ -286,7 +338,8 @@ fn main() {
                             );
                             *step_start_ref.lock().unwrap() = std::time::Instant::now();
                             let _ = &name_cb;
-                        });
+                        },
+                    );
                     let exec_secs = exec_start.elapsed().as_secs();
                     let total_secs = wait_start.elapsed().as_secs_f64();
 
@@ -312,8 +365,9 @@ fn main() {
                     }
 
                     if status != "passed" {
+                        let reason = error.as_deref().unwrap_or("unknown error");
                         eprintln!(
-                            "[{}][+{}] FAIL {name}  (total {})\n",
+                            "[{}][+{}] FAIL {name}  (total {})  — {reason}\n",
                             now_clock(),
                             fmt_elapsed(rs.elapsed().as_secs()),
                             fmt_elapsed(exec_secs),
@@ -470,19 +524,18 @@ fn resolve_max_parallel(mp: &MaxParallel, vm: &VmSection) -> usize {
 
 /// SSH to the Windows VM and count unallocated drive letters.
 fn query_available_drive_letters(vm: &VmSection) -> usize {
-    let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
-    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
-    let cfg_host = vm.host.as_deref().filter(|s| !s.is_empty());
-    let cfg_key = vm.ssh_key.as_deref().filter(|s| !s.is_empty());
-
-    let host = match env_host.or_else(|| cfg_host.map(String::from)) {
-        Some(h) => h,
+    let host = match vm.host.as_deref().filter(|s| !s.is_empty()) {
+        Some(h) => h.to_string(),
         None => {
             eprintln!("runner: no VM configured — defaulting max_parallel to 1");
             return 1;
         }
     };
-    let key = env_key.or_else(|| cfg_key.map(String::from));
+    let key = vm
+        .ssh_key
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(String::from);
 
     let ps_cmd = "powershell -NoProfile -NonInteractive -Command \
         (26 - (Get-PSDrive -PSProvider FileSystem | Measure-Object).Count)";

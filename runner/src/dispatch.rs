@@ -14,6 +14,7 @@
 //! the resolved command, exit code, duration, and host.
 
 use crate::config::{HarnessConfig, OpHost};
+use crate::local_config::LocalConfig;
 use crate::matrix::{Scenario, Step};
 use crate::substitution::Substitution;
 use serde::Serialize;
@@ -54,12 +55,15 @@ pub struct RecipeResult {
 /// runner-internal errors (failed to compose substitution context,
 /// missing op declaration, IO failure on diag write) bubble up via
 /// `Err`.
+#[allow(clippy::too_many_arguments)]
 pub fn run_recipe(
     scenario_name: &str,
     scenario: &Scenario,
     config: &HarnessConfig,
+    local_config: &LocalConfig,
     consumer_root: &Path,
     diag_dir: &Path,
+    run_id: u128,
     on_step: impl Fn(&StepResult),
 ) -> Result<RecipeResult, String> {
     if scenario.recipe.is_empty() {
@@ -71,7 +75,7 @@ pub fn run_recipe(
 
     // Build the flat-vocabulary substitution map once. Per-step
     // substitution clones it cheaply (BTreeMap of <100 small strings).
-    let flat = build_flat_vocab(config, consumer_root)?;
+    let flat = build_flat_vocab(config, local_config, consumer_root, run_id)?;
 
     let mut step_results = Vec::with_capacity(scenario.recipe.len());
     let mut overall_passed = true;
@@ -247,20 +251,15 @@ fn run_vm(
     ssh_key: &Option<String>,
     step_dir: &Path,
 ) -> Result<Option<i32>, String> {
-    // VM_HOST env wins over harness.toml [vm].host; same for SSH_KEY.
-    // Lets the consumer's run-tests.sh source .test-env once and
-    // export per-machine values without mutating the committed
-    // harness.toml.
-    let env_host = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
-    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
-
-    let cfg_host = vm_host.as_deref().filter(|s| !s.is_empty());
-    let cfg_key = ssh_key.as_deref().filter(|s| !s.is_empty());
-
-    let host_owned = env_host
-        .or_else(|| cfg_host.map(String::from))
-        .ok_or_else(|| "vm-step requires VM_HOST env or harness.toml [vm].host".to_string())?;
-    let key_owned = env_key.or_else(|| cfg_key.map(String::from));
+    let host_owned = vm_host
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .ok_or_else(|| "vm-step requires harness.toml [vm].host".to_string())?;
+    let key_owned = ssh_key
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(String::from);
 
     let mut cmd = Command::new("ssh");
     cmd.args([
@@ -325,26 +324,21 @@ fn run_builtin_ship(
         .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'dest' field"))?;
 
-    // VM_HOST env var (set by run-tests.sh after sourcing .test-env)
-    // wins over the committed harness.toml [vm].host. Lets a consumer
-    // ship a maintainer-default IP in harness.toml without forcing
-    // every other dev to edit-and-restore it on each run; the env
-    // is the per-machine override.
-    let vm_host_env = std::env::var("VM_HOST").ok().filter(|s| !s.is_empty());
-    let cfg_vm_host = config.vm.host.as_deref().filter(|s| !s.is_empty());
-    let vm_host_owned: String = vm_host_env
-        .or_else(|| cfg_vm_host.map(String::from))
-        .ok_or_else(|| {
-            format!("step {idx}: '{op_name}' requires VM_HOST env or harness.toml [vm].host")
-        })?;
+    let vm_host_owned: String = config
+        .vm
+        .host
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .ok_or_else(|| format!("step {idx}: '{op_name}' requires harness.toml [vm].host"))?;
     let vm_host = vm_host_owned.as_str();
 
-    // SSH_KEY env wins over harness.toml [vm].ssh_key, same as run_vm.
-    // Empty-string config values are treated as unset (matches the
-    // "harness.toml ships placeholders, .test-env supplies actuals" pattern).
-    let env_key = std::env::var("SSH_KEY").ok().filter(|s| !s.is_empty());
-    let cfg_key = config.vm.ssh_key.as_deref().filter(|s| !s.is_empty());
-    let key_owned = env_key.or_else(|| cfg_key.map(String::from));
+    let key_owned = config
+        .vm
+        .ssh_key
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(String::from);
 
     let started = Instant::now();
     let mut cmd = Command::new("scp");
@@ -409,29 +403,18 @@ fn exit_matches(r: &StepResult) -> bool {
 /// every op gets for free.
 fn build_flat_vocab(
     config: &HarnessConfig,
+    local_config: &LocalConfig,
     consumer_root: &Path,
+    run_id: u128,
 ) -> Result<BTreeMap<String, String>, String> {
     let mut flat = BTreeMap::new();
+    flat.insert("run_id".to_string(), run_id.to_string());
     if let Some(b) = &config.project.binary {
         flat.insert("binary".to_string(), resolve_binary_path(b, consumer_root));
     }
-    // `{image_dir}` resolves to (in priority order) the
-    // `HARNESS_IMAGE_DIR` env var (matches the v1 override path —
-    // `run-matrix.rs` reads the same var for the v1 adapter's
-    // image_dir), then `[vm].image_dir`. Relative values are joined
-    // against the consumer root so v2 commands can reach the host-
-    // side image without each consumer having to spell the prefix
-    // out per-op. Combine with `{scenario.image}` to get a full path.
-    let env_dir = std::env::var("HARNESS_IMAGE_DIR")
-        .ok()
-        .filter(|s| !s.is_empty());
-    // Empty-string `image_dir` in harness.toml (the unset-default
-    // pattern) must be filtered out — otherwise the empty path joins
-    // against consumer_root and `{image_dir}` resolves to consumer_root
-    // itself, silently misrouting every host-side image lookup.
-    let cfg_dir = config.vm.image_dir.as_deref().filter(|s| !s.is_empty());
-    let raw_dir = env_dir.as_deref().or(cfg_dir);
-    if let Some(d) = raw_dir {
+    // `{image_dir}` — host-side directory for disk images. Relative
+    // paths are resolved against consumer_root.
+    if let Some(d) = config.vm.image_dir.as_deref().filter(|s| !s.is_empty()) {
         let resolved = if PathBuf::from(d).is_absolute() {
             d.to_string()
         } else {
@@ -440,35 +423,16 @@ fn build_flat_vocab(
         flat.insert("image_dir".to_string(), resolved);
     }
 
-    // VM-side path tokens. Let consumers spell harness.toml command
-    // templates against these instead of hard-coding maintainer-
-    // specific absolute paths. Two tokens are exposed:
-    //
-    // * `{vm.workdir}`     — the VM-side consumer-root tar location
-    //                        (= harness.toml [vm].workdir, verbatim)
-    // * `{vm.harness_root}` — the VM-side path to the vendored harness
-    //                        checkout. Auto-derived: workdir joined
-    //                        with the harness's path RELATIVE to the
-    //                        consumer root (so the same template
-    //                        works whether the harness is vendored at
-    //                        ./vendor/fs-test-harness/, ./harness/,
-    //                        or anywhere else under the consumer).
-    // VM_WORKDIR env (from .test-env via run-tests.sh) wins over the
-    // committed harness.toml [vm].workdir. Same per-machine override
-    // pattern as VM_HOST / SSH_KEY (see run_vm / run_builtin_ship).
-    let env_workdir = std::env::var("VM_WORKDIR").ok().filter(|s| !s.is_empty());
-    let cfg_workdir = config.vm.workdir.as_deref().filter(|s| !s.is_empty());
-    let workdir_owned = env_workdir.or_else(|| cfg_workdir.map(String::from));
-    if let Some(workdir) = &workdir_owned {
-        flat.insert("vm.workdir".to_string(), workdir.clone());
-        // Compose harness_root from workdir + harness-relative path.
-        // HARNESS_DIR env override lets a consumer vendor the harness
-        // somewhere other than ./vendor/fs-test-harness/ without
-        // editing every op-def template.
-        let harness_dir = std::env::var("HARNESS_DIR")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "vendor/fs-test-harness".to_string());
+    // VM-side path tokens:
+    // * `{vm.workdir}`      — VM-side consumer root (harness.toml [vm].workdir)
+    // * `{vm.harness_root}` — VM-side harness checkout; workdir joined with
+    //                         the harness path relative to consumer root.
+    if let Some(workdir) = config.vm.workdir.as_deref().filter(|s| !s.is_empty()) {
+        flat.insert("vm.workdir".to_string(), workdir.to_string());
+        let harness_dir = local_config
+            .harness_dir
+            .as_deref()
+            .unwrap_or("vendor/fs-test-harness");
         let vm_harness = format!(
             "{}/{}",
             workdir.trim_end_matches('/'),
@@ -575,7 +539,16 @@ mod tests {
         let cfg = config_with_ops(&[]);
         let scn = scenario_with_recipe(vec![]);
         let dir = tempdir();
-        let result = run_recipe("empty", &scn, &cfg, &dir, &dir, |_| {});
+        let result = run_recipe(
+            "empty",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        );
         assert!(result.is_err());
     }
 
@@ -592,7 +565,17 @@ mod tests {
         )]);
         let scn = scenario_with_recipe(vec![json!({ "op": "noop" })]);
         let dir = tempdir();
-        let result = run_recipe("host-noop", &scn, &cfg, &dir, &dir, |_| {}).expect("recipe runs");
+        let result = run_recipe(
+            "host-noop",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .expect("recipe runs");
         assert!(result.overall_passed);
         assert_eq!(result.steps.len(), 1);
         assert_eq!(result.steps[0].host, "host");
@@ -614,7 +597,17 @@ mod tests {
         // No `fixtures` field on scenario => `when` is false => skip.
         let scn = scenario_with_recipe(vec![json!({ "op": "needs-fixtures" })]);
         let dir = tempdir();
-        let result = run_recipe("skipped", &scn, &cfg, &dir, &dir, |_| {}).expect("recipe runs");
+        let result = run_recipe(
+            "skipped",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .expect("recipe runs");
         assert!(result.overall_passed);
         assert_eq!(result.steps.len(), 1);
         assert!(result.steps[0].skipped);
@@ -626,7 +619,17 @@ mod tests {
         let cfg = config_with_ops(&[]);
         let scn = scenario_with_recipe(vec![json!({ "op": "doesnt-exist" })]);
         let dir = tempdir();
-        let err = run_recipe("unknown", &scn, &cfg, &dir, &dir, |_| {}).unwrap_err();
+        let err = run_recipe(
+            "unknown",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .unwrap_err();
         assert!(err.contains("doesnt-exist"));
     }
 
@@ -654,7 +657,17 @@ mod tests {
         ]);
         let scn = scenario_with_recipe(vec![json!({ "op": "fail" }), json!({ "op": "after" })]);
         let dir = tempdir();
-        let result = run_recipe("fail-fast", &scn, &cfg, &dir, &dir, |_| {}).expect("recipe runs");
+        let result = run_recipe(
+            "fail-fast",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .expect("recipe runs");
         assert!(!result.overall_passed);
         // Recipe should fail-fast on the first non-zero step.
         assert_eq!(result.steps.len(), 1);
@@ -684,7 +697,17 @@ mod tests {
             "dest": "/tmp/b"
         })]);
         let dir = tempdir();
-        let err = run_recipe("ship-no-vm", &scn, &cfg, &dir, &dir, |_| {}).unwrap_err();
+        let err = run_recipe(
+            "ship-no-vm",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .unwrap_err();
         assert!(
             err.contains("[vm].host") && err.contains("ship-to-vm"),
             "expected vm.host error, got: {err}"
@@ -697,7 +720,17 @@ mod tests {
         // Missing src
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-vm", "dest": "/x" })]);
         let dir = tempdir();
-        let err = run_recipe("no-src", &scn, &cfg, &dir, &dir, |_| {}).unwrap_err();
+        let err = run_recipe(
+            "no-src",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .unwrap_err();
         assert!(
             err.contains("'src' field"),
             "expected src error, got: {err}"
@@ -705,7 +738,17 @@ mod tests {
 
         // Missing dest
         let scn = scenario_with_recipe(vec![json!({ "op": "ship-to-host", "src": "/x" })]);
-        let err = run_recipe("no-dest", &scn, &cfg, &dir, &dir, |_| {}).unwrap_err();
+        let err = run_recipe(
+            "no-dest",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .unwrap_err();
         assert!(
             err.contains("'dest' field"),
             "expected dest error, got: {err}"
