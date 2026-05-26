@@ -502,17 +502,13 @@ PYEOF
             scp ${SSH_OPTS:-} "${src}" "${VM_HOST}:${dest}"
         }
 
-        # Harness scripts/vm/ are needed by every vm-side scenario —
-        # ship them on top of the consumer's vendored harness checkout
-        # so {vm.harness_root}/scripts/vm/ resolves correctly.
-        echo "[ship] harness scripts/vm/"
-        ship_dir "${harness_root}/scripts/vm" "${VM_WORKDIR}/vendor/fs-test-harness/scripts/vm"
-
-        # Consumer scripts/vm/ if they exist (per-consumer fs-specific
-        # ops that don't fit the generic harness-shipped set).
-        if [[ -d "${consumer_root}/scripts/vm" ]]; then
-            echo "[ship] consumer scripts/vm/"
-            ship_dir "${consumer_root}/scripts/vm" "${VM_WORKDIR}/scripts/vm"
+        # Consumer scripts directory (declared in fs-test-harness.toml [vm].scripts_dir,
+        # default "scripts/fs-test-harness"). Contains per-op PowerShell helpers
+        # called by win-* ops.
+        SCRIPTS_DIR="$(harness_get_or vm.scripts_dir "scripts/fs-test-harness")"
+        if [[ -d "${consumer_root}/${SCRIPTS_DIR}" ]]; then
+            echo "[ship] consumer ${SCRIPTS_DIR}/"
+            ship_dir "${consumer_root}/${SCRIPTS_DIR}" "${VM_WORKDIR}/${SCRIPTS_DIR}"
         fi
 
         # If [run].vm_build_command is set, ship the full source tree

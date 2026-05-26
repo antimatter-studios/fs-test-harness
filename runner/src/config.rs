@@ -186,6 +186,12 @@ pub struct VmSection {
     /// (e.g. `$env:LIBCLANG_PATH='C:\\Program Files\\LLVM\\bin';`).
     #[serde(default)]
     pub env_prefix: Option<String>,
+    /// Consumer-side PowerShell scripts directory to ship to the VM.
+    /// Relative to the consumer's repo root. Default: `"scripts/fs-test-harness"`.
+    /// Read by `run-tests.sh` to determine which directory to ship.
+    /// Declare this in `[vm]` whenever the scripts dir changes names.
+    #[serde(default)]
+    pub scripts_dir: Option<String>,
 }
 
 /// A `[vm.packages]` entry. Either a bare PkgId string or a table

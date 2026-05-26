@@ -3,11 +3,11 @@
 //! Kept in a single module so the harness builds the whole tree before
 //! running anything; covers the load-bearing paths the CI
 //! `runner-unit` job relies on:
-//!   1. `Harness::load` round-trips `examples/minimal/harness.toml`.
+//!   1. `Harness::load` round-trips `examples/minimal/fs-test-harness.toml`.
 //!   2. `Matrix` deserialises a recipe with mixed host/vm steps.
 //!   3. Consumer-defined scenario fields round-trip through serde so
 //!      `{scenario.<dotted.path>}` substitution can reach them.
-//!   4. `harness.toml [ops]` accepts both the bare-string shorthand
+//!   4. `fs-test-harness.toml [ops]` accepts both the bare-string shorthand
 //!      (sugar for `command = ..., host = "vm"`) and the full table
 //!      form with `host`, `when`, `expect_exit`.
 //!
@@ -17,7 +17,7 @@
 use crate::{Harness, Matrix};
 use std::path::PathBuf;
 
-/// Locate `examples/minimal/harness.toml` relative to this crate.
+/// Locate `examples/minimal/fs-test-harness.toml` relative to this crate.
 /// `CARGO_MANIFEST_DIR` is `runner/`, so the example lives one level up.
 fn minimal_harness_toml() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -25,7 +25,7 @@ fn minimal_harness_toml() -> PathBuf {
         .expect("runner has a parent dir")
         .join("examples")
         .join("minimal")
-        .join("harness.toml")
+        .join("fs-test-harness.toml")
 }
 
 #[test]
@@ -33,10 +33,10 @@ fn harness_load_round_trips_minimal_example() {
     let path = minimal_harness_toml();
     assert!(
         path.is_file(),
-        "expected example harness.toml at {}",
+        "expected example fs-test-harness.toml at {}",
         path.display()
     );
-    let harness = Harness::load(&path).expect("load minimal harness.toml");
+    let harness = Harness::load(&path).expect("load minimal fs-test-harness.toml");
 
     // Project section round-trips.
     assert_eq!(harness.config.project.name, "minimal-example");

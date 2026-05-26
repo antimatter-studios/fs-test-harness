@@ -97,7 +97,7 @@ fn main() {
         .unwrap_or_else(|_| std::env::current_dir().expect("cwd"));
     let config_path = std::env::var("HARNESS_TOML")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| consumer_root.join("harness.toml"));
+        .unwrap_or_else(|_| consumer_root.join("fs-test-harness.toml"));
 
     let harness = Harness::load(&config_path).unwrap_or_else(|e| {
         panic!("load {}: {e}", config_path.display());

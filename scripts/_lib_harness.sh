@@ -16,7 +16,7 @@
 # shellcheck disable=SC2034   # variables are consumed by callers
 harness_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 consumer_root="${CONSUMER_ROOT:-${PWD}}"
-harness_toml="${HARNESS_TOML:-${consumer_root}/harness.toml}"
+harness_toml="${HARNESS_TOML:-${consumer_root}/fs-test-harness.toml}"
 
 # harness_get <dotted.path>
 # Echoes the value (string / int / bool / json-array) at the given
