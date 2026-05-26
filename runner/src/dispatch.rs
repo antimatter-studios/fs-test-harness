@@ -75,7 +75,7 @@ pub fn run_recipe(
 
     // Build the flat-vocabulary substitution map once. Per-step
     // substitution clones it cheaply (BTreeMap of <100 small strings).
-    let flat = build_flat_vocab(config, local_config, consumer_root, run_id)?;
+    let flat = build_flat_vocab(config, local_config, consumer_root, run_id, scenario_name)?;
 
     let mut step_results = Vec::with_capacity(scenario.recipe.len());
     let mut overall_passed = true;
@@ -406,9 +406,11 @@ fn build_flat_vocab(
     local_config: &LocalConfig,
     consumer_root: &Path,
     run_id: u128,
+    scenario_name: &str,
 ) -> Result<BTreeMap<String, String>, String> {
     let mut flat = BTreeMap::new();
     flat.insert("run_id".to_string(), run_id.to_string());
+    flat.insert("scenario_name".to_string(), scenario_name.to_string());
     if let Some(b) = &config.project.binary {
         flat.insert("binary".to_string(), resolve_binary_path(b, consumer_root));
     }
