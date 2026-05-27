@@ -7,6 +7,36 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ----
 
+## [3.9.0] — 2026-05-27
+
+### Added
+
+- **Named scenario groups.** `[scenarios.<group>]` tables in
+  `fs-test-harness.toml` let related scenarios share a label; the runner
+  expands group names in filter expressions and prints the group in PASS/FAIL
+  lines.
+
+- **`.test-env` variable expansion in scenario config.** Values like
+  `${VM_WORKDIR}` in scenario tables are now substituted from `.test-env`
+  before the scenario runs.
+
+- **`{scenario_name}` substitution in flat vocabulary.** The scenario's own
+  name is now available as `{scenario_name}` in path/command templates.
+
+### Fixed
+
+- **`ship-to-host` destination parent created automatically.** `mkdir -p` is
+  now run on the destination parent before `scp`, preventing failures when
+  the target directory doesn't exist yet.
+
+- **`SSH_OPTS` built from `SSH_KEY`.** The harness now constructs
+  `SSH_OPTS="-i <key> -o IdentitiesOnly=yes"` automatically when `SSH_KEY`
+  is set in `.test-env`, so consumers no longer need to duplicate key path
+  in both variables.  Group-filter expansion clears the expanded list before
+  each pass (prevents duplicate scenario runs on repeated filters).
+
+----
+
 ## [3.7.0] — 2026-05-25
 
 ### Added
