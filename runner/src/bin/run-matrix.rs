@@ -179,6 +179,13 @@ fn main() {
 
     let n_runnable = runnable.len();
 
+    // When we expanded a group, the original filter string (e.g. "smoke")
+    // is no longer useful — none of the expanded scenario names contain it.
+    // Clear it so libtest-mimic doesn't silently re-filter and drop them.
+    if group_set.is_some() {
+        args.filter = None;
+    }
+
     // --list: use libtest-mimic's formatting then exit.
     if args.list {
         let mut trials: Vec<Trial> = runnable

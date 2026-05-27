@@ -301,6 +301,12 @@ if [[ -f "${ENV_FILE}" ]]; then
     if [[ -z "${SSH_KEY:-}" && "${SSH_OPTS:-}" == *"-i "* ]]; then
         SSH_KEY="$(echo "${SSH_OPTS}" | sed -n 's/.*-i \([^ ]*\).*/\1/p')"
     fi
+    # Build SSH_OPTS from SSH_KEY if key is set but opts are empty.
+    # This handles manually-written .test-env files that have SSH_KEY
+    # but not the auto-generated SSH_OPTS line.
+    if [[ -n "${SSH_KEY:-}" && -z "${SSH_OPTS:-}" ]]; then
+        build_ssh_opts_from_key
+    fi
     export VM_HOST VM_WORKDIR VM_IMAGE_DIR SSH_KEY SSH_OPTS
 fi
 
