@@ -3,45 +3,31 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
-## [Unreleased] — v3.5.0 candidate
+## [3.10.0] — 2026-05-28
 
 ### Added
+
+- **`verify-getxattr.sh`** — host-op script that calls the consumer
+  binary's `getxattr <image> <path> <name>` subcommand and asserts
+  stdout against `--expect-size`, `--expect-sha256`, and/or
+  `--expect-content`. Filesystem-agnostic.
+
+- **`verify-readlink.sh`** — host-op script that calls the consumer
+  binary's `readlink <image> <path>` subcommand and compares the
+  trimmed output to `--expect-target`. Filesystem-agnostic.
 
 - **`harness.toml [vm.packages]` table-form entries** — each entry
   is now either a bare winget ID string (existing behaviour) OR an
   object `{ id = "...", custom_args = "..." }`. The `custom_args`
-  string is forwarded to `winget install --override "<args>"`,
-  which the underlying MSI/EXE installer interprets. Closes the
-  fresh-VM gap for consumers that link against winget packages
-  whose default feature set is wrong (most notably `WinFsp.WinFsp`,
-  whose default install is runtime-only — no headers, no .lib —
-  so bindgen-using consumers like ext4-win-driver / erofs-win-driver
-  hit `winfsp/winfsp.h not found` on first cargo build until they
-  pass `ADDLOCAL=F.Core,F.Developer`).
-- **`setup-windows-vm.ps1 -PackagesJson`** — new parameter that
-  accepts the resolved [vm.packages] spec as a JSON-array string.
-  Branches per entry: bare strings → `winget install --id <id>`;
-  objects → adds `--override "<custom_args>"`. Backward-compatible:
-  the legacy `-ExtraPackages` (bare-string array) still works and
-  is merged with `-PackagesJson` (JSON entries win on duplicate IDs
-  so a consumer can override a bare entry with one carrying
-  custom_args).
-- **`PackageSpec` enum** in `runner/src/config.rs` — untagged serde
-  enum that round-trips both shapes; `VmSection.packages` is now
-  `Vec<PackageSpec>`. Schema updated in `harness.schema.json`.
+  string is forwarded to `winget install --override "<args>"`.
+  Closes the fresh-VM gap for consumers whose packages need
+  non-default installer features (e.g. `WinFsp.WinFsp` +
+  `ADDLOCAL=F.Main,F.User,F.Developer` for bindgen consumers).
 
-### Behaviour notes
-
-- **Re-runs of an installed package with different `custom_args`** —
-  `winget install` won't change a package's installed feature set
-  on its own; if a consumer adds `custom_args` to an entry that's
-  already installed bare, setup-windows-vm.ps1 logs a hint pointing
-  at `msiexec /fa <product-code> <custom_args>` for self-repair
-  rather than silently doing nothing or surprise-wiping the
-  install. Self-repair is left to the operator because winget's
-  ADDLOCAL re-run behaviour is version-dependent.
-
-## [Released] — v3.4.0 (post-PR-9)
+- **`setup-windows-vm.ps1 -PackagesJson`** — new parameter accepting
+  the resolved `[vm.packages]` spec as a JSON-array string. Merged
+  with the legacy `-ExtraPackages`; JSON entries win on duplicate
+  IDs.
 
 ----
 
