@@ -26,6 +26,13 @@
 #
 #                       @{ id = "WinFsp.WinFsp"
 #                          custom_args = "ADDLOCAL=F.Main,F.User,F.Developer" }
+#   -PackagesJson '[<spec>, ...]'
+#       JSON-array serialised from harness.toml [vm.packages]. Each
+#       entry is either a bare string OR an object
+#       {"id": "...", "custom_args": "..."} (the latter triggers
+#       `winget install --override "<custom_args>"`). Empty default.
+#       When supplied, ExtraPackages and PackagesJson are merged
+#       (PackagesJson entries win on duplicate IDs).
 #
 #                     (WinFsp's `F.Developer` feature ships the headers
 #                     + .lib bindgen needs but is off by default.)
@@ -36,10 +43,7 @@
 # Usage (on the VM directly, fresh install):
 #   powershell -ExecutionPolicy Bypass -File setup-windows-vm.ps1 `
 #       -RustToolchain "stable-aarch64-pc-windows-gnullvm" `
-#       -ExtraPackages @(
-#           "MartinStorsjo.LLVM-MinGW.UCRT",
-#           @{ id = "WinFsp.WinFsp"; custom_args = "ADDLOCAL=F.Main,F.User,F.Developer" }
-#       )
+#       -PackagesJson '[{"id":"WinFsp.WinFsp","custom_args":"ADDLOCAL=F.Main,F.User,F.Developer"},"LLVM.LLVM"]'
 #
 # Usage (driven from run-tests.sh --reinstall on the orchestrator):
 #   run-tests.sh scp's this script to the VM and invokes it over SSH
@@ -51,6 +55,7 @@ param(
     [string]$RustToolchain = "",
     # Bare strings (PkgId) OR hashtables @{ id="PkgId"; custom_args="..." }.
     [object[]]$ExtraPackages = @(),
+    [string]$PackagesJson = "",
     [switch]$Reinstall
 )
 
@@ -62,6 +67,12 @@ function Uninstall-Package {
     & winget uninstall --id $Id --exact --silent --verbose 2>&1 |
         ForEach-Object { Write-Host "        $_" }
     Write-Host "        exit=$LASTEXITCODE"
+}
+
+function Test-WingetPackage {
+    param([string]$Id)
+    $result = & winget list --id $Id --exact --source winget 2>&1
+    return ($result | Select-String $Id -Quiet)
 }
 
 function Install-Package {
@@ -176,11 +187,32 @@ if ($RustToolchain) {
 }
 
 # ---------- 2. Consumer packages -----------------------------------------
+# Build resolved spec list: ExtraPackages (bare string or hashtable) + any
+# entries from -PackagesJson. PackagesJson entries win on duplicate IDs so
+# a consumer can override a bare entry with one carrying custom_args.
+$resolvedSpecs = @()
 foreach ($entry in $ExtraPackages) {
     $resolved = Resolve-PackageEntry -Entry $entry
     if (-not $resolved) { continue }
-    if ($Reinstall) { Uninstall-Package -Id $resolved.Id }
-    Install-Package -Id $resolved.Id -CustomArgs $resolved.CustomArgs
+    $resolvedSpecs += [pscustomobject]@{ Id = $resolved.Id; CustomArgs = $resolved.CustomArgs }
+}
+if ($PackagesJson -and $PackagesJson.Trim() -ne "") {
+    try {
+        $jsonEntries = $PackagesJson | ConvertFrom-Json
+    } catch {
+        throw "PackagesJson failed to parse as JSON: $_"
+    }
+    foreach ($entry in $jsonEntries) {
+        $resolved = Resolve-PackageEntry -Entry $entry
+        if (-not $resolved) { continue }
+        $resolvedSpecs = @($resolvedSpecs | Where-Object { $_.Id -ne $resolved.Id })
+        $resolvedSpecs += [pscustomobject]@{ Id = $resolved.Id; CustomArgs = $resolved.CustomArgs }
+    }
+}
+
+foreach ($spec in $resolvedSpecs) {
+    if ($Reinstall) { Uninstall-Package -Id $spec.Id }
+    Install-Package -Id $spec.Id -CustomArgs $spec.CustomArgs
 }
 
 # ---------- 3. Workdir ---------------------------------------------------
@@ -189,6 +221,21 @@ if (-not (Test-Path $workdirPath)) {
     New-Item -ItemType Directory -Path $workdirPath -Force | Out-Null
 }
 Write-Host "[setup] workdir: $workdirPath"
+
+# ---------- 4. Verify ---------------------------------------------------
+Write-Host ""
+Write-Host "=== Verification ==="
+& rustc --version 2>&1 | Select-Object -First 1
+& cargo --version 2>&1 | Select-Object -First 1
+foreach ($spec in $resolvedSpecs) {
+    if (Test-WingetPackage -Id $spec.Id) {
+        $note = if ($spec.CustomArgs) { " (custom_args=$($spec.CustomArgs))" } else { "" }
+        Write-Host "$($spec.Id): installed$note"
+    } else {
+        Write-Host "WARN: $($spec.Id): missing"
+    }
+}
+
 
 Write-Host ""
 Write-Host "=== Setup complete ==="

@@ -3,7 +3,31 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
-## [Unreleased]
+## [3.10.0] — 2026-05-28
+
+### Added
+
+- **`verify-getxattr.sh`** — host-op script that calls the consumer
+  binary's `getxattr <image> <path> <name>` subcommand and asserts
+  stdout against `--expect-size`, `--expect-sha256`, and/or
+  `--expect-content`. Filesystem-agnostic.
+
+- **`verify-readlink.sh`** — host-op script that calls the consumer
+  binary's `readlink <image> <path>` subcommand and compares the
+  trimmed output to `--expect-target`. Filesystem-agnostic.
+
+- **`harness.toml [vm.packages]` table-form entries** — each entry
+  is now either a bare winget ID string (existing behaviour) OR an
+  object `{ id = "...", custom_args = "..." }`. The `custom_args`
+  string is forwarded to `winget install --override "<args>"`.
+  Closes the fresh-VM gap for consumers whose packages need
+  non-default installer features (e.g. `WinFsp.WinFsp` +
+  `ADDLOCAL=F.Main,F.User,F.Developer` for bindgen consumers).
+
+- **`setup-windows-vm.ps1 -PackagesJson`** — new parameter accepting
+  the resolved `[vm.packages]` spec as a JSON-array string. Merged
+  with the legacy `-ExtraPackages`; JSON entries win on duplicate
+  IDs.
 
 ----
 
