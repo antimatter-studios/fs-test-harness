@@ -55,6 +55,31 @@ pub struct RecipeResult {
 /// runner-internal errors (failed to compose substitution context,
 /// missing op declaration, IO failure on diag write) bubble up via
 /// `Err`.
+/// Whether the caller asked to keep staged images (`HARNESS_KEEP_IMAGES`).
+/// Reads the env var and interprets its value via [`is_truthy`].
+fn keep_images_requested() -> bool {
+    is_truthy(std::env::var("HARNESS_KEEP_IMAGES").ok().as_deref())
+}
+
+/// Interpret an optional env-var value as a boolean opt-in. Only a truthy
+/// value counts: `0`, `false`, `no`, `off`, empty, and absent all return
+/// `false` — so a developer who sets `HARNESS_KEEP_IMAGES=0` expecting
+/// cleanup gets it, rather than the opposite (the trap of a presence-only
+/// `is_some()` check).
+fn is_truthy(val: Option<&str>) -> bool {
+    match val {
+        Some(v) => {
+            let v = v.trim();
+            !v.is_empty()
+                && v != "0"
+                && !v.eq_ignore_ascii_case("false")
+                && !v.eq_ignore_ascii_case("no")
+                && !v.eq_ignore_ascii_case("off")
+        }
+        None => false,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn run_recipe(
     scenario_name: &str,
@@ -122,9 +147,11 @@ pub fn run_recipe(
     // into the diag dir). Best-effort: scenarios that never stage a host
     // image (e.g. win-format) simply have nothing to remove.
     //
-    // `HARNESS_KEEP_IMAGES=1` (set by `run-matrix.sh --keep-images`) opts
-    // out, for when you want to inspect the staged images after a run.
-    if std::env::var_os("HARNESS_KEEP_IMAGES").is_none() && !scenario.image.is_empty() {
+    // `HARNESS_KEEP_IMAGES` (set to a truthy value by `run-matrix.sh
+    // --keep-images`) opts out, for when you want to inspect the staged
+    // images after a run. A falsy/empty value (e.g. `HARNESS_KEEP_IMAGES=0`)
+    // still cleans up — only truthy keeps.
+    if !keep_images_requested() && !scenario.image.is_empty() {
         if let Some(image_dir) = flat.get("image_dir") {
             let run_dir = PathBuf::from(image_dir).join(run_id.to_string());
             let staged = run_dir.join(&scenario.image);
@@ -550,6 +577,19 @@ mod tests {
     use super::*;
     use crate::config::{OpDef, OpHost as Host, ProjectSection};
     use serde_json::json;
+
+    #[test]
+    fn is_truthy_keeps_only_on_truthy_values() {
+        // Truthy → keep images.
+        for v in ["1", "true", "TRUE", "yes", "on", "anything"] {
+            assert!(is_truthy(Some(v)), "{v:?} should be truthy");
+        }
+        // Falsy / empty / absent → clean up (do NOT keep).
+        for v in ["0", "false", "False", "no", "NO", "off", "", "   "] {
+            assert!(!is_truthy(Some(v)), "{v:?} should be falsy");
+        }
+        assert!(!is_truthy(None), "unset should be falsy");
+    }
 
     fn config_with_ops(ops: &[(&str, OpDef)]) -> HarnessConfig {
         let mut cfg = HarnessConfig {
