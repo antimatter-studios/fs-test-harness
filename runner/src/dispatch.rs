@@ -113,6 +113,38 @@ pub fn run_recipe(
         step_results.push(result);
     }
 
+    // Per-scenario cleanup: the host-side staged image
+    // (`{image_dir}/{run_id}/{scenario.image}`) has been shipped to the VM
+    // by now and is dead weight once this scenario's recipe finishes — keep
+    // it and a full matrix run accumulates every scenario's image at once,
+    // eventually filling the host disk. Delete it as soon as we're done with
+    // it (pass OR fail; per-scenario diagnostics are collected separately
+    // into the diag dir). Best-effort: scenarios that never stage a host
+    // image (e.g. win-format) simply have nothing to remove.
+    //
+    // `HARNESS_KEEP_IMAGES=1` (set by `run-matrix.sh --keep-images`) opts
+    // out, for when you want to inspect the staged images after a run.
+    if std::env::var_os("HARNESS_KEEP_IMAGES").is_none() && !scenario.image.is_empty() {
+        if let Some(image_dir) = flat.get("image_dir") {
+            let run_dir = PathBuf::from(image_dir).join(run_id.to_string());
+            let staged = run_dir.join(&scenario.image);
+            if staged.exists() {
+                if let Err(e) = std::fs::remove_file(&staged) {
+                    eprintln!(
+                        "[runner] warning: could not remove staged image {}: {e}",
+                        staged.display()
+                    );
+                }
+            }
+            // Best-effort: drop the per-run image dir once it's empty. Under
+            // parallel execution this only succeeds for whichever scenario
+            // happens to finish last (remove_dir refuses a non-empty dir),
+            // so it self-cleans without a race — no empty `{run_id}` dir left
+            // behind even if the run is interrupted before its end-of-run trap.
+            let _ = std::fs::remove_dir(&run_dir);
+        }
+    }
+
     Ok(RecipeResult {
         steps: step_results,
         overall_passed,
