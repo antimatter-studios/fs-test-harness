@@ -203,6 +203,21 @@ fn main() {
     let _ = std::fs::remove_dir_all(matrix_diag_root(&consumer_root));
     let _ = write_run_manifest(&consumer_root, &project_name, total, n_runnable);
 
+    // Disk hygiene: before staging anything, reap host image directories
+    // orphaned by previous runs that were killed (SIGKILL / crash / cancel)
+    // before their cleanup could fire, then stake this run's claim. Each
+    // run owns `{image_dir}/{run_id}/` and drops an `owner.pid` marker in
+    // it; a dir whose owner pid is no longer alive is provably an orphan
+    // and is removed. Without this, every cancelled full-matrix run leaves
+    // tens of GiB of staged `.img` files behind and they pile up across
+    // runs until the disk fills.
+    if let Some(image_root) =
+        resolve_image_root(harness.config.vm.image_dir.as_deref(), &consumer_root)
+    {
+        reap_orphaned_run_dirs(&image_root);
+        claim_run_dir(&image_root, harness.run_id);
+    }
+
     // Banner — print before any scenario work so the log has a clear start marker.
     eprintln!("================================================================");
     eprintln!(
@@ -700,4 +715,237 @@ fn now_clock() -> String {
     let m = (secs / 60) % 60;
     let s = secs % 60;
     format!("{h:02}:{m:02}:{s:02}")
+}
+
+// ---------------------------------------------------------------------------
+// Host image-directory disk hygiene: pid-marked run dirs + orphan reaping.
+//
+// Each run stages disk images under `{image_dir}/{run_id}/` and drops an
+// `owner.pid` marker there. A run that is killed (SIGKILL / crash / a
+// cancelled background task) before its cleanup fires leaves that whole
+// directory behind — tens of GiB of `.img` files for a full matrix. Across
+// repeated cancelled runs these pile up until the disk fills.
+//
+// The fix is mechanical and self-healing: at the start of every run, before
+// staging anything, scan the image root and remove any run dir whose owner
+// pid is provably no longer alive. A dir we created ourselves this run is
+// reclaimed by the next run once our pid dies. We never touch a dir whose
+// owner is still alive (so concurrent runs are safe), and we only consider
+// numeric run-id dirs so foreign content the consumer keeps in `image_dir`
+// is left strictly alone.
+// ---------------------------------------------------------------------------
+
+/// Marker file, written into each run dir, naming the owning process.
+const OWNER_PID_FILE: &str = "owner.pid";
+
+/// Grace period before a run dir with no (readable) `owner.pid` marker is
+/// treated as an orphan. Protects a concurrent run that has just created
+/// its dir but not yet written its marker (a sub-second window in practice),
+/// while still reaping legacy dirs left by harness versions predating the
+/// marker.
+const ORPHAN_GRACE_SECS: u64 = 300;
+
+/// Resolve the host-side image directory the same way `build_flat_vocab`
+/// does: relative paths are taken against `consumer_root`. Returns `None`
+/// when no image dir is configured (nothing to manage).
+fn resolve_image_root(image_dir: Option<&str>, consumer_root: &Path) -> Option<PathBuf> {
+    let d = image_dir.filter(|s| !s.is_empty())?;
+    let p = PathBuf::from(d);
+    Some(if p.is_absolute() {
+        p
+    } else {
+        consumer_root.join(p)
+    })
+}
+
+/// True iff a process with `pid` currently exists and is signalable.
+/// Uses `kill -0` — dependency-free and portable across macOS/Linux. A
+/// non-success status (no such process, or EPERM after pid reuse by a
+/// foreign process) is treated as "not our live process", i.e. reapable;
+/// this can only ever fail to reap (leaving an orphan for the next run),
+/// never wrongly reap a live run of ours.
+fn pid_alive(pid: u32) -> bool {
+    Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+/// Last-modification age of `path` in seconds, or `None` if unavailable.
+fn dir_age_secs(path: &Path) -> Option<u64> {
+    let mtime = std::fs::metadata(path).ok()?.modified().ok()?;
+    mtime.elapsed().ok().map(|e| e.as_secs())
+}
+
+/// Decide whether a single run dir should be reaped. Pulled out of
+/// [`reap_orphaned_run_dirs`] so the policy is unit-testable without
+/// touching real process state.
+///
+/// `has_staging_images` is true when the dir contains at least one
+/// `nfs-*.img` (our staging signature). It gates the unmarked path so we
+/// never delete an unrelated numeric-named directory that merely happens
+/// to live under a shared image dir like `/tmp`.
+fn run_dir_is_orphan(
+    owner_pid: Option<u32>,
+    age_secs: Option<u64>,
+    has_staging_images: bool,
+) -> bool {
+    match owner_pid {
+        // Marked with our own marker: we own it outright — reap iff the
+        // owning process is gone.
+        Some(pid) => !pid_alive(pid),
+        // No readable marker: only a legacy/foreign leftover from a harness
+        // predating the marker. Reap only when it both carries our staging
+        // signature AND is older than the grace period — so a concurrent
+        // run mid-creation (marker still pending) and unrelated `/tmp`
+        // directories are both left strictly alone.
+        None => has_staging_images && age_secs.map(|a| a >= ORPHAN_GRACE_SECS).unwrap_or(false),
+    }
+}
+
+/// True iff `dir` contains at least one `nfs-*.img` staged image.
+fn has_staging_images(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        e.file_name()
+            .to_str()
+            .map(|n| n.starts_with("nfs-") && n.ends_with(".img"))
+            .unwrap_or(false)
+    })
+}
+
+/// Remove run dirs under `image_root` whose owning process is dead. Only
+/// numeric (run-id) directory names are considered.
+fn reap_orphaned_run_dirs(image_root: &Path) {
+    let Ok(entries) = std::fs::read_dir(image_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        // Run dirs are named with the millisecond run_id (u128). Anything
+        // else is consumer content we must not touch.
+        match path.file_name().and_then(|n| n.to_str()) {
+            Some(name) if name.parse::<u128>().is_ok() => {}
+            _ => continue,
+        }
+
+        let owner_pid = std::fs::read_to_string(path.join(OWNER_PID_FILE))
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok());
+
+        if run_dir_is_orphan(owner_pid, dir_age_secs(&path), has_staging_images(&path))
+            && std::fs::remove_dir_all(&path).is_ok()
+        {
+            eprintln!(
+                "runner: reaped orphaned image dir {} (owner pid {})",
+                path.display(),
+                owner_pid
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "none".into()),
+            );
+        }
+    }
+}
+
+/// Create this run's image dir and stamp it with our `owner.pid` marker so
+/// a future run can prove ownership (and reap it if we die without cleanup).
+fn claim_run_dir(image_root: &Path, run_id: u128) {
+    let dir = image_root.join(run_id.to_string());
+    if std::fs::create_dir_all(&dir).is_ok() {
+        let _ = std::fs::write(dir.join(OWNER_PID_FILE), std::process::id().to_string());
+    }
+}
+
+#[cfg(test)]
+mod disk_hygiene_tests {
+    use super::*;
+
+    #[test]
+    fn resolve_image_root_handles_relative_absolute_and_missing() {
+        let cr = Path::new("/consumer/root");
+        assert_eq!(
+            resolve_image_root(Some("diskimages"), cr),
+            Some(PathBuf::from("/consumer/root/diskimages"))
+        );
+        assert_eq!(
+            resolve_image_root(Some("/tmp/imgs"), cr),
+            Some(PathBuf::from("/tmp/imgs"))
+        );
+        assert_eq!(resolve_image_root(None, cr), None);
+        assert_eq!(resolve_image_root(Some(""), cr), None);
+    }
+
+    #[test]
+    fn orphan_policy_keeps_live_and_reaps_dead() {
+        // A live owner is never reaped (staging signature is irrelevant
+        // for marked dirs).
+        assert!(!run_dir_is_orphan(
+            Some(std::process::id()),
+            Some(99_999),
+            true
+        ));
+        assert!(!run_dir_is_orphan(Some(std::process::id()), None, false));
+        // A clearly-dead pid is reaped regardless of staging signature —
+        // our marker proves we own it.
+        assert!(run_dir_is_orphan(Some(0x7FFF_FFFE), None, false));
+    }
+
+    #[test]
+    fn orphan_policy_marker_grace_for_unmarked_dirs() {
+        // Unmarked dirs are reaped only when they carry our staging
+        // signature AND are older than the grace period.
+        assert!(run_dir_is_orphan(None, Some(ORPHAN_GRACE_SECS), true));
+        // Unmarked + recent → kept (concurrent run mid-creation).
+        assert!(!run_dir_is_orphan(None, Some(0), true));
+        assert!(!run_dir_is_orphan(None, Some(ORPHAN_GRACE_SECS - 1), true));
+        // Unmarked + old but NO staging signature → kept (an unrelated
+        // numeric-named dir under a shared image dir like /tmp).
+        assert!(!run_dir_is_orphan(None, Some(ORPHAN_GRACE_SECS), false));
+        // Unmarked + unknown age → kept (can't prove it's an orphan).
+        assert!(!run_dir_is_orphan(None, None, true));
+    }
+
+    #[test]
+    fn reap_removes_dead_marked_dir_and_keeps_live_and_foreign() {
+        let base = std::env::temp_dir().join(format!(
+            "fs-harness-reap-test-{}-{}",
+            std::process::id(),
+            now_clock().replace(':', "")
+        ));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).unwrap();
+
+        // Dead-owner run dir (numeric name, owner.pid = an unused pid).
+        let dead = base.join("1780000000000");
+        std::fs::create_dir_all(&dead).unwrap();
+        std::fs::write(dead.join(OWNER_PID_FILE), "2147483646").unwrap();
+        std::fs::write(dead.join("nfs-x.img"), b"junk").unwrap();
+
+        // Live-owner run dir (owner.pid = us) — must survive.
+        let live = base.join("1780000000001");
+        std::fs::create_dir_all(&live).unwrap();
+        std::fs::write(live.join(OWNER_PID_FILE), std::process::id().to_string()).unwrap();
+
+        // Foreign, non-numeric dir — must never be touched.
+        let foreign = base.join("ntfs-basic-fixture");
+        std::fs::create_dir_all(&foreign).unwrap();
+        std::fs::write(foreign.join("keep.img"), b"important").unwrap();
+
+        reap_orphaned_run_dirs(&base);
+
+        assert!(!dead.exists(), "dead-owner run dir should be reaped");
+        assert!(live.exists(), "live-owner run dir must survive");
+        assert!(foreign.exists(), "foreign non-run-id dir must be untouched");
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
 }
