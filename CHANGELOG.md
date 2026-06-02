@@ -3,6 +3,34 @@
 All notable changes to fs-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## [3.11.0] — 2026-06-02
+
+### Added
+
+- **Per-scenario host-image cleanup.** The runner now deletes each
+  scenario's staged `{image_dir}/{run_id}/nfs-*.img` as soon as that
+  scenario's recipe finishes, so a full matrix never holds every image
+  at once (previously they accumulated until the end-of-run cleanup).
+  `HARNESS_KEEP_IMAGES` is now value-aware — `0` / `false` / `no` /
+  `off` / empty keep nothing extra, any other value preserves images —
+  rather than presence-only. (#13)
+
+### Fixed
+
+- **Orphaned image directories from killed runs are now reclaimed
+  automatically.** Each run stamps `{image_dir}/{run_id}/owner.pid`
+  with its process id, and at startup the runner reaps any run dir
+  whose owner pid is no longer alive. A run killed by SIGKILL, crash,
+  or cancellation — none of which can run a cleanup handler — is
+  reclaimed by the very next run instead of leaking tens of GiB of
+  staged images that pile up across runs until the disk fills. Safe by
+  construction: only numeric `run_id` dirs are considered (foreign
+  content under a shared image dir such as `/tmp` is untouched), a live
+  owner is never reaped (`kill -0` liveness, so concurrent runs are
+  safe), and an unmarked legacy dir is removed only when it both
+  carries the `nfs-*.img` staging signature and exceeds a 5-minute
+  grace period. (#14)
+
 ## [3.10.0] — 2026-05-28
 
 ### Added
