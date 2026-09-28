@@ -84,7 +84,7 @@ chore lint     # bash -n, shellcheck, cargo fmt --check, cargo clippy
 chore test     # runner unit tests
 chore state-machine
 chore output-budget  # the wrapper resolves from core, and every task is budgeted
-chore config   # needs python3 3.11+ and `pip install jsonschema`
+chore config   # needs python3 3.11+ and `pip install 'jsonschema>=4.19'`
 chore test -- --verbose   # any task: stream the whole run, not just the verdict
 
 # End to end against a Windows host with WinFsp and sshd (PowerShell as

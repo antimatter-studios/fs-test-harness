@@ -48,7 +48,9 @@ def schema_errors(validator, doc, label):
     while pending:
         e = pending.pop(0)
         where = "/".join(map(str, e.absolute_path)) or "<root>"
-        out.append(f"{label} {where}: {e.message}")
+        # Keyword and instance path are schema facts; jsonschema's English
+        # message changed between 4.19 and later releases for minLength.
+        out.append(f"{label} {where} [{e.validator}]: {e.message}")
         # oneOf / anyOf failures carry the per-branch reasons here.
         pending.extend(e.context)
     return out
