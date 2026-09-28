@@ -10,8 +10,8 @@ chore_min_version: 0.6.0
 # a Windows host exactly as CI drives it against its own runner.
 #
 # These tasks run from the harness checkout. They need bash, python3
-# (3.11+, for tomllib) and cargo; `config` also needs the `jsonschema`
-# package, `lint` needs shellcheck.
+# (3.11+, for tomllib) and cargo; `config` also needs `jsonschema>=4.19`,
+# `lint` needs shellcheck.
 #
 # QUIET BY DEFAULT, --verbose ON REQUEST, AND THE BUDGET IS A NUMBER.
 #

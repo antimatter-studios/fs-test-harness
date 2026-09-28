@@ -1,1 +1,1 @@
-should be non-empty
+test-matrix.json scenarios/large-volume/exclusive_group [minLength]
