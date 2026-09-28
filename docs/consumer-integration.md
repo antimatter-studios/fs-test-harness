@@ -6,34 +6,37 @@ first time; you can skim it on subsequent project setups.
 ## What you need before starting
 
 - A Rust filesystem driver (or formatter) project with a CLI binary.
-- A Windows VM reachable over SSH, with rustup installed and the
-  toolchain your driver builds with. [`vm-setup.md`](./vm-setup.md) sets
-  one up, including the fixed host-only address `VM_HOST` should name.
+- A Windows VM reachable over SSH. [`vm-setup.md`](./vm-setup.md) sets one up,
+  including the fixed host-only address `VM_HOST` should name. Step 4
+  provisions its Rust toolchain and packages.
 - The driver's binary either prebuilt and synced onto the VM, or
   buildable via `cargo build --release` on the VM (the harness can do
   the sync + build for you, but does not require it).
 
-## 1. Add the harness to your project
+## 1. Pin the harness as a sibling
 
-Until we tag a release and publish to crates.io, vendor by path or
-submodule:
+Add a release tag to your project's `chores.yml`:
 
-```sh
-cd your-project
-git submodule add ../fs-windows-test-harness harness
+```yaml
+vars:
+  HARNESS_REF: vX.Y.Z
 ```
 
-(Or `git clone` it as a sibling and reference via path-dep — the
-runner's Cargo manifest is permissive about being included as a path
-dep from a parent project.)
+Add `fs-windows-test-harness` to that file's `siblings` task, with the URL
+`https://github.com/antimatter-studios/fs-windows-test-harness.git`, ref
+`{{.HARNESS_REF}}`, and checkout path `../fs-windows-test-harness`. The task
+should refuse to move a dirty checkout. The
+[`rust-fs-ntfs` sibling task](https://github.com/antimatter-studios/rust-fs-ntfs/blob/main/chores.yml)
+shows a complete implementation. Run `chore siblings` from your project
+before using the harness. Its scripts and schemas now live in the sibling
+directory.
 
-You should now have a `harness/` directory in your project containing
-the scripts, runner crate, schemas, and docs.
+Do not add a git submodule: it would put a separate harness copy inside each
+consumer, outside the ref that `chore siblings` maintains.
 
 ## 2. Write `fs-windows-test-harness.toml`
 
-Create `fs-windows-test-harness.toml` at the *root of your project* (not inside
-`harness/`). Minimum:
+Create `fs-windows-test-harness.toml` at the root of your project. Minimum:
 
 ```toml
 [project]
@@ -49,20 +52,16 @@ workdir = "C:/Users/you/dev/my-driver-work"
 ls   = "{binary} ls {image} {path}"
 cat  = "{binary} cat {image} {path}"
 stat = "{binary} stat {image} {path}"
-
-[mount]
-command    = "{binary} mount {image} --drive {drive} {extra}"
-ready_line = "mounted at"
-rw_extra   = "--rw"
 ```
 
 See [`../schemas/harness.schema.json`](../schemas/harness.schema.json)
-for the full surface, and `examples/minimal/fs-windows-test-harness.toml` for an
-annotated minimal example.
+for the full surface, and
+[`../examples/minimal/fs-windows-test-harness.toml`](../examples/minimal/fs-windows-test-harness.toml)
+for an annotated minimal example.
 
 ### Reserved substitution tokens
 
-Used in `[ops]`, `[mount]`, and `[post_verify]` templates:
+Used in `[ops]` and `[post_verify]` templates:
 
 | Token | Source | Notes |
 |---|---|---|
@@ -71,7 +70,7 @@ Used in `[ops]`, `[mount]`, and `[post_verify]` templates:
 | `{drive}` | runtime | Free Windows drive letter, picked just before mount. |
 | `{path}`, `{from}`, `{to}` | per-op | From the op's matching field. |
 | `{content}` | per-op | UTF-8; for binary use `content_b64`. |
-| `{extra}` | mount | Default `[mount] default_extra`, or `rw_extra` when scenario requests RW. |
+| `{extra}` | recipe step | Extra argument supplied by that step. |
 | `{tools.<name>}` | `[tools]` table | E.g. `{tools.fsck}` resolves to `[tools] fsck`. |
 
 ## 3. Write `test-matrix.json`
@@ -82,14 +81,14 @@ A first scenario:
 
 ```json
 {
-  "_format": "v1",
   "scenarios": {
     "ro-list-root": {
       "status": "pending",
       "image": "fixtures/sample.img",
-      "ops": [
+      "recipe": [
         {
-          "type": "ls",
+          "host": "vm",
+          "op": "ls",
           "path": "/",
           "expect_names": [".", "..", "lost+found"]
         }
@@ -109,14 +108,19 @@ other scenarios retain the parallelism configured by
 `[runner].max_parallel`. A failed scenario is never retried automatically:
 the first-attempt diagnostics and non-zero verdict are preserved.
 
-## 4. One-time VM provisioning
+## 4. VM package provisioning
+
+The Windows-side `scripts/setup-windows-vm.ps1` installs the declared Rust
+toolchain and any winget packages in `[vm.packages]` of
+`fs-windows-test-harness.toml`. To have the harness copy and invoke that
+script on the VM, run this from your project:
 
 ```sh
-bash harness/scripts/setup-windows-vm.ps1   # run on the VM, once
+bash ../fs-windows-test-harness/scripts/run-tests.sh --reinstall ro-list-root
 ```
 
-Installs rustup + the toolchain you declared, and any winget packages
-listed in `harness.toml [vm.packages]`. Idempotent.
+This removes and reinstalls the listed packages before running the scenario;
+use it when first provisioning them or changing their installer features.
 
 `[vm.packages]` entries are either bare strings (installed with the
 package's default feature set) or tables for packages that need
@@ -135,21 +139,10 @@ packages = [
 `--override`. The WinFsp example pulls in `F.Main` + `F.User` (the
 default runtime) + `F.Developer` (headers + `.lib`) — required for
 consumers that build WinFsp bindings via `bindgen` (`ext4-win-driver`,
-`erofs-win-driver`). When invoking setup-windows-vm.ps1 directly, pass
-the spec via `-PackagesJson` (a JSON array matching the TOML shape):
-
-```sh
-powershell -ExecutionPolicy Bypass -File harness/scripts/setup-windows-vm.ps1 \
-    -RustToolchain "stable-aarch64-pc-windows-gnullvm" \
-    -PackagesJson '[{"id":"WinFsp.WinFsp","custom_args":"ADDLOCAL=F.Main,F.User,F.Developer"},"LLVM.LLVM"]'
-```
-
-On a VM where the package is already installed without the required
-features, run `bash harness/scripts/run-tests.sh --reinstall <scenario>`
-to drive a clean uninstall+install cycle via `setup-windows-vm.ps1
--Reinstall` (winget reconfigure with new ADDLOCAL features against an
-existing install returns 1603 / "feature not found"; the only reliable
-path is uninstall-then-install).
+`erofs-win-driver`). The `--reinstall` flow passes these values to
+`setup-windows-vm.ps1` as `-PackagesJson`. A package installed without the
+required features needs an uninstall and reinstall; winget reconfigure
+with a new `ADDLOCAL` set can return 1603.
 
 (Mac-side `.test-env` is bootstrapped automatically by `run-tests.sh`
 on first run — see step 5.)
@@ -157,7 +150,7 @@ on first run — see step 5.)
 ## 5. Run a scenario
 
 ```sh
-bash harness/scripts/run-tests.sh ro-list-root
+bash ../fs-windows-test-harness/scripts/run-tests.sh ro-list-root
 ```
 
 On the very first run, prompts for VM host / ssh key / workdir and
@@ -168,10 +161,10 @@ The first run takes longer due to cargo build on the VM; subsequent
 runs reuse the build cache.
 
 ```sh
-bash harness/scripts/run-tests.sh           # whole matrix
-bash harness/scripts/run-tests.sh --list    # list scenarios
-bash harness/scripts/run-tests.sh --reset   # wipe .test-env, re-prompt
-bash harness/scripts/run-tests.sh --help    # full flag surface
+bash ../fs-windows-test-harness/scripts/run-tests.sh           # whole matrix
+bash ../fs-windows-test-harness/scripts/run-tests.sh --list    # list scenarios
+bash ../fs-windows-test-harness/scripts/run-tests.sh --reset   # wipe .test-env, re-prompt
+bash ../fs-windows-test-harness/scripts/run-tests.sh --help    # full flag surface
 ```
 
 ## 6. Read the diag
@@ -212,11 +205,12 @@ migration is mostly mechanical:
 
 1. Move project-specific scenarios into `test-matrix.json` (likely
    already there).
-2. Translate hardcoded shell commands into `harness.toml [ops]`
-   templates.
-3. Delete the old `scripts/` and `tests/matrix.rs` (the harness
-   replaces both).
-4. Add a `harness/` submodule pointing at this repo.
+2. Translate hardcoded shell commands into `[ops]` templates in
+   `fs-windows-test-harness.toml`.
+3. Replace obsolete copies of the harness scripts and `tests/matrix.rs`;
+   keep project-specific scripts used by your scenarios.
+4. Pin `HARNESS_REF` and add the sibling checkout to `chore siblings` as in
+   step 1.
 5. Run one scenario to verify the new wiring before deleting old
    tooling.
 
@@ -225,8 +219,8 @@ migration is mostly mechanical:
 - **`expect_*` values that drift on every run** (timestamps, FUSE
   inode numbers, atimes) — quote them with care or use
   `expect_stdout_contains` for partial matches.
-- **Paths in `harness.toml`** are resolved relative to the toml file,
-  not the repo root. Stay consistent.
+- **Paths in `fs-windows-test-harness.toml`** are resolved relative to that
+  file, not the repository root. Stay consistent.
 - **PowerShell 5.1 quirks** on Windows VMs: avoid char ranges (`'A'..'Z'`)
   and pwsh-only operators in any custom op templates.
 - **WinFsp drive letters are per-logon-session** — if you SSH into the
