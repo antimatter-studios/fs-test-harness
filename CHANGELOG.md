@@ -3,6 +3,19 @@
 All notable changes to fs-windows-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## Unreleased
+
+### Added
+
+- **An agent guide, `AGENTS.md`, with `CLAUDE.md` importing it.** It carries
+  the agent-core block shared byte-identically across the repositories this
+  harness is developed alongside, then what is specific to this one: where the
+  oracle is (the Windows smoke job and its canary), how the tasks and budgets
+  run, and what a newcomer trips on.
+- **`chore agents-core`,** which runs `tests/agents-core.sh`: the committed
+  guide passes `scripts/agents-core-check.sh`, and a modified, unmarked,
+  mis-declared or absent one is refused. CI runs it in the `state-machine` job.
+
 ## v4.2.0 — 2026-09-26
 
 ### Changed (BREAKING for anyone calling the harness's wrapper directly)

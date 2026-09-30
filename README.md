@@ -79,11 +79,12 @@ the same commands.
 
 ```sh
 chore siblings # first: put ../rust-fs-core where the output budget is read from
-chore check    # lint + test + state-machine + output-budget + config: everything off Windows
+chore check    # lint + test + state-machine + output-budget + agents-core + config: everything off Windows
 chore lint     # bash -n, shellcheck, cargo fmt --check, cargo clippy
 chore test     # runner unit tests
 chore state-machine
 chore output-budget  # the wrapper resolves from core, and every task is budgeted
+chore agents-core    # AGENTS.md carries the shared agent-core block, unmodified
 chore config   # needs python3 3.11+ and `pip install 'jsonschema>=4.19'`
 chore test -- --verbose   # any task: stream the whole run, not just the verdict
 
@@ -185,7 +186,7 @@ at it. Each job proves one thing:
 | --- | --- |
 | `lint (shell + cargo)` | Every shell script parses and passes shellcheck (errors); the runner is `rustfmt`-clean and `clippy -D warnings`-clean. |
 | `runner unit tests` | The runner's substitution, dispatch, config loading, `.test-env` parsing and disk hygiene behave, and its loader accepts every consumer config in the repo and rejects every fixture in `tests/config-fixtures/invalid/`. |
-| `state-machine integration test` | `claim` / `update-status` / `reset` transition statuses correctly, and concurrent claimers and writers neither double-claim nor lose updates. |
+| `state-machine integration test` | `claim` / `update-status` / `reset` transition statuses correctly, and concurrent claimers and writers neither double-claim nor lose updates. The output-budget and agent-guide self-tests run here too. |
 | `config (schemas, examples, negative fixtures)` | Both schemas are valid; every consumer config (`examples/*`, `tests/smoke-consumer`) validates and only uses declared ops; every negative fixture is rejected for the reason its `expect.txt` names. |
 | `smoke (windows-latest, WinFsp memfs, run-tests.sh over SSH)` | The harness works end to end on real Windows. See below. |
 | `ci-ok` | Every job above succeeded (not failed, cancelled or skipped), and no job exists that `ci-ok` does not wait for. |
