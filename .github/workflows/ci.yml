@@ -158,6 +158,12 @@ jobs:
       - name: output-budget self-test (resolves from core; every task is budgeted)
         run: bash scripts/task.sh output-budget output-budget 120 12000 -- bash tests/output-budget.sh
 
+      # AGENTS.md carries the shared agent-core block unmodified, and the
+      # checker refuses a drifted, unmarked or absent one. Another script
+      # self-test, so it rides in this job too.
+      - name: agent-guide self-test (the shared block is intact; drift is refused)
+        run: bash scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
+
       - name: upload state-machine logs
         if: always()
         uses: actions/upload-artifact@v4

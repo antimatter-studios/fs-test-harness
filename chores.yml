@@ -93,8 +93,13 @@ tasks:
     cmds:
       - scripts/task.sh output-budget output-budget 120 12000 -- bash tests/output-budget.sh
 
+  agents-core:
+    desc: AGENTS.md carries the shared agent-core block, unmodified, and the check refuses a drifted one (CI job `state-machine`)
+    cmds:
+      - scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
+
   check:
-    desc: Every CI job that runs off Windows -- lint, test, state-machine, output-budget, config
+    desc: Every CI job that runs off Windows -- lint, test, state-machine, output-budget, agents-core, config
     # Sequential on purpose: the first failure stops the run and is the
     # last thing on screen.
     cmds:
@@ -102,6 +107,7 @@ tasks:
       - task: test
       - task: state-machine
       - task: output-budget
+      - task: agents-core
       - task: config
 
   smoke:

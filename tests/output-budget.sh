@@ -158,7 +158,7 @@ check_contains "$out" "FS_CORE_ROOT" "and says what was missing"
 # `siblings` is not in the list and cannot be: it is the task that fetches the
 # wrapper, so budgeting it through the wrapper would be a task that can only
 # run once it has already run. It prints one line of git plumbing.
-for task in lint test state-machine config output-budget smoke; do
+for task in lint test state-machine config output-budget agents-core smoke; do
     block="$(awk -v t="  $task:" '
         $0 == t { inside = 1; next }
         inside && /^  [a-z][a-z:_-]*:$/ { inside = 0 }
