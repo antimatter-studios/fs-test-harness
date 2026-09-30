@@ -37,6 +37,7 @@ chore_min_version: 0.6.0
 #     state-machine     34 / 1,634      50 / 2,400
 #     config             8 /   674      20 / 1,500
 #     output-budget     39 / 1,957    120 / 12,000   measured 2026-09-26
+#     agents-core       11 /   445     20 / 1,000   measured 2026-09-30
 #     smoke            348 / 42,000   500 / 60,000   end-to-end VM transcript
 #
 #   Raise one DELIBERATELY when a task grows. A budget nobody can breach
