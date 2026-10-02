@@ -202,6 +202,7 @@ chore check           # everything that runs off Windows (the list below)
 chore lint            # bash -n, shellcheck, cargo fmt --check, clippy -D warnings
 chore test            # runner unit tests
 chore state-machine   # claim / update-status / reset, incl. concurrent writers
+chore remote-timeout  # a VM command that never returns fails, named and bounded
 chore output-budget   # the wrapper resolves from core; every task is budgeted
 chore agents-core     # AGENTS.md carries the shared block; drift is refused
 chore config          # schemas, examples, negative fixtures (python3 3.11+, jsonschema)
@@ -217,7 +218,7 @@ CI (`.github/workflows/ci.yml`), every job running the same task as above:
 |---|---|
 | `lint (shell + cargo)` | `chore lint` |
 | `runner unit tests` | `chore test` |
-| `state-machine integration test` | `chore state-machine`, `chore output-budget`, `chore agents-core` |
+| `state-machine integration test` | `chore state-machine`, `chore remote-timeout`, `chore output-budget`, `chore agents-core` |
 | `config (schemas, examples, negative fixtures)` | `chore config` |
 | `smoke (windows-latest, …)` | `tests/chkdsk-verdict.ps1`, `tests/vm-lock.ps1`, the VM-workdir lock contention check, `chore smoke` |
 | `ci-ok` | the single required check: every job above ran and succeeded, and none is missing from its `needs` |
@@ -244,6 +245,13 @@ on a throwaway runner.
   release its replacement. `FSWTH_VM_LEASE_SECONDS` and
   `FSWTH_VM_HEARTBEAT_SECONDS` tune it (heartbeat at most a third of the
   lease). Do not "simplify" the fencing away.
+- **Every remote command is bounded, and nothing reads the remote stdin
+  unless it must.** `run-tests.sh` sends VM commands through
+  `harness_bounded` (`scripts/_lib_harness.sh`), the runner through
+  `output_with_timeout`; a timeout names the command and the scenario. Wrap
+  the external program (`ssh`, `scp`), never a shell function: killing a
+  function's subshell orphans its `ssh`. The lock helper travels inside the
+  encoded command, not on stdin -- the streamed version is where CI hung.
 - **A schema change lands with a negative fixture.** `tests/config-fixtures/`
   holds configs that must be rejected, each with an `expect.txt` naming the
   reason; both the runner's loader and `tests/validate-configs.py` are held

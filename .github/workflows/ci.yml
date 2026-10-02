@@ -151,6 +151,12 @@ jobs:
       - name: run state-machine self-test
         run: bash scripts/task.sh state-machine state-machine 50 2400 -- bash tests/state-machine.sh
 
+      # A VM command that never returns is a named failure within its bound,
+      # not a job that hangs until it is cancelled. Stand-in ssh, no VM, so
+      # it rides in this job rather than adding a required check of its own.
+      - name: a remote command that never returns fails, named and bounded
+        run: bash scripts/task.sh remote-timeout remote-timeout 25 1500 -- bash tests/remote-timeout.sh
+
       # That the wrapper resolves from rust-fs-core, that both refusals are
       # loud, and that every chore task runs under a budget. A script
       # self-test like the one above, so it lives in this job rather than

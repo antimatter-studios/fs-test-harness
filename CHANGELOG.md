@@ -3,10 +3,50 @@
 All notable changes to fs-windows-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
-## Unreleased
+## v4.3.0 — 2026-10-02
+
+### Fixed
+
+- **A VM command that never returns is a named, bounded failure, not a
+  silent hang.** On CI, one SSH session to the Windows runner stopped
+  answering three times and the job printed nothing until it was cancelled,
+  40 minutes or six hours later (rust-fs-ntfs#403, #388). Every command
+  `run-tests.sh` sends to the VM — preflight, each VM-lock action, ship, scp,
+  `--reinstall`, `[run].vm_build_command` — now runs through
+  `harness_bounded`, and every recipe step the runner dispatches (ssh, scp,
+  host command) through `output_with_timeout`. On timeout the command is
+  stopped and the failure names it, the bound and the scenario:
+  `[run-tests] TIMEOUT: VM lock Acquire (ssh …) did not finish within 300s
+  (scenario filter '…')`, or a scenario FAIL line ending `step 5 (win-chkdsk)
+  errored: timed out after 900s (FSWTH_STEP_TIMEOUT_SECONDS) and was
+  stopped: ssh … <command>`.
+- **The VM-lock helper is no longer streamed on the remote stdin.** All three
+  recorded hangs stopped inside a lock call that piped
+  `matrix-run-lock.ps1` into `[Console]::In.ReadToEnd()` on the VM (Acquire,
+  the Verify before the ship, the Release at the end), while the far more
+  numerous guarded commands, which never read stdin, never hung. The helper
+  now travels gzipped inside the encoded command (about 12,300 characters)
+  and lock calls run `ssh -n`, so nothing waits on an end-of-file Windows
+  OpenSSH may not deliver.
 
 ### Added
 
+- **Three bounds, each an environment variable:**
+  `FSWTH_REMOTE_TIMEOUT_SECONDS` (default 300) for lock actions, preflight,
+  ship and scp; `FSWTH_VM_SETUP_TIMEOUT_SECONDS` (3600) for `--reinstall`
+  and `[run].vm_build_command`; `FSWTH_STEP_TIMEOUT_SECONDS` (900) for each
+  recipe step. A value that is not whole seconds in 1..86400 stops the run
+  before it starts.
+- **A line as each recipe step starts,** naming the step and its scenario
+  (`  05 win-chkdsk           start (<scenario>)`), so the last `start` in a
+  log is the step that was running. A consumer whose output budget counts
+  the runner's lines gains one line per step executed.
+- **`chore remote-timeout`,** which runs `tests/remote-timeout.sh`: a
+  stand-in `ssh` that never returns from Acquire, Verify or Release, and the
+  run must fail within its bound naming the command and the scenario, with
+  no stand-in left running. CI runs it in the `state-machine` job.
+- **`run_recipe_observed`, `output_with_timeout` and `step_timeout`** in the
+  runner library, for the start callback and the bound.
 - **An agent guide, `AGENTS.md`, with `CLAUDE.md` importing it.** It carries
   the agent-core block shared byte-identically across the repositories this
   harness is developed alongside, then what is specific to this one: where the

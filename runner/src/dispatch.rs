@@ -19,9 +19,54 @@ use crate::matrix::{Scenario, Step};
 use crate::substitution::Substitution;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::Instant;
+use std::process::{Command, Output, Stdio};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+/// Bound on one recipe step when `FSWTH_STEP_TIMEOUT_SECONDS` is unset.
+///
+/// Every step -- an SSH session to the VM, an scp, a host-side command -- runs
+/// under it. Before it existed a VM command that never returned held the run,
+/// printing nothing, until CI cancelled the job; now the step fails, naming
+/// the bound and the command, and the scenario's FAIL line names the step.
+/// Fifteen minutes is far above any step measured (chkdsk of a 256 MiB volume
+/// takes about 30 s) and well below a CI job's own limit.
+pub const DEFAULT_STEP_TIMEOUT_SECS: u64 = 900;
+
+/// The variable that overrides [`DEFAULT_STEP_TIMEOUT_SECS`].
+pub const STEP_TIMEOUT_ENV: &str = "FSWTH_STEP_TIMEOUT_SECONDS";
+
+/// Parse a step bound: whole seconds, 1..=86400. `None` is the default.
+pub fn parse_step_timeout(value: Option<&str>) -> Result<Duration, String> {
+    let Some(raw) = value else {
+        return Ok(Duration::from_secs(DEFAULT_STEP_TIMEOUT_SECS));
+    };
+    match raw.trim().parse::<u64>() {
+        Ok(secs) if (1..=86_400).contains(&secs) => Ok(Duration::from_secs(secs)),
+        _ => Err(format!(
+            "{STEP_TIMEOUT_ENV}='{raw}': need whole seconds, 1..86400"
+        )),
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Tests bound a step without touching the process environment, which
+    /// every other test thread shares.
+    static STEP_TIMEOUT_OVERRIDE: std::cell::Cell<Option<Duration>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// The bound every step of this run is held to.
+pub fn step_timeout() -> Result<Duration, String> {
+    #[cfg(test)]
+    if let Some(d) = STEP_TIMEOUT_OVERRIDE.with(|o| o.get()) {
+        return Ok(d);
+    }
+    parse_step_timeout(std::env::var(STEP_TIMEOUT_ENV).ok().as_deref())
+}
 
 /// Outcome of executing a single recipe step.
 #[derive(Serialize, Debug, Clone)]
@@ -91,6 +136,34 @@ pub fn run_recipe(
     run_id: u128,
     on_step: impl Fn(&StepResult),
 ) -> Result<RecipeResult, String> {
+    run_recipe_observed(
+        scenario_name,
+        scenario,
+        config,
+        local_config,
+        consumer_root,
+        diag_dir,
+        run_id,
+        |_, _| {},
+        on_step,
+    )
+}
+
+/// [`run_recipe`], plus `on_start(index, op)` called just before each step
+/// runs -- so a step that stops answering is the last one a log names as
+/// started, not merely the one after the last that finished.
+#[allow(clippy::too_many_arguments)]
+pub fn run_recipe_observed(
+    scenario_name: &str,
+    scenario: &Scenario,
+    config: &HarnessConfig,
+    local_config: &LocalConfig,
+    consumer_root: &Path,
+    diag_dir: &Path,
+    run_id: u128,
+    on_start: impl Fn(usize, &str),
+    on_step: impl Fn(&StepResult),
+) -> Result<RecipeResult, String> {
     if scenario.recipe.is_empty() {
         return Err("run_recipe called with empty recipe".to_string());
     }
@@ -109,6 +182,13 @@ pub fn run_recipe(
         let step_dir = diag_dir.join(format!("step-{idx:02}"));
         std::fs::create_dir_all(&step_dir)
             .map_err(|e| format!("mkdir {}: {e}", step_dir.display()))?;
+
+        let op_label = step
+            .get("op")
+            .or_else(|| step.get("type"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("?");
+        on_start(idx, op_label);
 
         let result = run_step(
             idx,
@@ -301,7 +381,7 @@ fn run_local(command: &str, step_dir: &Path) -> Result<Option<i32>, String> {
         c
     };
 
-    spawn_with_diag(&mut cmd, step_dir)
+    spawn_with_diag(&mut cmd, step_dir, command)
 }
 
 fn run_vm(
@@ -337,7 +417,7 @@ fn run_vm(
     cmd.arg(&host_owned);
     cmd.arg(vm_lock_command("Invoke", command)?);
 
-    spawn_with_diag(&mut cmd, step_dir)
+    spawn_with_diag(&mut cmd, step_dir, &format!("ssh {host_owned} {command}"))
 }
 
 fn ps_literal(value: &str) -> String {
@@ -376,12 +456,107 @@ fn vm_lock_command(action: &str, command: &str) -> Result<String, String> {
     }
 }
 
-/// Run a `Command` and capture stdout/stderr to `step_dir`.
-fn spawn_with_diag(cmd: &mut Command, step_dir: &Path) -> Result<Option<i32>, String> {
-    let output = cmd.output().map_err(|e| format!("spawn: {e}"))?;
-    let _ = std::fs::write(step_dir.join("stdout.txt"), &output.stdout);
-    let _ = std::fs::write(step_dir.join("stderr.txt"), &output.stderr);
-    Ok(output.status.code())
+/// What [`output_with_timeout`] reports when the bound fires: whatever the
+/// command printed before it was stopped.
+#[derive(Debug)]
+pub struct TimedOut {
+    pub after: Duration,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+}
+
+/// Like [`Command::output`] (stdin closed, stdout and stderr captured), but
+/// the command gets `timeout` to finish. Past it the child is killed and
+/// reaped, and `Err(Ok(TimedOut))` carries what it printed so far;
+/// `Err(Err(msg))` is a spawn failure.
+///
+/// The reader threads are not joined after a kill: a grandchild (a shell's
+/// own child) can hold the pipes open, and waiting for it would be the very
+/// hang this function exists to bound.
+pub fn output_with_timeout(
+    cmd: &mut Command,
+    timeout: Duration,
+) -> Result<Output, Result<TimedOut, String>> {
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Err(format!("spawn: {e}")))?;
+
+    fn drain(
+        pipe: Option<impl Read + Send + 'static>,
+    ) -> (Arc<Mutex<Vec<u8>>>, Option<std::thread::JoinHandle<()>>) {
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let sink = Arc::clone(&buf);
+        let handle = pipe.map(|mut pipe| {
+            std::thread::spawn(move || {
+                let mut chunk = [0u8; 8192];
+                while let Ok(n) = pipe.read(&mut chunk) {
+                    if n == 0 {
+                        break;
+                    }
+                    sink.lock().unwrap().extend_from_slice(&chunk[..n]);
+                }
+            })
+        });
+        (buf, handle)
+    }
+    let (out_buf, out_thread) = drain(child.stdout.take());
+    let (err_buf, err_thread) = drain(child.stderr.take());
+    let snapshot = |b: &Arc<Mutex<Vec<u8>>>| b.lock().unwrap().clone();
+
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                for t in [out_thread, err_thread].into_iter().flatten() {
+                    let _ = t.join();
+                }
+                return Ok(Output {
+                    status,
+                    stdout: snapshot(&out_buf),
+                    stderr: snapshot(&err_buf),
+                });
+            }
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                // Give the readers a moment to collect the last output.
+                std::thread::sleep(Duration::from_millis(100));
+                return Err(Ok(TimedOut {
+                    after: timeout,
+                    stdout: snapshot(&out_buf),
+                    stderr: snapshot(&err_buf),
+                }));
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(50)),
+            Err(e) => return Err(Err(format!("wait: {e}"))),
+        }
+    }
+}
+
+/// Run a `Command` under the step bound and capture stdout/stderr to
+/// `step_dir`. `what` names the command in a timeout's error, which is what
+/// the scenario's FAIL line prints.
+fn spawn_with_diag(cmd: &mut Command, step_dir: &Path, what: &str) -> Result<Option<i32>, String> {
+    let timeout = step_timeout()?;
+    match output_with_timeout(cmd, timeout) {
+        Ok(output) => {
+            let _ = std::fs::write(step_dir.join("stdout.txt"), &output.stdout);
+            let _ = std::fs::write(step_dir.join("stderr.txt"), &output.stderr);
+            Ok(output.status.code())
+        }
+        Err(Ok(t)) => {
+            let _ = std::fs::write(step_dir.join("stdout.txt"), &t.stdout);
+            let _ = std::fs::write(step_dir.join("stderr.txt"), &t.stderr);
+            Err(format!(
+                "timed out after {}s ({STEP_TIMEOUT_ENV}) and was stopped: {what}",
+                t.after.as_secs()
+            ))
+        }
+        Err(Err(e)) => Err(e),
+    }
 }
 
 /// Built-in transition op handler — `ship-to-vm` and `ship-to-host`.
@@ -497,7 +672,7 @@ fn run_builtin_ship(
     cmd.arg(&src_arg).arg(&dest_arg);
 
     let mut outcome = if guard_status == Some(0) {
-        spawn_with_diag(&mut cmd, step_dir)
+        spawn_with_diag(&mut cmd, step_dir, &format!("scp {src_arg} {dest_arg}"))
     } else {
         Ok(guard_status)
     };
@@ -982,6 +1157,113 @@ mod tests {
         );
 
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// A step that never returns fails within its bound, and the failure
+    /// names the bound and the command -- rust-fs-ntfs#403, where a VM
+    /// command held a CI job silently for 40 minutes.
+    #[test]
+    fn a_step_that_never_returns_fails_within_its_bound_naming_the_command() {
+        if cfg!(windows) {
+            return; // `sleep` is a POSIX host step; the bound itself is portable.
+        }
+        let cfg = config_with_ops(&[(
+            "never-returns",
+            OpDef {
+                host: Host::Host,
+                command: "sleep 30".into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let scn = scenario_with_recipe(vec![json!({ "op": "never-returns" })]);
+        let dir = tempdir();
+        STEP_TIMEOUT_OVERRIDE.with(|o| o.set(Some(Duration::from_secs(1))));
+        let started = Instant::now();
+        let result = run_recipe(
+            "hangs",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |_| {},
+        )
+        .expect("recipe runs");
+        let took = started.elapsed();
+        STEP_TIMEOUT_OVERRIDE.with(|o| o.set(None));
+
+        assert!(
+            took < Duration::from_secs(10),
+            "a 1 s bound took {took:?} to fire"
+        );
+        assert!(!result.overall_passed, "a timed-out step must fail");
+        let err = result.steps[0].error.as_deref().unwrap_or("");
+        assert!(
+            err.contains("timed out after 1s") && err.contains(STEP_TIMEOUT_ENV),
+            "the error names the bound and its knob: {err}"
+        );
+        assert!(
+            err.contains("sleep 30"),
+            "the error names the command: {err}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Each step is announced before it runs and reported after, in order,
+    /// so the last "start" in a log is the step that is running.
+    #[test]
+    fn each_step_is_announced_before_it_runs() {
+        let cfg = config_with_ops(&[(
+            "noop",
+            OpDef {
+                host: Host::Host,
+                command: if cfg!(windows) { "exit 0" } else { "true" }.into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let scn = scenario_with_recipe(vec![json!({ "op": "noop" }), json!({ "type": "noop" })]);
+        let dir = tempdir();
+        let events = std::cell::RefCell::new(Vec::new());
+        run_recipe_observed(
+            "announced",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0u128,
+            |idx, op| events.borrow_mut().push(format!("start {idx} {op}")),
+            |r| {
+                events
+                    .borrow_mut()
+                    .push(format!("done {} {}", r.index, r.op))
+            },
+        )
+        .expect("recipe runs");
+        assert_eq!(
+            events.into_inner(),
+            ["start 0 noop", "done 0 noop", "start 1 noop", "done 1 noop"]
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_step_bound_is_whole_seconds_with_a_default() {
+        assert_eq!(
+            parse_step_timeout(None).unwrap(),
+            Duration::from_secs(DEFAULT_STEP_TIMEOUT_SECS)
+        );
+        assert_eq!(
+            parse_step_timeout(Some("120")).unwrap(),
+            Duration::from_secs(120)
+        );
+        for bad in ["0", "-5", "1.5", "", "ten", "86401"] {
+            let err = parse_step_timeout(Some(bad)).unwrap_err();
+            assert!(err.contains(STEP_TIMEOUT_ENV), "{bad:?}: {err}");
+        }
     }
 
     fn tempdir() -> PathBuf {

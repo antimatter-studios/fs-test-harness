@@ -7,6 +7,8 @@
 #   harness_toml            path to the consumer's fs-windows-test-harness.toml
 #   harness_get KEY         echoes the dotted-path value from harness.toml
 #   harness_get_or KEY DEF  same, with default
+#   harness_bounded S L CMD runs CMD for at most S seconds; a timeout names L
+#   harness_timeout_seconds  reads and checks one of the FSWTH_*_TIMEOUT knobs
 #
 # Reads harness.toml via python3. We don't require Python's `tomllib`
 # (3.11+); we do a minimal hand parse that handles the limited subset
@@ -97,6 +99,69 @@ elif isinstance(node, bool):
 else:
     sys.stdout.write(str(node))
 PY
+}
+
+# harness_timeout_seconds NAME DEFAULT
+# Echoes the value of environment variable NAME, or DEFAULT when it is unset,
+# and fails loudly when the value is not a whole number of seconds in
+# 1..86400. A bound nobody can read back is not a bound.
+harness_timeout_seconds() {
+    local name="$1" default="$2" value
+    value="${!name:-${default}}"
+    if ! [[ "${value}" =~ ^[1-9][0-9]{0,4}$ ]] || (( value > 86400 )); then
+        echo "[run-tests] ${name}='${value}': need whole seconds, 1..86400" >&2
+        return 2
+    fi
+    printf '%s' "${value}"
+}
+
+# harness_bounded SECONDS LABEL COMMAND [ARG...]
+# Runs COMMAND (an external program -- ssh, scp -- never a shell function,
+# whose children a kill would orphan) and gives it SECONDS to finish. On time
+# it returns COMMAND's status. Otherwise COMMAND is stopped (TERM, then KILL
+# two seconds later), a line naming LABEL, the bound and
+# HARNESS_TIMEOUT_CONTEXT (run-tests.sh sets it to the scenario filter) goes
+# to stderr, and the status is 124 -- the number coreutils' timeout uses.
+#
+# Why this exists: a remote command that never returns used to hold the run,
+# silently, until CI cancelled the job (rust-fs-ntfs#403, #388). Now it is a
+# failure that says which command stopped, for which scenario, and when.
+#
+# stdin is handed to COMMAND explicitly: bash gives a background job
+# /dev/null otherwise, which would starve `tar ... | ssh ... tar -xf -`.
+# The watchdog's own output goes to /dev/null so a caller capturing
+# COMMAND's output with $(...) is not held open by it. Plain bash 3.2.
+harness_bounded() {
+    local seconds="$1" label="$2"
+    shift 2
+    local fired pid watchdog rc=0
+    fired="$(mktemp "${TMPDIR:-/tmp}/fswth-bounded.XXXXXX")" || return 1
+    rm -f "${fired}"
+    "$@" <&0 &
+    pid=$!
+    (
+        deadline=$((SECONDS + seconds))
+        while kill -0 "${pid}" 2>/dev/null; do
+            if (( SECONDS >= deadline )); then
+                : > "${fired}"
+                kill -TERM "${pid}" 2>/dev/null
+                sleep 2
+                kill -KILL "${pid}" 2>/dev/null
+                exit 0
+            fi
+            sleep 1
+        done
+    ) < /dev/null > /dev/null 2>&1 &
+    watchdog=$!
+    wait "${pid}" || rc=$?
+    kill "${watchdog}" 2>/dev/null || true
+    wait "${watchdog}" 2>/dev/null || true
+    if [[ -e "${fired}" ]]; then
+        rm -f "${fired}"
+        echo "[run-tests] TIMEOUT: ${label} did not finish within ${seconds}s${HARNESS_TIMEOUT_CONTEXT:+ (${HARNESS_TIMEOUT_CONTEXT})}; stopped it" >&2
+        return 124
+    fi
+    return "${rc}"
 }
 
 harness_get_or() {

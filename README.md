@@ -79,7 +79,7 @@ the same commands.
 
 ```sh
 chore siblings # first: put ../rust-fs-core where the output budget is read from
-chore check    # lint + test + state-machine + output-budget + agents-core + config: everything off Windows
+chore check    # lint + test + state-machine + remote-timeout + output-budget + agents-core + config: everything off Windows
 chore lint     # bash -n, shellcheck, cargo fmt --check, cargo clippy
 chore test     # runner unit tests
 chore state-machine
@@ -186,7 +186,7 @@ at it. Each job proves one thing:
 | --- | --- |
 | `lint (shell + cargo)` | Every shell script parses and passes shellcheck (errors); the runner is `rustfmt`-clean and `clippy -D warnings`-clean. |
 | `runner unit tests` | The runner's substitution, dispatch, config loading, `.test-env` parsing and disk hygiene behave, and its loader accepts every consumer config in the repo and rejects every fixture in `tests/config-fixtures/invalid/`. |
-| `state-machine integration test` | `claim` / `update-status` / `reset` transition statuses correctly, and concurrent claimers and writers neither double-claim nor lose updates. The output-budget and agent-guide self-tests run here too. |
+| `state-machine integration test` | `claim` / `update-status` / `reset` transition statuses correctly, and concurrent claimers and writers neither double-claim nor lose updates. The remote-timeout, output-budget and agent-guide self-tests run here too. |
 | `config (schemas, examples, negative fixtures)` | Both schemas are valid; every consumer config (`examples/*`, `tests/smoke-consumer`) validates and only uses declared ops; every negative fixture is rejected for the reason its `expect.txt` names. |
 | `smoke (windows-latest, WinFsp memfs, run-tests.sh over SSH)` | The harness works end to end on real Windows. See below. |
 | `ci-ok` | Every job above succeeded (not failed, cancelled or skipped), and no job exists that `ci-ok` does not wait for. |
@@ -242,6 +242,22 @@ crash recovery for the entire matrix duration. Set
 `FSWTH_VM_LEASE_SECONDS` and `FSWTH_VM_HEARTBEAT_SECONDS` to tune it; the
 heartbeat must be at most one third of the lease. The PID in diagnostics is
 the orchestrator's PID and is never used as a Windows liveness check.
+
+Every command sent to the VM is bounded, so a session that stops answering
+is a failure that names itself rather than a run that hangs until CI cancels
+it. `run-tests.sh` stops a lock action, ship or scp after
+`FSWTH_REMOTE_TIMEOUT_SECONDS` (300), `--reinstall` and
+`[run].vm_build_command` after `FSWTH_VM_SETUP_TIMEOUT_SECONDS` (3600), and
+the runner stops any recipe step after `FSWTH_STEP_TIMEOUT_SECONDS` (900).
+Each prints the command, the bound and the scenario:
+
+```
+[run-tests] TIMEOUT: VM lock Acquire (ssh runneradmin@localhost) did not finish within 300s (scenario filter 'mac-format-mkdir-rmdir-win-chkdsk'); stopped it
+[12:04:31][+00:15:02] FAIL mac-format-mkdir-rmdir-win-chkdsk  (total 00:15:02)  — step 5 (win-chkdsk) errored: timed out after 900s (FSWTH_STEP_TIMEOUT_SECONDS) and was stopped: ssh runneradmin@localhost ...
+```
+
+The runner also prints a line as each step starts, naming its scenario, so
+the last `start` in a log is the step that was running.
 
 ## License
 
