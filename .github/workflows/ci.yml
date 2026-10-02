@@ -67,7 +67,7 @@ jobs:
 
       - name: lint and cargo checks
         run: |
-          bash scripts/task.sh lint lint 70 2400 -- bash -c '
+          bash scripts/task.sh lint lint 112 5000 -- bash -c '
             set -e
             for f in scripts/*.sh scripts/host/*.sh tests/*.sh tests/smoke-consumer/*.sh; do
               bash -n "$f"
