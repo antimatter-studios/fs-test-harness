@@ -67,7 +67,7 @@ jobs:
 
       - name: lint and cargo checks
         run: |
-          bash scripts/task.sh lint lint 70 2400 -- bash -c '
+          bash scripts/task.sh lint lint 112 5000 -- bash -c '
             set -e
             for f in scripts/*.sh scripts/host/*.sh tests/*.sh tests/smoke-consumer/*.sh; do
               bash -n "$f"
@@ -114,7 +114,7 @@ jobs:
           workspaces: runner -> target
 
       - name: cargo test
-        run: bash scripts/task.sh test test 140 6000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
+        run: bash scripts/task.sh test test 200 10000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
 
       - name: upload runner log
         if: always()
@@ -150,6 +150,12 @@ jobs:
 
       - name: run state-machine self-test
         run: bash scripts/task.sh state-machine state-machine 50 2400 -- bash tests/state-machine.sh
+
+      # A VM command that never returns is a named failure within its bound,
+      # not a job that hangs until it is cancelled. Stand-in ssh, no VM, so
+      # it rides in this job rather than adding a required check of its own.
+      - name: a remote command that never returns fails, named and bounded
+        run: bash scripts/task.sh remote-timeout remote-timeout 25 1500 -- bash tests/remote-timeout.sh
 
       # That the wrapper resolves from rust-fs-core, that both refusals are
       # loud, and that every chore task runs under a budget. A script

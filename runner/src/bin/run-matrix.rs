@@ -373,7 +373,7 @@ fn main() {
                 let step_start_ref =
                     std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
                 let name_cb = name.clone();
-                let outcome = fs_windows_test_harness::run_recipe(
+                let outcome = fs_windows_test_harness::run_recipe_observed(
                     &name,
                     &scn,
                     &cfg,
@@ -381,6 +381,21 @@ fn main() {
                     &cr,
                     &diag,
                     run_id,
+                    // A line as each step starts, naming its scenario: with
+                    // scenarios in parallel, a step that never returns is
+                    // then named in the log the moment it begins, not only
+                    // when its bound fires.
+                    |index, op| {
+                        *step_start_ref.lock().unwrap() = std::time::Instant::now();
+                        eprintln!(
+                            "[{}][+{}]   {:02} {:<20} start ({})",
+                            now_clock(),
+                            fmt_elapsed(rs.elapsed().as_secs()),
+                            index,
+                            op,
+                            name_cb,
+                        );
+                    },
                     |step_result| {
                         let step_secs = {
                             let t = step_start_ref.lock().unwrap();
@@ -401,8 +416,6 @@ fn main() {
                             fmt_elapsed(step_secs),
                             detail,
                         );
-                        *step_start_ref.lock().unwrap() = std::time::Instant::now();
-                        let _ = &name_cb;
                     },
                 );
                 let exec_secs = exec_start.elapsed().as_secs();
@@ -588,7 +601,10 @@ fn query_available_drive_letters(vm: &VmSection) -> usize {
     }
     cmd.arg(&host).arg(ps_cmd);
 
-    match cmd.output() {
+    // Bounded like every other VM command: a query that never returns
+    // would otherwise hold the run before its first scenario.
+    match fs_windows_test_harness::output_with_timeout(&mut cmd, std::time::Duration::from_secs(60))
+    {
         Ok(out) if out.status.success() => {
             let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
             match s.parse::<usize>() {
@@ -603,6 +619,13 @@ fn query_available_drive_letters(vm: &VmSection) -> usize {
                     1
                 }
             }
+        }
+        Err(Ok(t)) => {
+            eprintln!(
+                "runner: TIMEOUT: drive-letter query (ssh {host}) did not finish within {}s and was stopped — defaulting max_parallel to 1",
+                t.after.as_secs()
+            );
+            1
         }
         _ => {
             eprintln!("runner: could not query VM drive letters — defaulting max_parallel to 1");

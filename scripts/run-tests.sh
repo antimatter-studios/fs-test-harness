@@ -85,6 +85,16 @@
 # Every VM mutation checks the owner token; guarded commands prevent a
 # replacement from taking over until the command finishes.
 #
+# Bounded remote commands: every command this script sends to the VM (the
+# preflight probe, each VM-lock action, every ship and scp) runs under a
+# per-command timeout, and so does every recipe step the runner dispatches.
+# A command that never returns is stopped and the run fails with a line
+# naming the command, the bound and the scenario filter -- instead of
+# holding the run, silently, until CI cancels the job. The bounds:
+#   FSWTH_REMOTE_TIMEOUT_SECONDS     (300)  lock actions, preflight, ship, scp
+#   FSWTH_VM_SETUP_TIMEOUT_SECONDS   (3600) --reinstall, [run].vm_build_command
+#   FSWTH_STEP_TIMEOUT_SECONDS       (900)  each recipe step (the runner's)
+#
 # Output:
 #   stdout: per-scenario PASS/FAIL from libtest-mimic + per-step diag
 #           when failures occur
@@ -151,6 +161,12 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+# Every bounded command names the scenario filter it was running for.
+HARNESS_TIMEOUT_CONTEXT="scenario filter '${SCENARIO:-<every scenario>}'"
+REMOTE_TIMEOUT="$(harness_timeout_seconds FSWTH_REMOTE_TIMEOUT_SECONDS 300)" || exit 2
+SETUP_TIMEOUT="$(harness_timeout_seconds FSWTH_VM_SETUP_TIMEOUT_SECONDS 3600)" || exit 2
+harness_timeout_seconds FSWTH_STEP_TIMEOUT_SECONDS 900 > /dev/null || exit 2
 
 ENV_FILE="${consumer_root}/.test-env"
 PROJECT_NAME="$(harness_get_or project.name "consumer")"
@@ -377,7 +393,8 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
     preflight_ssh() {
         local probe_out probe_rc
         # shellcheck disable=SC2086
-        probe_out=$(ssh ${SSH_OPTS:-} -o BatchMode=yes -o ConnectTimeout=5 \
+        probe_out=$(harness_bounded "${REMOTE_TIMEOUT}" "preflight ssh ${VM_HOST} 'echo OK'" \
+            ssh -n ${SSH_OPTS:-} -o BatchMode=yes -o ConnectTimeout=5 \
             "${VM_HOST}" 'echo OK' 2>&1)
         probe_rc=$?
         if [[ "${probe_rc}" -eq 0 && "${probe_out}" == *OK* ]]; then
@@ -393,7 +410,8 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
             echo "[run-tests] preflight: auto-trusting ${ip}'s host key (ssh-keyscan -> ~/.ssh/known_hosts)" >&2
             if ssh-keyscan -H -T 5 "${ip}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null; then
                 # shellcheck disable=SC2086
-                probe_out=$(ssh ${SSH_OPTS:-} -o BatchMode=yes -o ConnectTimeout=5 \
+                probe_out=$(harness_bounded "${REMOTE_TIMEOUT}" "preflight ssh ${VM_HOST} 'echo OK'" \
+                    ssh -n ${SSH_OPTS:-} -o BatchMode=yes -o ConnectTimeout=5 \
                     "${VM_HOST}" 'echo OK' 2>&1)
                 probe_rc=$?
                 if [[ "${probe_rc}" -eq 0 && "${probe_out}" == *OK* ]]; then
@@ -425,8 +443,21 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
     # The consumer's VM-side image names are scoped only by scenario, and
     # cleanup may sweep every image in VM_WORKDIR. Claim the workdir before
     # reinstall/ship/run so two independent matrix processes cannot overwrite
-    # or delete each other's images. The PowerShell helper is streamed over
-    # SSH, so acquiring the lock does not itself depend on a prior ship phase.
+    # or delete each other's images. The PowerShell helper travels inside the
+    # SSH command itself, so acquiring the lock does not depend on a prior
+    # ship phase.
+    #
+    # IT IS NOT STREAMED ON STDIN ANY MORE, and nothing here may read the
+    # remote stdin. Up to v4.2.0 the helper was piped into
+    # `[Console]::In.ReadToEnd()` on the VM, and on Windows OpenSSH (sshd ->
+    # powershell.exe default shell -> powershell.exe) that read sometimes
+    # never saw end-of-file: all three CI hangs on record stopped inside one
+    # of these streamed lock calls -- Acquire (rust-fs-ntfs run 36887143883),
+    # the Verify before the ship (36683514330) and the Release at the end
+    # (36685662539) -- while the far more numerous guarded commands, which
+    # never read stdin, did not hang once. So the helper is gzipped into the
+    # encoded command (about 12,300 characters, well inside Windows' 32,767),
+    # and lock calls run `ssh -n`.
     VM_LOCK_RUN_ID="$(python3 -c 'import time; print(time.time_ns())')"
     VM_LOCK_OWNER_HOST="$(hostname 2>/dev/null || printf unknown)"
     VM_LOCK_OWNER_PID="$$"
@@ -451,23 +482,32 @@ if [[ "${NEEDS_VM}" == "1" ]]; then
         python3 - "${action}" "${VM_WORKDIR}" "${VM_LOCK_RUN_ID}" \
             "${VM_LOCK_OWNER_HOST}" "${VM_LOCK_OWNER_PID}" \
             "${VM_LOCK_OWNER_TOKEN}" "${VM_LOCK_LEASE_SECONDS}" \
-            "${VM_LOCK_HELPER_PATH}" "${command}" <<'PYEOF'
+            "${VM_LOCK_HELPER_PATH}" "${command}" \
+            "${harness_root}/scripts/vm/matrix-run-lock.ps1" <<'PYEOF'
 import base64
+import gzip
 import json
 import sys
 
 keys = ("action", "workdir", "run_id", "owner_host", "owner_pid", "owner_token",
         "lease_seconds", "helper_path", "command")
-params = dict(zip(keys, sys.argv[1:]))
+params = dict(zip(keys, sys.argv[1:-1]))
 params_b64 = base64.b64encode(json.dumps(params).encode("utf-8")).decode("ascii")
+if params["action"] == "Invoke":
+    # The token-scoped copy shipped after Acquire; keeps the command short.
+    load = "$script = $params.helper_path"
+else:
+    with open(sys.argv[-1], "rb") as f:
+        helper_b64 = base64.b64encode(gzip.compress(f.read(), mtime=0)).decode("ascii")
+    load = rf'''$zipped = New-Object IO.MemoryStream(,[Convert]::FromBase64String('{helper_b64}'))
+$gunzip = New-Object IO.Compression.GZipStream($zipped, [IO.Compression.CompressionMode]::Decompress)
+$reader = New-Object IO.StreamReader($gunzip, [Text.Encoding]::UTF8)
+$script = [ScriptBlock]::Create($reader.ReadToEnd())
+$reader.Dispose()'''
 command = rf'''
 $paramsJson = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{params_b64}'))
 $params = $paramsJson | ConvertFrom-Json
-if ($params.action -eq 'Invoke') {{
-    $script = $params.helper_path
-}} else {{
-    $script = [ScriptBlock]::Create([Console]::In.ReadToEnd())
-}}
+{load}
 & $script `
     -Action $params.action `
     -Workdir $params.workdir `
@@ -483,21 +523,26 @@ print(base64.b64encode(command.encode("utf-16le")).decode("ascii"))
 PYEOF
     }
 
+    # vm_lock_remote ACTION -- one VM-lock action, bounded, stdin closed.
     vm_lock_remote() {
         local action="$1" encoded
         encoded="$(vm_lock_encoded_command "${action}")"
         # shellcheck disable=SC2086,SC2029
-        ssh ${SSH_OPTS:-} "${VM_HOST}" \
-            "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}" \
-            < "${harness_root}/scripts/vm/matrix-run-lock.ps1"
+        harness_bounded "${REMOTE_TIMEOUT}" "VM lock ${action} (ssh ${VM_HOST})" \
+            ssh -n ${SSH_OPTS:-} "${VM_HOST}" \
+            "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}"
     }
 
+    # vm_lock_invoke COMMAND [LABEL] [SECONDS] -- COMMAND under the lease,
+    # bounded by SECONDS (default FSWTH_REMOTE_TIMEOUT_SECONDS). A timeout
+    # names LABEL, or COMMAND itself when no label is given.
     vm_lock_invoke() {
-        local encoded
+        local encoded label="${2:-VM command: $1}" seconds="${3:-${REMOTE_TIMEOUT}}"
         encoded="$(vm_lock_encoded_command Invoke "$1")"
         # stdin remains available to commands such as tar -xf -.
         # shellcheck disable=SC2086,SC2029
-        ssh ${SSH_OPTS:-} "${VM_HOST}" \
+        harness_bounded "${seconds}" "${label} (ssh ${VM_HOST})" \
+            ssh ${SSH_OPTS:-} "${VM_HOST}" \
             "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}"
     }
 
@@ -509,7 +554,8 @@ PYEOF
         # The upload only touches an owner-scoped staging path. If this
         # owner expires during scp, the guarded move below rejects it.
         # shellcheck disable=SC2086
-        scp ${SSH_OPTS:-} "${src}" "${VM_HOST}:${staged}"
+        harness_bounded "${REMOTE_TIMEOUT}" "scp ${src} -> ${VM_HOST}:${staged}" \
+            scp ${SSH_OPTS:-} "${src}" "${VM_HOST}:${staged}"
         vm_lock_invoke "New-Item -ItemType Directory -Path '${dest_dir//\'/\'\'}' -Force | Out-Null; Move-Item -LiteralPath '${staged//\'/\'\'}' -Destination '${dest//\'/\'\'}' -Force"
     }
 
@@ -533,6 +579,7 @@ PYEOF
         exit "${run_rc}"
     }
 
+    echo "[run-tests] VM lock: acquiring ${VM_WORKDIR} (each VM command bounded: ${REMOTE_TIMEOUT}s, each step: $(harness_timeout_seconds FSWTH_STEP_TIMEOUT_SECONDS 900)s)"
     set +e
     VM_LOCK_OUTPUT="$(vm_lock_remote Acquire 2>&1)"
     VM_LOCK_RC=$?
@@ -565,7 +612,8 @@ PYEOF
     # The runner's VM commands invoke this token-scoped copy under the
     # Windows operation gate. Its path disappears on release/recovery.
     # shellcheck disable=SC2086
-    scp ${SSH_OPTS:-} "${harness_root}/scripts/vm/matrix-run-lock.ps1" \
+    harness_bounded "${REMOTE_TIMEOUT}" "scp matrix-run-lock.ps1 -> ${VM_HOST}:${VM_LOCK_HELPER_PATH}" \
+        scp ${SSH_OPTS:-} "${harness_root}/scripts/vm/matrix-run-lock.ps1" \
         "${VM_HOST}:${VM_LOCK_HELPER_PATH}"
     vm_lock_remote Verify
 
@@ -633,7 +681,8 @@ PYEOF
 
         echo "[reinstall] invoking setup-windows-vm.ps1 -Reinstall on ${VM_HOST}"
         # shellcheck disable=SC2086,SC2029
-        vm_lock_invoke "powershell -ExecutionPolicy Bypass -File '${VM_WORKDIR_PS}\\reinstall-wrapper.ps1'"
+        vm_lock_invoke "powershell -ExecutionPolicy Bypass -File '${VM_WORKDIR_PS}\\reinstall-wrapper.ps1'" \
+            "setup-windows-vm.ps1 -Reinstall" "${SETUP_TIMEOUT}"
         REINSTALL_RC=$?
         if [[ "${REINSTALL_RC}" -ne 0 ]]; then
             echo "[reinstall] setup-windows-vm.ps1 failed (rc=${REINSTALL_RC})" >&2
@@ -654,7 +703,7 @@ PYEOF
             local src="$1" dest="$2"
             local dest_ps="${dest//\//\\}"
             ssh_run "if (-not (Test-Path '${dest_ps}')) { New-Item -ItemType Directory -Path '${dest_ps}' -Force | Out-Null }"
-            tar -C "${src}" -cf - . | vm_lock_invoke "tar -xf - -C '${dest}'"
+            tar -C "${src}" -cf - . | vm_lock_invoke "tar -xf - -C '${dest}'" "ship ${src} -> ${dest}"
         }
         ship_file() {
             # ship_file <local-src> <vm-dest> — single-file scp.
@@ -695,9 +744,10 @@ PYEOF
                 --exclude='*.swp' --exclude='.DS_Store' \
                 --exclude='./.test-env' \
                 -C "${consumer_root}" -cf - . | \
-                vm_lock_invoke "tar -xf - -C '${VM_WORKDIR}'"
+                vm_lock_invoke "tar -xf - -C '${VM_WORKDIR}'" "ship consumer source tree -> ${VM_WORKDIR}"
             echo "[vm-build] ${VM_BUILD_COMMAND}"
-            ssh_run "Set-Location '${VM_WORKDIR_PS}'; ${VM_BUILD_COMMAND}"
+            vm_lock_invoke "Set-Location '${VM_WORKDIR_PS}'; ${VM_BUILD_COMMAND}" \
+                "[run].vm_build_command" "${SETUP_TIMEOUT}"
         else
             BINARY_REL="$(harness_get_or project.binary "")"
             if [[ -n "${BINARY_REL}" && -f "${consumer_root}/${BINARY_REL}" ]]; then

@@ -25,7 +25,10 @@ mod substitution;
 mod tests;
 
 pub use config::{HarnessConfig, MaxParallel, OpDef, OpHost, RunnerConfig, VmSection};
-pub use dispatch::{run_recipe, RecipeResult, StepResult};
+pub use dispatch::{
+    output_with_timeout, parse_step_timeout, run_recipe, run_recipe_observed, step_timeout,
+    RecipeResult, StepResult, TimedOut, DEFAULT_STEP_TIMEOUT_SECS, STEP_TIMEOUT_ENV,
+};
 pub use local_config::LocalConfig;
 pub use matrix::{Matrix, PostVerifySpec, Scenario, Step};
 pub use report::{RunReport, ScenarioResult};

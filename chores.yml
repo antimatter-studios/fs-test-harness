@@ -32,13 +32,23 @@ chore_min_version: 0.6.0
 #   cold build (every crate compiled, so a line per crate) and a warm one:
 #
 #     task            measured        budget
-#     lint              42 / 1,402      70 / 2,400
-#     test              98 / 4,348     140 / 6,000   tests get added
+#     lint              84 / 3,780     112 / 5,000   CI cold, 2026-10-02
+#     test             148 / 7,398     200 / 10,000  CI cold, 2026-10-02
 #     state-machine     34 / 1,634      50 / 2,400
 #     config             8 /   674      20 / 1,500
 #     output-budget     39 / 1,957    120 / 12,000   measured 2026-09-26
 #     agents-core       11 /   445     20 / 1,000   measured 2026-09-30
+#     remote-timeout    18 / 1,022     25 / 1,500   measured 2026-10-02
 #     smoke            348 / 42,000   500 / 60,000   end-to-end VM transcript
+#
+#   THE LINT AND TEST ROWS MOVED ON 2026-10-02. On fs-windows-test-harness#40
+#   both CI jobs missed their cargo cache (a new stable toolchain is a new
+#   cache key) and printed the registry update and every crate downloaded --
+#   lines the Mac measurement never saw. lint printed 84 lines / 3,780 bytes
+#   (70/2,400 -> 112/5,000); test printed 148 / 7,398, 42 of those lines the
+#   registry and downloads and 3 the pull request's new tests (140/6,000 ->
+#   200/10,000). Each is the CI measurement plus a third. No dependency was
+#   added; any cold CI run on main prints the same.
 #
 #   Raise one DELIBERATELY when a task grows. A budget nobody can breach
 #   measures nothing, and tests/output-budget.sh fails a task that has none.
@@ -66,7 +76,7 @@ tasks:
     desc: Shell syntax + shellcheck, cargo fmt + clippy (CI job `lint`)
     cmds:
       - |
-        scripts/task.sh lint lint 70 2400 -- bash -c '
+        scripts/task.sh lint lint 112 5000 -- bash -c '
           set -e
           for f in scripts/*.sh scripts/host/*.sh tests/*.sh tests/smoke-consumer/*.sh; do bash -n "$f"; done
           shellcheck -x --severity=error scripts/*.sh scripts/host/*.sh
@@ -77,7 +87,7 @@ tasks:
   test:
     desc: Runner unit tests (CI job `runner-unit`)
     cmds:
-      - scripts/task.sh test test 140 6000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
+      - scripts/task.sh test test 200 10000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
 
   state-machine:
     desc: claim / update-status / reset against a temp matrix, including concurrent writers (CI job `state-machine`)
@@ -94,19 +104,25 @@ tasks:
     cmds:
       - scripts/task.sh output-budget output-budget 120 12000 -- bash tests/output-budget.sh
 
+  remote-timeout:
+    desc: A VM command that never returns fails within its bound, naming the command and the scenario (CI job `state-machine`)
+    cmds:
+      - scripts/task.sh remote-timeout remote-timeout 25 1500 -- bash tests/remote-timeout.sh
+
   agents-core:
     desc: AGENTS.md carries the shared agent-core block, unmodified, and the check refuses a drifted one (CI job `state-machine`)
     cmds:
       - scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
 
   check:
-    desc: Every CI job that runs off Windows -- lint, test, state-machine, output-budget, agents-core, config
+    desc: Every CI job that runs off Windows -- lint, test, state-machine, remote-timeout, output-budget, agents-core, config
     # Sequential on purpose: the first failure stops the run and is the
     # last thing on screen.
     cmds:
       - task: lint
       - task: test
       - task: state-machine
+      - task: remote-timeout
       - task: output-budget
       - task: agents-core
       - task: config
