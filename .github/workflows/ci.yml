@@ -114,7 +114,7 @@ jobs:
           workspaces: runner -> target
 
       - name: cargo test
-        run: bash scripts/task.sh test test 140 6000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
+        run: bash scripts/task.sh test test 200 10000 -- cargo test --manifest-path runner/Cargo.toml --all-features --no-fail-fast
 
       - name: upload runner log
         if: always()
