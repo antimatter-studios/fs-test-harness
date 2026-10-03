@@ -63,6 +63,11 @@ host        = "host"
 command     = "bash ../../scripts/host/verify-cat.sh --binary {binary} {step.expect} images/{run_id}/{scenario.image} {step.path}"
 expect_exit = 0
 
+[ops.host-verify-info]
+host        = "host"
+command     = "bash ../../scripts/host/verify-info.sh --binary {binary} {step.expect} images/{run_id}/{scenario.image}"
+expect_exit = 0
+
 # ── VM side ─────────────────────────────────────────────────────────
 # The harness's generic op scripts, each of which mounts the image,
 # performs one operation on the drive and unmounts. The mount command

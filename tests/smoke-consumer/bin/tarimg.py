@@ -11,6 +11,8 @@ harness's scripts/host/verify-*.sh verifiers:
     tarimg.py create <image> [<path>=<content> ...]
     tarimg.py ls     <image> <dir>     one entry name per line
     tarimg.py cat    <image> <file>    raw bytes, nothing added
+    tarimg.py info   <image>           label (the image's file name, in
+                                       double quotes) and file count
 
 Paths inside the image are volume-relative ("/docs/a.txt").
 Standard library only, so it runs wherever the harness's python3 does.
@@ -26,7 +28,6 @@ import time
 def norm(path):
     """Volume path -> archive member name ("" is the root)."""
     return "/".join(p for p in path.replace("\\", "/").split("/") if p not in ("", "."))
-
 
 
 def create(image, *files):
@@ -55,7 +56,7 @@ def ls(image, path):
         raise SystemExit(f"ls: {path}: no such directory in {image}")
     for e in entries:
         if e and e.startswith(prefix) and e != want:
-            names.add(e[len(prefix):].split("/", 1)[0])
+            names.add(e[len(prefix) :].split("/", 1)[0])
     # Bytes with "\n", not print(): on Windows text-mode stdout writes
     # "\r\n", and the harness's bash verifiers would read "docs\r".
     sys.stdout.buffer.write("".join(n + "\n" for n in sorted(names)).encode("utf-8"))
@@ -73,10 +74,27 @@ def cat(image, path):
     raise SystemExit(f"cat: {path}: no such file in {image}")
 
 
+def info(image):
+    # The label is printed in double quotes, so a verifier's needle carries
+    # them too: that is what proves a host-side op's arguments reach it with
+    # their quotes intact on every orchestrator.
+    label = os.path.splitext(os.path.basename(image))[0]
+    with tarfile.open(image, "r") as tar:
+        files = sum(1 for m in tar.getmembers() if m.isfile())
+    out = f'label:          "{label}"\nfiles:          {files}\n'
+    sys.stdout.buffer.write(out.encode("utf-8"))
+    sys.stdout.buffer.flush()
+
+
 def main(argv):
-    commands = {"create": (create, 1, None), "ls": (ls, 2, 2), "cat": (cat, 2, 2)}
+    commands = {
+        "create": (create, 1, None),
+        "ls": (ls, 2, 2),
+        "cat": (cat, 2, 2),
+        "info": (info, 1, 1),
+    }
     if len(argv) < 2 or argv[1] not in commands:
-        raise SystemExit("usage: tarimg.py create|ls|cat <image> ...")
+        raise SystemExit("usage: tarimg.py create|ls|cat|info <image> ...")
     fn, lo, hi = commands[argv[1]]
     args = argv[2:]
     if len(args) < lo or (hi is not None and len(args) > hi):
