@@ -3,6 +3,20 @@
 All notable changes to fs-windows-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## v4.3.1 — 2026-10-03
+
+### Fixed
+
+- **A host-side op's double quotes reach it intact on a Windows
+  orchestrator.** The runner passed the command to `cmd.exe /C` as an
+  ordinary argument, so Rust escaped every `"` as `\"` for the C runtime's
+  parser. `cmd.exe` does not parse arguments that way and hands the line on
+  verbatim, so a script received the backslashes too: a needle written as
+  `'label:          "testvolume"'` arrived as `'label:          \"testvolume\"'`
+  and never matched. The command now goes to `cmd.exe /S /C "<command>"`
+  unescaped. The smoke consumer's last step proves it on `windows-latest`
+  with `verify-info.sh` and a double-quoted, space-padded needle.
+
 ## v4.3.0 — 2026-10-02
 
 ### Fixed

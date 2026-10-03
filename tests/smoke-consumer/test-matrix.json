@@ -3,7 +3,7 @@
   "scenarios": {
     "smoke-rw-roundtrip": {
       "status": "pending",
-      "_doc": "Host creates an image, ships it to the VM; every VM step remounts it and runs one built-in op (list, read with content/size/sha256 checks, mkdir, write, rename, unlink, rmdir); the image is shipped back and the host verifiers read the result out of it. Each change is only visible to a later step if it survived an unmount, so the final listings prove the whole chain.",
+      "_doc": "Host creates an image, ships it to the VM; every VM step remounts it and runs one built-in op (list, read with content/size/sha256 checks, mkdir, write, rename, unlink, rmdir); the image is shipped back and the host verifiers read the result out of it, the last with a double-quoted, space-padded argument that must reach the verifier unchanged. Each change is only visible to a later step if it survived an unmount, so the final listings prove the whole chain.",
       "image": "smoke-rw.tar",
       "recipe": [
         { "op": "image-create", "path": "/hello.txt", "content": "hello-from-the-host" },
@@ -22,7 +22,8 @@
         { "op": "ship-to-host", "src": "{vm.workdir}/{scenario.image}", "dest": "images/{run_id}/{scenario.image}" },
         { "op": "host-verify-ls", "path": ".", "expect": "--expect-name docs --expect-name hello.txt --expect-count 2" },
         { "op": "host-verify-ls", "path": "docs", "expect": "--expect-name final.txt --expect-count 1" },
-        { "op": "host-verify-cat", "path": "docs/final.txt", "expect": "--expect-size 11 --expect-sha256 b500263e8e0ccbe3979fa5b5d093ace4bfcb7c55fbd5d50cfd6d32726830efaf" }
+        { "op": "host-verify-cat", "path": "docs/final.txt", "expect": "--expect-size 11 --expect-sha256 b500263e8e0ccbe3979fa5b5d093ace4bfcb7c55fbd5d50cfd6d32726830efaf" },
+        { "op": "host-verify-info", "expect": "--expect-stdout-contains 'label:          \"smoke-rw\"' --expect-stdout-contains 'files:          2'" }
       ]
     },
     "canary-wrong-content": {
