@@ -367,21 +367,37 @@ fn run_step(
 }
 
 fn run_local(command: &str, step_dir: &Path) -> Result<Option<i32>, String> {
-    // POSIX shell on Unix; cmd.exe on Windows. The latter would only
-    // be used if someone runs the orchestrator on Windows directly
-    // (not the typical scaffolding flow), so the shell choice is
-    // best-effort here.
-    let mut cmd = if cfg!(windows) {
+    // POSIX shell on Unix; cmd.exe on Windows, which is a real
+    // orchestrator (the harness's own smoke job, consumers' Windows CI).
+    #[cfg(windows)]
+    let mut cmd = {
+        // `cmd.exe /C` does not split its command line into arguments: it
+        // hands everything after the switch to the next program verbatim.
+        // So the command is passed raw. Through `args`, Rust would quote it
+        // for the C runtime's parser and escape every `"` as `\"`; nothing
+        // undoes that, and bash received `'label: \"x\"'` with the
+        // backslashes kept. `/S` plus the outer quotes means cmd.exe strips
+        // exactly those two and leaves the command untouched, even when it
+        // begins with a quoted program path.
+        use std::os::windows::process::CommandExt;
         let mut c = Command::new("cmd.exe");
-        c.args(["/C", command]);
+        c.raw_arg(windows_cmd_line(command));
         c
-    } else {
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
         let mut c = Command::new("sh");
         c.args(["-c", command]);
         c
     };
 
     spawn_with_diag(&mut cmd, step_dir, command)
+}
+
+/// The command line `run_local` hands to `cmd.exe` on Windows, unescaped.
+#[cfg(any(windows, test))]
+fn windows_cmd_line(command: &str) -> String {
+    format!("/S /C \"{command}\"")
 }
 
 fn run_vm(
@@ -874,6 +890,32 @@ mod tests {
             assert!(!is_truthy(Some(v)), "{v:?} should be falsy");
         }
         assert!(!is_truthy(None), "unset should be falsy");
+    }
+
+    #[test]
+    fn windows_cmd_line_adds_no_escaping() {
+        // cmd.exe passes the command to its program verbatim, so any
+        // escaping added here would reach bash as literal characters.
+        let command = r#"bash v.sh --expect 'label:   "x"' C:\dir\bin.exe"#;
+        assert_eq!(
+            windows_cmd_line(command),
+            r#"/S /C "bash v.sh --expect 'label:   "x"' C:\dir\bin.exe""#
+        );
+    }
+
+    #[test]
+    fn run_local_delivers_double_quotes_intact() {
+        let step_dir =
+            std::env::temp_dir().join(format!("fswth-run-local-quotes-{}", std::process::id()));
+        std::fs::create_dir_all(&step_dir).unwrap();
+        let rc = run_local(
+            r#"bash -c 'printf %s "$1"' _ 'label:          "testvolume"'"#,
+            &step_dir,
+        );
+        let stdout = std::fs::read_to_string(step_dir.join("stdout.txt")).unwrap_or_default();
+        let _ = std::fs::remove_dir_all(&step_dir);
+        assert_eq!(rc, Ok(Some(0)));
+        assert_eq!(stdout, r#"label:          "testvolume""#);
     }
 
     fn config_with_ops(ops: &[(&str, OpDef)]) -> HarnessConfig {

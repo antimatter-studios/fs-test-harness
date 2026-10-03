@@ -39,11 +39,9 @@ packages = [{ id = "WinFsp.WinFsp" }]
 
 # ── host side ───────────────────────────────────────────────────────
 # Commands run under cmd.exe on a Windows orchestrator and sh elsewhere.
-# Keep substituted values free of spaces and quotes: the runner passes
-# the command to `cmd.exe /C` as one argument, and Rust's argument
-# quoting escapes embedded quotes as \" -- which cmd.exe does not
-# understand -- so a quoted value with spaces is split on a Windows
-# orchestrator. Host-step volume paths are written without a leading
+# The runner hands cmd.exe the command unescaped, so single and double
+# quotes reach the program as written (host-verify-info's needle proves
+# it). Host-step volume paths are written without a leading
 # slash ("docs/final.txt", "." for the root): Git for Windows' bash
 # rewrites any argument starting with "/" into a Windows path
 # ("C:/Program Files/Git/...") when it calls a native program.
