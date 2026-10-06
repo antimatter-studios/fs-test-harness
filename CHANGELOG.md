@@ -3,6 +3,16 @@
 All notable changes to fs-windows-test-harness will land here. The format
 loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
+## [Unreleased]
+
+### Changed
+
+- **The agents-core check runs in place from rust-fs-core.** The copy in
+  `scripts/agents-core-check.sh` is gone; `tests/agents-core.sh` runs core's
+  from `$FS_CORE_ROOT` (else `../rust-fs-core`), and the pinned core moves
+  from v0.2.13 to v0.3.3, the release whose check reads the guide of the
+  repository it is run for (rust-fs-core#212).
+
 ## v4.3.1 — 2026-10-03
 
 ### Fixed

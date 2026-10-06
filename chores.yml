@@ -55,13 +55,14 @@ chore_min_version: 0.6.0
 #   Why any of this: see the README, "Output: quiet by default".
 
 vars:
-  # The one sibling this repository has, and it supplies one file: the
-  # canonical output-budget wrapper. The pin is a FLOOR -- `chore siblings`
-  # never moves a core checkout backwards to satisfy it. v0.2.13 is the
-  # release whose wrapper answers `--version` with API 1 and keeps a failing
-  # run quiet; below v0.2.11 the file does not exist at all.
+  # The one sibling this repository has. It supplies the canonical
+  # output-budget wrapper and the agents-core check, both run in place. The
+  # pin is a FLOOR -- `chore siblings` never moves a core checkout backwards
+  # to satisfy it. v0.3.3 is the release whose agents-core check reads the
+  # guide of the repository it is run for; below v0.2.11 the wrapper does not
+  # exist at all.
   FS_CORE_URL: https://github.com/antimatter-studios/rust-fs-core.git
-  FS_CORE_REF: v0.2.13
+  FS_CORE_REF: v0.3.3
 
 tasks:
   siblings:

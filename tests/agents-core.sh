@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 #
-# agents-core.sh -- scripts/agents-core-check.sh passes this repository's
+# agents-core.sh -- rust-fs-core's scripts/agents-core-check.sh, run in place,
+# passes this repository's
 # AGENTS.md, and REFUSES a modified, unmarked, mis-declared or absent one.
 # A gate that cannot fail is indistinguishable from no gate.
 #
-# The checker runs against copies in a sandbox, so the committed AGENTS.md is
+# The checker runs against copies of the guide in a sandbox, so the committed AGENTS.md is
 # never edited, even by a test killed halfway.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECK="$REPO/scripts/agents-core-check.sh"
+CHECK="${FS_CORE_ROOT:-$REPO/../rust-fs-core}/scripts/agents-core-check.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 pass=0; fail=0
@@ -22,22 +23,21 @@ echo "agents-core.sh"
 
 # Nothing to test against is a failure, not a skip: a missing guide is the
 # state this gate exists to refuse.
-if [ ! -x "$CHECK" ] || [ ! -f "$REPO/AGENTS.md" ]; then
-    bad "scripts/agents-core-check.sh (executable) and AGENTS.md exist"
+if [ ! -f "$CHECK" ] || [ ! -f "$REPO/AGENTS.md" ]; then
+    bad "rust-fs-core's scripts/agents-core-check.sh (\$FS_CORE_ROOT, else ../rust-fs-core) and AGENTS.md exist"
     printf '\n%d passed, %d failed\n' "$pass" "$fail"
     exit 1
 fi
 
-check_eq "$("$CHECK" >/dev/null 2>&1; echo $?)" 0 "the committed AGENTS.md carries the shared block, unmodified"
+check_eq "$(FS_CORE_CALLER="$REPO" bash "$CHECK" >/dev/null 2>&1; echo $?)" 0 "the committed AGENTS.md carries the shared block, unmodified"
 check_eq "$(grep -c '^@AGENTS.md$' "$REPO/CLAUDE.md" 2>/dev/null | tr -d ' ')" 1 "CLAUDE.md imports AGENTS.md"
 
 # run_on <awk program|ABSENT> -- the checker against an edited copy.
 run_on() {
     local tree="$work/t$RANDOM$RANDOM"
-    mkdir -p "$tree/scripts"
-    cp "$CHECK" "$tree/scripts/"
+    mkdir -p "$tree"
     [ "$1" = ABSENT ] || awk "$1" "$REPO/AGENTS.md" > "$tree/AGENTS.md"
-    "$tree/scripts/agents-core-check.sh" >/dev/null 2>&1
+    FS_CORE_CALLER="$tree" bash "$CHECK" >/dev/null 2>&1
     echo $?
 }
 

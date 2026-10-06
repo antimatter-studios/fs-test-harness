@@ -22,10 +22,10 @@ permissions:
 # reads FS_CORE_ROOT. A runner has no sibling directory, so every job that
 # runs a task clones core at this pinned ref first -- see the
 # `canonical output-budget wrapper` step. The pin moves deliberately; below
-# v0.2.11 the script does not exist at all, and v0.2.13 is the release whose
-# --version answers API 1.
+# v0.2.11 the script does not exist at all, and v0.3.3 is the release whose
+# agents-core check reads the guide of the repository it is run for.
 env:
-  FS_CORE_REF: v0.2.13
+  FS_CORE_REF: v0.3.3
 
 jobs:
   lint:
