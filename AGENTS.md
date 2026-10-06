@@ -25,7 +25,8 @@ existing docs rather than duplicating them:
 
 The section between the BEGIN/END markers below is **shared, byte-identical,
 with every repository in this family**. Do not edit it here: change the
-canonical copy and propagate it, or `scripts/agents-core-check.sh` will fail.
+canonical copy and propagate it, or rust-fs-core's `scripts/agents-core-check.sh`
+(run in place) will fail.
 Everything after the END marker is specific to this repository.
 
 <!-- BEGIN SHARED BLOCK: agent-core v2 sha256:38af4d2c5377d38ab382baa4eab4aa679841e2b4eba4f4d01dacd255ffa7d32e -->
