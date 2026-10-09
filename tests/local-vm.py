@@ -445,6 +445,36 @@ class LocalVM(unittest.TestCase):
             shutil.rmtree(drivers)
             vm.seed_media(self.state, self.state / "virtio-win.iso")
 
+    def test_long_operations_keep_a_mac_awake_until_they_exit(self):
+        # Idle sleep froze the guest mid-smoke and under both failed ACPI
+        # shutdowns (pmset log, battery, sleep=1; macOS validation 2026-10-10).
+        self.config["provisioned"] = True
+        vm.write_json(self.state / "vm.json", self.config)
+        for system, action, expected in (
+            ("Darwin", ["exec", "--", "true"], True),
+            ("Darwin", ["status"], False),
+            ("Linux", ["exec", "--", "true"], False),
+        ):
+            with (
+                self.subTest(system=system, action=action[0]),
+                patch.object(vm.platform, "system", return_value=system),
+                patch.object(vm, "running", return_value={"running": True}),
+                patch.object(vm.subprocess, "call", return_value=0),
+                patch.object(vm.subprocess, "Popen") as popen,
+            ):
+                vm.main(["--state", str(self.state), *action])
+            if expected:
+                popen.assert_called_once()
+                self.assertEqual(
+                    popen.call_args.args[0],
+                    ["caffeinate", "-i", "-w", str(os.getpid())],
+                )
+                # Released and reaped when the command ends, not left behind.
+                popen.return_value.terminate.assert_called_once()
+                popen.return_value.wait.assert_called_once()
+            else:
+                popen.assert_not_called()
+
     def test_old_python_is_refused_by_name(self):
         with (
             patch.object(vm.sys, "version_info", (3, 9, 6)),

@@ -41,6 +41,10 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   the intentional wrong-content canary failure.
 - The QEMU provider's own PowerShell commands (`wait`, `provision`, `ssh`)
   suppress progress too, so `provision.log` and `ssh` output carry no CLIXML.
+- On macOS, `wait`, `provision`, `down`, `exec` and `ssh` hold an
+  idle-sleep assertion (`caffeinate -i`) until they exit. An idle-sleeping
+  Mac froze the guest mid-smoke and mid-shutdown; closing the lid still
+  sleeps the host.
 
 ### Changed
 

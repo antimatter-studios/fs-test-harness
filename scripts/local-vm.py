@@ -607,6 +607,34 @@ def boot_installer(state, config):
     print("Installer boot command sent; use screenshot to check progress")
 
 
+@contextlib.contextmanager
+def keep_awake(action):
+    # A Mac idle-sleeps on a timer, and a sleeping host freezes the guest:
+    # measured mid-smoke and under both failed ACPI shutdowns on a battery
+    # MacBook. Hold an idle-sleep assertion for the command; -w also ends it
+    # if this process is killed. Closing the lid still sleeps.
+    if platform.system() != "Darwin" or action not in (
+        "wait",
+        "provision",
+        "down",
+        "exec",
+        "ssh",
+    ):
+        yield
+        return
+    assertion = subprocess.Popen(
+        ["caffeinate", "-i", "-w", str(os.getpid())],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        yield
+    finally:
+        assertion.terminate()
+        assertion.wait()
+
+
 def positive(value):
     number = int(value)
     if number < 1:
@@ -682,7 +710,7 @@ def main(argv=None):
     if args.action == "status":
         print(json.dumps({"state": str(state), "qemu": running(state)}, indent=2))
         return 0
-    with exclusive(state):
+    with exclusive(state), keep_awake(args.action):
         if args.action == "prepare":
             prepare(state, args)
             return 0
