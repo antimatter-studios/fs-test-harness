@@ -8,7 +8,7 @@
 //! * **Dotted paths** — `{scenario.<dotted.path>}` and
 //!   `{step.<dotted.path>}` reach into the scenario JSON / step JSON
 //!   respectively. Trailing `?` makes a path optional: missing paths
-//!   yield empty strings instead of `<missing:...>` markers.
+//!   yield empty strings. Checked recipe expansion rejects missing required paths.
 //!
 //! Two entry points:
 //!
@@ -24,6 +24,8 @@
 
 use serde_json::Value;
 use std::collections::BTreeMap;
+
+const MAX_TEMPLATE_BYTES: usize = 1_048_576;
 
 /// Substitution context. Holds the JSON values reachable via
 /// `{scenario.*}` and `{step.*}` placeholders, plus the flat tokens
@@ -58,45 +60,120 @@ impl Substitution {
     ///    so the consumer can decide what to do with them).
     /// 4. If not found:
     ///    * optional → empty string
-    ///    * required → empty string with a `<missing:...>` marker
-    ///      embedded for human debugging (matches the documented
-    ///      contract that undeclared tokens collapse to empty).
+    ///    * required → empty string in this legacy API. Recipe dispatch uses
+    ///      `expand_checked` to reject missing required paths instead.
     ///
     /// Example: `"{binary} format {scenario.image} -L {step.params.label?}"`
     /// expands by substituting each `{...}` against `flat`/`scenario`/`step`.
     pub fn expand(&self, template: &str) -> String {
+        // Keep the legacy missing-token behavior for callers outside recipes.
+        self.expand_inner(template, false, &mut Vec::new())
+            .unwrap_or_else(|_| template.to_string())
+    }
+
+    /// Expand a recipe template, rejecting missing required references and
+    /// cyclic or excessively deep step-field templates. Scenario and flat
+    /// values are data: their contents are never reinterpreted as templates.
+    /// Double braces escape a literal placeholder: `{{step.label}}`.
+    pub fn expand_checked(&self, template: &str) -> Result<String, String> {
+        self.expand_inner(template, true, &mut Vec::new())
+    }
+
+    fn expand_inner(
+        &self,
+        template: &str,
+        checked: bool,
+        stack: &mut Vec<String>,
+    ) -> Result<String, String> {
+        if template.len() > MAX_TEMPLATE_BYTES {
+            return Err("recipe template exceeds 1048576 bytes".into());
+        }
         let mut out = String::with_capacity(template.len());
         let bytes = template.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
+            if out.len() > MAX_TEMPLATE_BYTES {
+                return Err("expanded recipe template exceeds 1048576 bytes".into());
+            }
+            if template[i..].starts_with("{{") {
+                if let Some(end) = template[i + 2..].find("}}") {
+                    out.push('{');
+                    out.push_str(&template[i + 2..i + 2 + end]);
+                    out.push('}');
+                    i += end + 4;
+                    continue;
+                }
+            }
             if bytes[i] == b'{' {
-                // Scan to the matching `}`. If unbalanced, fall through
-                // and emit the `{` literally.
                 if let Some(end_rel) = bytes[i + 1..].iter().position(|&b| b == b'}') {
                     let inner = &bytes[i + 1..i + 1 + end_rel];
                     if let Some((path, optional)) = parse_placeholder(inner) {
                         match self.lookup(&path) {
-                            Some(s) => out.push_str(&s),
-                            None if optional => { /* yield empty */ }
-                            None => {
-                                // Required-but-missing collapses to empty
-                                // for now. Future iteration could emit a
-                                // `<missing:path>` marker; left as a
-                                // follow-up to avoid breaking existing
-                                // consumers that rely on the silent-empty
-                                // contract.
+                            Some(value) => {
+                                if path.starts_with("step.")
+                                    && !self.flat.contains_key(&path)
+                                    && self
+                                        .lookup_value(&path)
+                                        .is_some_and(|value| value.is_string())
+                                {
+                                    if stack.contains(&path) {
+                                        return Err(format!(
+                                            "cyclic recipe reference: {} -> {path}",
+                                            stack.join(" -> ")
+                                        ));
+                                    }
+                                    if stack.len() >= 32 {
+                                        return Err(format!(
+                                            "recipe reference depth exceeds 32 at {path}"
+                                        ));
+                                    }
+                                    stack.push(path);
+                                    let expanded = self.expand_inner(&value, checked, stack);
+                                    stack.pop();
+                                    out.push_str(&expanded?);
+                                } else {
+                                    out.push_str(&value);
+                                }
                             }
+                            None if !stack.is_empty()
+                                && !["scenario.", "step.", "tools.", "vm."]
+                                    .iter()
+                                    .any(|prefix| path.starts_with(prefix))
+                                && !matches!(
+                                    path.as_str(),
+                                    "binary"
+                                        | "image"
+                                        | "drive"
+                                        | "path"
+                                        | "from"
+                                        | "to"
+                                        | "content"
+                                        | "extra"
+                                        | "run_id"
+                                        | "scenario_name"
+                                        | "image_dir"
+                                ) =>
+                            {
+                                // Consumer scripts can carry their own markers, e.g. {N}.
+                                out.push_str(&template[i..i + end_rel + 2]);
+                            }
+                            None if optional || !checked => {}
+                            None => return Err(format!("missing required template token: {path}")),
                         }
-                        i += 1 + end_rel + 1;
+                        i += end_rel + 2;
                         continue;
                     }
-                    // Inner wasn't a valid placeholder — emit `{...}` as-is.
                 }
             }
-            out.push(bytes[i] as char);
-            i += 1;
+            // Advancing by characters preserves literal UTF-8 in templates.
+            let ch = template[i..].chars().next().expect("remaining character");
+            out.push(ch);
+            i += ch.len_utf8();
         }
-        out
+        if out.len() > MAX_TEMPLATE_BYTES {
+            return Err("expanded recipe template exceeds 1048576 bytes".into());
+        }
+        Ok(out)
     }
 
     /// Evaluate a `when = "..."` predicate. Empty / absent predicate
@@ -256,6 +333,128 @@ mod tests {
                 "path": "/hello.txt"
             }),
         }
+    }
+
+    #[test]
+    fn expands_recipe_label_reference() {
+        let mut s = fixture();
+        s.step = json!({"label": "{scenario.volume_params.label}"});
+        assert_eq!(s.expand("-Label '{step.label}'"), "-Label 'TEST'");
+    }
+
+    #[test]
+    fn checked_expansion_rejects_missing_required_but_allows_optional() {
+        let s = fixture();
+        assert!(s
+            .expand_checked("{step.nope}")
+            .unwrap_err()
+            .contains("step.nope"));
+        assert_eq!(s.expand_checked("a{step.nope?}b"), Ok("ab".into()));
+    }
+
+    #[test]
+    fn checked_expansion_resolves_nested_optional_and_required_references() {
+        let mut s = fixture();
+        s.step = json!({"label": "{scenario.absent}", "optional": "{scenario.absent?}"});
+        assert!(s
+            .expand_checked("{step.label}")
+            .unwrap_err()
+            .contains("scenario.absent"));
+        assert_eq!(s.expand_checked("{step.optional}"), Ok(String::new()));
+    }
+
+    #[test]
+    fn checked_expansion_rejects_cycles() {
+        let mut s = fixture();
+        s.step = json!({"label": "{step.alias}", "alias": "{step.label}"});
+        let error = s.expand_checked("{step.label}").unwrap_err();
+        assert!(error.contains("step.label -> step.alias -> step.label"));
+        assert_eq!(s.expand("{step.label}"), "{step.label}");
+    }
+
+    #[test]
+    fn checked_expansion_bounds_reference_depth() {
+        let mut s = fixture();
+        let mut fields = serde_json::Map::new();
+        for i in 0..32 {
+            fields.insert(
+                format!("field{i}"),
+                json!(format!("{{step.field{}}}", i + 1)),
+            );
+        }
+        fields.insert("field32".into(), json!("label"));
+        s.step = Value::Object(fields);
+        assert!(s
+            .expand_checked("{step.field0}")
+            .unwrap_err()
+            .contains("depth exceeds 32"));
+        assert_eq!(s.expand_checked("{step.field1}"), Ok("label".into()));
+    }
+
+    #[test]
+    fn checked_expansion_preserves_terminal_data_and_literal_braces() {
+        let mut s = fixture();
+        s.scenario = json!({"label": "{step.label}"});
+        s.flat.insert("tools.literal".into(), "{step.label}".into());
+        s.step = json!({"label": "{{step.label}}", "object": {"label": "{step.label}"}});
+        assert_eq!(
+            s.expand_checked("{scenario.label} {tools.literal} {step.label}"),
+            Ok("{step.label} {step.label} {step.label}".into())
+        );
+        assert_eq!(
+            s.expand_checked("{step.object}"),
+            Ok(r#"{"label":"{step.label}"}"#.into())
+        );
+        s.flat
+            .insert("step.label".into(), "{scenario.label}".into());
+        assert_eq!(
+            s.expand_checked("{step.label}"),
+            Ok("{scenario.label}".into())
+        );
+    }
+
+    #[test]
+    fn checked_expansion_preserves_unicode_and_invalid_braces() {
+        let s = fixture();
+        assert_eq!(
+            s.expand_checked("éclipse {{binary}} {3invalid} {"),
+            Ok("éclipse {binary} {3invalid} {".into())
+        );
+        assert_eq!(s.expand("éclipse"), "éclipse");
+    }
+
+    #[test]
+    fn checked_expansion_bounds_input_and_output_size() {
+        let mut s = fixture();
+        assert!(s
+            .expand_checked(&"x".repeat(MAX_TEMPLATE_BYTES + 1))
+            .unwrap_err()
+            .contains("exceeds"));
+        s.flat
+            .insert("large".into(), "x".repeat(MAX_TEMPLATE_BYTES));
+        assert_eq!(
+            s.expand_checked("{large}").unwrap().len(),
+            MAX_TEMPLATE_BYTES
+        );
+        for template in ["{large}x", "{large}xx", "{large}{{binary}}"] {
+            assert!(s.expand_checked(template).unwrap_err().contains("exceeds"));
+        }
+    }
+
+    #[test]
+    fn checked_expansion_preserves_consumer_batch_markers() {
+        let mut s = fixture();
+        s.step = json!({"path": "/file_{N}.txt", "tool": "{tools.absent}", "binary": "{binary}"});
+        assert_eq!(s.expand_checked("{step.path}"), Ok("/file_{N}.txt".into()));
+        assert!(s
+            .expand_checked("{step.tool}")
+            .unwrap_err()
+            .contains("tools.absent"));
+        s.flat.remove("binary");
+        assert!(s
+            .expand_checked("{step.binary}")
+            .unwrap_err()
+            .contains("binary"));
     }
 
     #[test]

@@ -41,12 +41,34 @@ data without the harness having to enumerate fields up-front.
 |---|---|
 | `{scenario.<dotted.path>}` | A field on the enclosing scenario's JSON. E.g. `{scenario.volume_params.label}` → the scenario's `volume_params.label`. Walks objects via key, arrays via numeric index. |
 | `{step.<dotted.path>}` | A field on the *current* recipe step's JSON. E.g. `{step.path}` for `{ "op": "ls", "path": "/" }`. Cleared between steps. |
-| `{<token>?}` | Same as the un-suffixed form, but missing → empty string instead of an error marker. Use for fields that scenarios may or may not fill. |
+| `{<token>?}` | Same as the un-suffixed form, but missing → empty string instead of a recipe error. Use for fields that scenarios may or may not fill. |
 
 **Lookup order**: flat token first (so `{tools.fsck}` resolves even
 though it has a dot), then dotted-path. Flat shadows dotted; the v1
 vocabulary is small and stable, so collisions don't happen in
 practice.
+
+### Recipe references and literal data
+
+A string recipe field can reference a scenario value or another recipe field.
+For example, `"label": "{scenario.volume_params.label}"` resolves when an
+operation command uses `{step.label}`. Only strings reached through `step.*`
+can contain harness references; consumer markers such as `file_{N}.txt`
+remain literal. Nested references use reserved flat tokens or the `scenario.*`,
+`step.*`, `tools.*` and `vm.*` namespaces. Scenario values, flat vocabulary
+values and JSON objects/arrays
+remain literal data. References are limited to 32 levels and templates to
+1 MiB before and after expansion; cycles fail with their reference chain.
+
+Required missing tokens fail before executing an operation or transfer.
+Use `{step.field?}` for an optional missing value. Double braces insert a
+literal placeholder: `{{step.label}}` produces `{step.label}`. Invalid or
+unbalanced brace expressions pass through as literal text. Literal Unicode
+text is preserved.
+
+The public legacy `Substitution::expand` retains its empty-string behavior
+for missing tokens. Recipe dispatch uses `expand_checked` and reports the
+scenario, step and offending token when command expansion fails.
 
 ### v2 only — `when` predicate vocabulary
 

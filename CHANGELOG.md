@@ -20,6 +20,13 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ### Fixed
 
+- **Recipe templates reject missing required tokens.** References such as
+  a step label containing `{scenario.volume_params.label}` now resolve before
+  execution instead of reaching Windows literally. Use `{field?}` for optional
+  values and `{{field}}` for literal braces in recipe fields. Cycles, references
+  deeper than 32 levels, and templates exceeding 1 MiB fail before execution.
+  Scenario and flat vocabulary values remain literal data.
+
 - Harness SSH lock and shipping commands suppress PowerShell progress at
   its source so module initialization does not leak CLIXML into test logs.
   Smoke checks reject CLIXML transcripts while preserving errors and

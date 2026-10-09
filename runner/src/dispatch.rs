@@ -328,7 +328,9 @@ fn run_step(
         }
     }
 
-    let command = sub.expand(&op_def.command);
+    let command = sub
+        .expand_checked(&op_def.command)
+        .map_err(|error| format!("scenario '{scenario_name}' step {idx} ({op_name}): {error}"))?;
     let expected_exit = op_def.expect_exit.unwrap_or(0);
 
     let started = Instant::now();
@@ -602,13 +604,17 @@ fn run_builtin_ship(
     let src = step
         .get("src")
         .and_then(|v| v.as_str())
-        .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'src' field"))?;
+    let src = sub
+        .expand_checked(src)
+        .map_err(|error| format!("step {idx} ({op_name}) src: {error}"))?;
     let dest = step
         .get("dest")
         .and_then(|v| v.as_str())
-        .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'dest' field"))?;
+    let dest = sub
+        .expand_checked(dest)
+        .map_err(|error| format!("step {idx} ({op_name}) dest: {error}"))?;
 
     let vm_host_owned: String = config
         .vm
@@ -963,6 +969,97 @@ mod tests {
             |_| {},
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn recipe_label_is_expanded_before_the_host_command_runs() {
+        let cfg = config_with_ops(&[(
+            "label",
+            OpDef {
+                host: Host::Host,
+                command: r#"bash -c 'printf %s "$1"' _ '{step.label}'"#.into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let mut scn = scenario_with_recipe(vec![json!({
+            "op": "label", "label": "{scenario.volume_params.label}"
+        })]);
+        scn.extra
+            .insert("volume_params".into(), json!({"label": "ACTUAL-LABEL"}));
+        let dir = tempdir();
+        let result = run_recipe(
+            "label",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0,
+            |_| {},
+        )
+        .unwrap();
+        assert!(result.overall_passed);
+        assert!(result.steps[0].command.contains("'ACTUAL-LABEL'"));
+        assert_eq!(
+            std::fs::read_to_string(dir.join("step-00/stdout.txt")).unwrap(),
+            "ACTUAL-LABEL"
+        );
+    }
+
+    #[test]
+    fn missing_recipe_token_fails_before_spawning_a_command() {
+        let cfg = config_with_ops(&[(
+            "missing",
+            OpDef {
+                host: Host::Host,
+                command: "a-command-that-must-not-run {step.typo}".into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let scn = scenario_with_recipe(vec![json!({"op": "missing"})]);
+        let dir = tempdir();
+        let error = run_recipe(
+            "missing",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0,
+            |_| {},
+        )
+        .unwrap_err();
+        assert!(error.contains("scenario 'missing' step 0 (missing)"));
+        assert!(error.contains("step.typo"));
+        assert!(!dir.join("step-00/stdout.txt").exists());
+    }
+
+    #[test]
+    fn missing_ship_token_fails_before_contacting_the_guest() {
+        for (src, dest, field) in [
+            ("{step.typo}", "target", "src"),
+            ("source", "{step.typo}", "dest"),
+        ] {
+            let cfg = config_with_ops(&[]);
+            let scn =
+                scenario_with_recipe(vec![json!({"op": "ship-to-vm", "src": src, "dest": dest})]);
+            let dir = tempdir();
+            let error = run_recipe(
+                "ship",
+                &scn,
+                &cfg,
+                &LocalConfig::default(),
+                &dir,
+                &dir,
+                0,
+                |_| {},
+            )
+            .unwrap_err();
+            assert!(error.contains(&format!("step 0 (ship-to-vm) {field}")));
+            assert!(error.contains("step.typo"));
+        }
     }
 
     #[test]
