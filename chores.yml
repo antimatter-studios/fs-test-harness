@@ -62,7 +62,7 @@ vars:
   # guide of the repository it is run for; below v0.2.11 the wrapper does not
   # exist at all.
   FS_CORE_URL: https://github.com/antimatter-studios/rust-fs-core.git
-  FS_CORE_REF: v0.3.3
+  FS_CORE_REF: v0.3.8
 
 tasks:
   siblings:
