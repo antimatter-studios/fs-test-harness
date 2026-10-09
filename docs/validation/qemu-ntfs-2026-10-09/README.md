@@ -84,6 +84,10 @@ successful insertion with the same unchanged binary. Windows then:
 - [Enumerated](supplemental-enumeration.txt) `mac-rejected.txt` and all 256
   original numbered files; explicit required-path checks also passed.
 
+The runner did not record a transfer hash linking this supplemental input
+to the image shipped at step 04. Its independent checks strengthen the
+diagnosis but do not establish that byte identity.
+
 This supplemental check does not replace the failed scenario, execute its
 missing steps inside the original matrix, or change the 71/72 result.
 The remaining recipe operations were `ship-to-vm`, `win-chkdsk` and
@@ -102,10 +106,17 @@ These scenarios reported an unavailable volume snapshot for `/scan`:
 Their existing consumer code ran offline `/F /X` fallbacks and reported the
 scenarios passed. The structured records explicitly retain `/scan` as
 `not-scanned`; the [original scan reports](unavailable-online-scans.txt) are
-included here. These are a completeness gate even though libtest reported
-zero ignored tests. No VMware run of this exact consumer revision was
-available for comparison, so this evidence does not establish whether the
-snapshot limitation differs between providers.
+included here. Review of the reports points to insufficient free space for
+the volume snapshot: three volumes are 32 MiB, while the interrupted-index
+case has only 6,192 KiB free on a roughly 127 MiB volume. The existing consumer
+explicitly supports offline fallback when the online snapshot cannot run.
+All four preceding read-only checks and offline checks exited 0; the offline
+reports state that no problems were found and report no repairs.
+
+These cases exercised the documented fallback rather than the online scan
+path. They do not demonstrate a QEMU-specific defect. No VMware run of this
+exact consumer revision was available, so a matching comparison is still
+needed to establish provider equivalence for these cases.
 
 ### Output exceeds the consumer's limit
 
@@ -175,3 +186,23 @@ Load was checked before starting work. Smoke and the full matrix ran
 sequentially, with a host-load gate before each. No VM reset, selective matrix
 filter, retry, changed concurrency or changed timeout was used to obtain these
 results.
+
+## Follow-up: PowerShell progress output
+
+A read-only review identified CLIXML progress records from the harness's
+encoded SSH lock and shipping commands. The command now sets
+`$ProgressPreference = 'SilentlyContinue'` before module loading. Errors and
+command exit statuses remain visible. A new transport regression failed
+before this change and passed afterward; smoke now rejects CLIXML output.
+
+The complete real Windows smoke run passed again on the existing guest:
+18 positive steps passed first time, all three canary steps executed, and
+the wrong-content assertion failed as intended. The
+[follow-up transcript](smoke-progress-fix.txt) contains zero CLIXML records.
+The raw log has 184 lines and 9,832 bytes; its SHA-256 is
+`a294bbbc9d7dc34f6fb59627d83c6574464238847e0a2d6a06c0ecaf74a3d673`.
+
+All `chore check` gates passed after the change, preserving all 42 Rust
+tests and 29 provider tests; the remote timeout/progress integration suite
+grew from 15 to 16 assertions. This follow-up does not rerun or change the
+original NTFS matrix result, its consumer output budget, or the parity claim.

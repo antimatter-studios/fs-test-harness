@@ -165,3 +165,47 @@ assertion. Four online scans used offline fallbacks, and the transcript
 exceeded the consumer's budget. Full parity is not yet accepted; that report
 retains the evidence and the remaining gates. No NTFS source or tests were
 changed.
+
+## MacBook handoff and VMware retirement
+
+The current provider runs on Linux ARM64/KVM. It cannot create or boot a
+local macOS guest yet. Before a local Apple Silicon handoff, implement and
+check the HVF backend, QEMU ARM firmware discovery, installer-media creation,
+and macOS dependency paths. Do not copy the Linux QEMU command unchanged or
+present unit tests as evidence that Windows boots on macOS.
+
+To offload all test work, SSH from the MacBook into the Pi and run the
+existing `local-vm.py exec --` commands there. This keeps the host tool build,
+image work and Windows guest on the Pi and preserves the provider lock.
+The Pi must have the intended consumer revision and fixtures available;
+verify its commit before running. No macOS VM backend is needed for this mode.
+
+A MacBook can already use the ordinary SSH-based harness against the Pi's
+running Windows guest. The guest SSH port is bound to the Pi's loopback:
+use a secured SSH tunnel to that port, with the guest key kept private and
+host-key checking enabled. Run the consumer's host tools on the MacBook and
+use a distinct Windows work directory. The Linux provider's local lock does
+not cover commands issued remotely from the MacBook; serialize runs through
+the Pi or otherwise ensure only one run uses that guest. Do not expose the
+Windows SSH port publicly to make it reachable.
+
+Before deprecating VMware, retain evidence for these checks:
+
+1. Fresh Windows installation and provisioning on each supported host,
+   followed by the complete smoke test, including its expected failing canary.
+2. Repeat runs reuse the same Windows boot, and shutdown/restart retains the
+   guest installation. Record the host, guest, helper and harness versions.
+3. Run the same pinned consumer revision, scenarios, recipes and timeouts on
+   both providers. At minimum compare the failed expected-rejection scenario
+   and the four online-scan fallback scenarios from the Pi report; compare
+   the complete matrix to establish full coverage equivalence.
+4. Resolve the consumer's stale expected rejection and remeasure its output
+   budget in that repository, then run the complete corrected matrix on Linux
+   and macOS. The original failed run remains evidence and is not relabelled.
+5. Preserve all step diagnostics and hashes of the images used for supplemental
+   investigations. Verify any lifecycle calls in consumer task definitions:
+   some still invoke VMware even though the harness transport uses SSH.
+
+A successful QEMU run demonstrates that provider's behavior. A matching
+VMware run establishes the comparison. Native Windows CI remains a third
+execution environment using the same assertions and needs no local VM.
