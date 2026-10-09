@@ -206,3 +206,7 @@ All `chore check` gates passed after the change, preserving all 42 Rust
 tests and 29 provider tests; the remote timeout/progress integration suite
 grew from 15 to 16 assertions. This follow-up does not rerun or change the
 original NTFS matrix result, its consumer output budget, or the parity claim.
+
+The [recipe reference follow-up](template-fix.md) records the subsequent
+placeholder fix, literal batch-marker regression, complete Windows smoke
+and an audit of the unchanged consumer's 438 recipe steps.

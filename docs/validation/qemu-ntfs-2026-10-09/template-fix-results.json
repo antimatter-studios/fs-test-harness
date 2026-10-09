@@ -1,0 +1,35 @@
+{
+  "implementation": "e1520590d32aa2fa5fd0b0c91d915cbc7ffd44d5",
+  "rust_tests": {
+    "baseline": 42,
+    "final": 54,
+    "missing_baseline_tests": []
+  },
+  "provider_tests": 29,
+  "rust_line_coverage": {
+    "baseline": 79.26,
+    "final": 81.53
+  },
+  "smoke": {
+    "steps": {
+      "smoke": 18,
+      "canary": 3
+    },
+    "clixml_records": 0,
+    "raw_lines": 142,
+    "raw_bytes": 8563,
+    "raw_sha256": "422e1b17ef642d1fd65d5217c4479154a8b76c981176ddbd8c45df4833675f7c"
+  },
+  "consumer_template_audit": {
+    "consumer": "fe450f1798993cf1c8d7b4866a0855761d9aa5c6",
+    "errors": [],
+    "method": "Actual checked Rust engine; synthetic transport paths; no driver tests or commands executed.",
+    "scenarios": 72,
+    "steps_audited": 438
+  },
+  "consumer_input_sha256": {
+    "test-matrix.json": "b4cf8001c9c6ae01927c50187b0e1ee096ad85f03552dcbd6aaa07c60acf8bef",
+    "fs-windows-test-harness.toml": "56a06a6d4cb4c8076b231d9ad969de8e823419c81746615890e3e665cbaeb395"
+  },
+  "full_ntfs_matrix_rerun": false
+}
