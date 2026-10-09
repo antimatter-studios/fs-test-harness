@@ -505,6 +505,7 @@ $reader = New-Object IO.StreamReader($gunzip, [Text.Encoding]::UTF8)
 $script = [ScriptBlock]::Create($reader.ReadToEnd())
 $reader.Dispose()'''
 command = rf'''
+$ProgressPreference = 'SilentlyContinue'
 $paramsJson = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{params_b64}'))
 $params = $paramsJson | ConvertFrom-Json
 {load}

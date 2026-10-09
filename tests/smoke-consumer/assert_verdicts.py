@@ -148,6 +148,8 @@ def main(argv):
     if not scenarios:
         raise SystemExit(f"no scenarios in {matrix} start with {prefix!r}")
     log = read(log_path) or ""
+    check("#< CLIXML" not in log,
+          "PowerShell CLIXML leaked into the smoke transcript")
     (check_pass if mode == "pass" else check_canary)(int(rc), scenarios, diag, log)
 
     print(f"--- {mode} verdicts ({prefix}*) ---")

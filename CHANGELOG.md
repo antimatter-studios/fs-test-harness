@@ -18,6 +18,13 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   The Pi validation report records successful smoke testing and the full
   unchanged NTFS matrix's remaining gates; full parity is not yet accepted.
 
+### Fixed
+
+- Harness SSH lock and shipping commands suppress PowerShell progress at
+  its source so module initialization does not leak CLIXML into test logs.
+  Smoke checks reject CLIXML transcripts while preserving errors and
+  the intentional wrong-content canary failure.
+
 ### Changed
 
 - **The agents-core check runs in place from rust-fs-core.** The copy in

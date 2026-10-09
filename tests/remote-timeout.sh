@@ -76,6 +76,10 @@ action = "other"
 encoded = re.search(r"-EncodedCommand\s+(\S+)", command)
 if encoded:
     script = base64.b64decode(encoded.group(1)).decode("utf-16le")
+    # Model the progress stream emitted by module loading under EncodedCommand.
+    if "$ProgressPreference = 'SilentlyContinue'" not in script:
+        print("#< CLIXML", file=sys.stderr)
+        print("<Objs>Preparing modules for first use.</Objs>", file=sys.stderr)
     for blob in re.findall(r"FromBase64String\('([A-Za-z0-9+/=]+)'\)", script):
         try:
             action = json.loads(base64.b64decode(blob))["action"]
@@ -206,6 +210,24 @@ case_hangs_at() {
 case_hangs_at Acquire
 case_hangs_at Verify
 case_hangs_at Release
+
+# A successful remote call must suppress PowerShell progress at its source.
+# The stand-in still emits every other message and preserves failure statuses.
+dir="${WORK_DIR}/progress"
+make_consumer "${dir}"
+: > "${dir}/ssh.log"
+(
+    cd "${dir}" || exit 99
+    PATH="${BIN}:${PATH}" STAND_IN_LOG="${dir}/ssh.log" \
+        bash "${HARNESS_ROOT}/scripts/run-tests.sh" remote-never-returns --no-ship \
+            --vm-host=tester@stand-in --vm-workdir=C:/fswth-remote-timeout
+) > "${dir}/out.txt" 2>&1 < /dev/null
+rc=$?
+if [[ "${rc}" -eq 0 ]] && ! grep -q '#< CLIXML' "${dir}/out.txt"; then
+    ok "successful VM lock calls suppress PowerShell progress output"
+else
+    bad "successful VM lock calls suppress PowerShell progress output (rc=${rc})"
+fi
 
 echo "==============================================================="
 echo "  results: ${PASS} passed, ${FAIL} failed"
