@@ -15,6 +15,8 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   23.2 seconds on a fresh Pi guest, within an overall bounded wait.
   Provisioning aligns the bootstrap process policy before setting the user's
   policy, with a Windows regression test for execution-policy precedence.
+  The Pi validation report records successful smoke testing and the full
+  unchanged NTFS matrix's remaining gates; full parity is not yet accepted.
 
 ### Changed
 

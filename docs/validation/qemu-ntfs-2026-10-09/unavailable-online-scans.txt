@@ -1,0 +1,30 @@
+cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk
+===============================================================
+The type of the file system is NTFS.
+Insufficient storage available to create either the shadow copy storage file or other shadow copy data.
+
+A snapshot error occured while scanning this drive. Run an offline scan and fix.
+
+
+foreign-fragmented-indx-512-win-enumerate-chkdsk
+================================================
+The type of the file system is NTFS.
+Insufficient storage available to create either the shadow copy storage file or other shadow copy data.
+
+A snapshot error occured while scanning this drive. Run an offline scan and fix.
+
+
+mac-format-tiny-32mib
+=====================
+The type of the file system is NTFS.
+Insufficient storage available to create either the shadow copy storage file or other shadow copy data.
+
+A snapshot error occured while scanning this drive. Run an offline scan and fix.
+
+
+mac-format-volume-32mib-cluster-512
+===================================
+The type of the file system is NTFS.
+Insufficient storage available to create either the shadow copy storage file or other shadow copy data.
+
+A snapshot error occured while scanning this drive. Run an offline scan and fix.

@@ -157,3 +157,11 @@ not prove Windows behavior. Acceptance requires fresh provisioning through
 this branch and a complete real filesystem consumer matrix, with every
 scenario accounted for and its diagnostics retained. VMware replacement and
 macOS compatibility are separate claims requiring their own evidence.
+
+The [2026-10-09 Pi validation](validation/qemu-ntfs-2026-10-09/README.md)
+completed fresh provisioning and WinFsp smoke, then ran the unchanged full
+NTFS consumer: 71 scenarios passed and one failed an expected-rejection
+assertion. Four online scans used offline fallbacks, and the transcript
+exceeded the consumer's budget. Full parity is not yet accepted; that report
+retains the evidence and the remaining gates. No NTFS source or tests were
+changed.
