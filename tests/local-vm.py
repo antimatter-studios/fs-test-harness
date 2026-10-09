@@ -23,7 +23,8 @@ class LocalVM(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="fswth-test-")
         self.addCleanup(self.temp.cleanup)
-        self.state = Path(self.temp.name)
+        # main() resolves --state; macOS temp dirs sit behind /var -> /private/var.
+        self.state = Path(self.temp.name).resolve()
         self.config = {
             "version": 1,
             "cpus": 2,
