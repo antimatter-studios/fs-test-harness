@@ -1,5 +1,14 @@
 param([string]$Msi = 'C:\fswth-bootstrap\winfsp-2.1.25156.msi')
 $ErrorActionPreference = 'Stop'
+
+function Set-LocalTestExecutionPolicy {
+    # SSH bootstraps this script with Process=Bypass. Align that scope first:
+    # otherwise Set-ExecutionPolicy writes CurrentUser but throws
+    # ExecutionPolicyOverride, aborting provisioning with ErrorAction=Stop.
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+}
+
 $logDir = 'C:\fswth-bootstrap'
 Start-Transcript -Path "$logDir\finish-provision.log" -Append
 try {
@@ -8,7 +17,7 @@ try {
     }
     # Run over SSH as the dedicated test account: the Rust runner invokes
     # its copied lease script directly in the account's default shell.
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+    Set-LocalTestExecutionPolicy
     $licenseFilter = "ApplicationID='55c92734-d682-4d71-983e-d6ec3f16059f' AND PartialProductKey IS NOT NULL"
     $license = Get-CimInstance SoftwareLicensingProduct -Filter $licenseFilter
     if ($license.LicenseStatus -ne 1) {

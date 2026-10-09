@@ -13,6 +13,8 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   the existing harness. See `docs/qemu-vm.md`; macOS support is pending.
   Readiness probes allow 60 seconds for cold PowerShell startup, measured at
   23.2 seconds on a fresh Pi guest, within an overall bounded wait.
+  Provisioning aligns the bootstrap process policy before setting the user's
+  policy, with a Windows regression test for execution-policy precedence.
 
 ### Changed
 

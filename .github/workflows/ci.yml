@@ -265,6 +265,10 @@ jobs:
         shell: powershell
         run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/chkdsk-verdict.ps1
 
+      - name: local VM execution-policy scope regression
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/local-vm-policy.ps1
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
