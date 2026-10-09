@@ -3,8 +3,10 @@
 
 import argparse
 import base64
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -258,15 +260,53 @@ class LocalVM(unittest.TestCase):
     def test_shutdown_waits_and_never_forces_kill(self):
         with (
             patch.object(vm, "running", side_effect=[{"running": True}, None]),
+            patch.object(
+                vm, "ssh", side_effect=subprocess.CalledProcessError(255, "ssh")
+            ),
             patch.object(vm, "qmp") as qmp,
+            contextlib.redirect_stderr(io.StringIO()),
         ):
             vm.down(self.state, 10)
         qmp.assert_called_once_with(self.state, "system_powerdown")
 
+    def test_shutdown_is_requested_inside_windows_first(self):
+        # ACPI system_powerdown left Windows dirty: Kernel-Power 41 and
+        # EventLog 6008 on the next boot, twice with the host awake. Windows'
+        # own shutdown logged 1074/6006/109 and the next boot was clean.
+        with (
+            patch.object(vm, "running", side_effect=[{"running": True}, None]),
+            patch.object(vm, "ssh") as ssh,
+            patch.object(vm, "qmp") as qmp,
+        ):
+            vm.down(self.state, 10)
+        self.assertIn("shutdown.exe /s /t 0", ssh.call_args.args[1])
+        self.assertLessEqual(ssh.call_args.kwargs["timeout"], 60)
+        qmp.assert_not_called()
+
+    def test_shutdown_falls_back_to_acpi_only_without_ssh(self):
+        for error in (
+            subprocess.CalledProcessError(255, "ssh"),
+            subprocess.TimeoutExpired("ssh", 60),
+        ):
+            with (
+                self.subTest(error=type(error).__name__),
+                patch.object(vm, "running", side_effect=[{"running": True}, None]),
+                patch.object(vm, "ssh", side_effect=error),
+                patch.object(vm, "qmp") as qmp,
+                contextlib.redirect_stderr(io.StringIO()) as stderr,
+            ):
+                vm.down(self.state, 10)
+            qmp.assert_called_once_with(self.state, "system_powerdown")
+            self.assertIn("unexpected shutdown", stderr.getvalue())
+
     def test_stop_timeout_is_failure(self):
         with (
             patch.object(vm, "running", return_value={"running": True}),
+            patch.object(
+                vm, "ssh", side_effect=subprocess.CalledProcessError(255, "ssh")
+            ),
             patch.object(vm, "qmp") as qmp,
+            contextlib.redirect_stderr(io.StringIO()),
             patch.object(vm.time, "monotonic", side_effect=[0, 2]),
             self.assertRaises(TimeoutError),
         ):

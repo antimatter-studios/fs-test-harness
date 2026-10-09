@@ -577,7 +577,21 @@ def down(state, timeout):
     if running(state) is None:
         print("VM is already stopped")
         return
-    qmp(state, "system_powerdown")
+    # Windows' own shutdown is clean; the ACPI power button left it dirty
+    # (Kernel-Power 41 and EventLog 6008 on the next boot, measured on HVF).
+    try:
+        ssh(
+            state,
+            "shutdown.exe /s /t 0",
+            capture_output=True,
+            timeout=min(60, timeout),
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        print(
+            "Guest SSH unavailable; pressing the ACPI power button, which Windows records as an unexpected shutdown",
+            file=sys.stderr,
+        )
+        qmp(state, "system_powerdown")
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if running(state) is None:

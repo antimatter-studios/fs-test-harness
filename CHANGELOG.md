@@ -45,6 +45,10 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   idle-sleep assertion (`caffeinate -i`) until they exit. An idle-sleeping
   Mac froze the guest mid-smoke and mid-shutdown; closing the lid still
   sleeps the host.
+- `down` asks Windows to shut down over SSH, then waits for QEMU to exit.
+  The ACPI power button left Windows with an unexpected-shutdown record
+  (Kernel-Power 41, EventLog 6008) on its next boot; it is now only the
+  fallback when SSH fails, and says so.
 
 ### Changed
 
