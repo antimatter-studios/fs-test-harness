@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Persistent Windows ARM64 evaluation VM for Linux ARM64 (Python 3.11+).
+"""Persistent Windows ARM64 evaluation VM for Linux ARM64/KVM and Apple
+Silicon macOS/HVF (Python 3.11+).
 
 VM lifecycle is explicit. Running a harness command leaves the guest running.
-State, media, credentials and logs stay outside the checkout.
+State, media, credentials and logs stay outside the checkout. Both hosts use
+the same tools, commands and state layout; only the accelerator differs.
 """
 
 import argparse
@@ -19,12 +21,37 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 RESOURCES = Path(__file__).resolve().with_suffix("")
 DEFAULT_STATE = Path.home() / ".local/share/fs-windows-test-harness/arm64"
+# The accelerator is the only per-host difference. gic-version=host requires
+# KVM, so HVF uses QEMU's emulated GICv3 (measured: QEMU 10.2.2, Apple M3 Pro).
+HOSTS = {
+    ("Linux", "aarch64"): "kvm",
+    ("Linux", "arm64"): "kvm",
+    ("Darwin", "arm64"): "hvf",
+}
+GIC = {"kvm": "host", "hvf": "3"}
+# bsdtar (libarchive) reads and writes ISO 9660 on both hosts: built into
+# macOS, libarchive-tools on Debian.
+TOOLS = (
+    "qemu-system-aarch64",
+    "qemu-img",
+    "ssh-keygen",
+    "ssh",
+    "scp",
+    "bsdtar",
+    "curl",
+)
+# Debian/Raspberry Pi OS qemu-efi-aarch64, checked before QEMU's own build.
+SYSTEM_FIRMWARE = (
+    Path("/usr/share/AAVMF/AAVMF_CODE.fd"),
+    Path("/usr/share/AAVMF/AAVMF_VARS.fd"),
+)
 
 
 def run(argv, **kwargs):
@@ -52,7 +79,8 @@ def private_dir(path):
 
 
 def runtime_dir(state):
-    # Linux sun_path is 108 bytes; keep sockets independent of long state paths.
+    # sun_path is 108 bytes on Linux, 104 on macOS; keep sockets independent
+    # of long state paths.
     parent = Path(f"/tmp/fswth-{os.getuid()}")
     private_dir(parent)
     path = parent / hashlib.sha256(os.fsencode(state)).hexdigest()[:16]
@@ -115,8 +143,7 @@ def running(state):
 def verify(path, spec):
     if not path.is_file() or path.stat().st_size != spec["bytes"]:
         return False
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest() == spec["sha256"]
+    return sha256(path) == spec["sha256"]
 
 
 def fetch(media, manifest):
@@ -198,43 +225,104 @@ def transport(state, port):
         wrapper.chmod(0o700)
 
 
+def sha256(path):
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def accelerator():
+    system, machine = platform.system(), platform.machine().lower()
+    accel = HOSTS.get((system, machine))
+    if accel is None:
+        raise RuntimeError(
+            f"Unsupported host {system} {machine}; needs Linux ARM64 with KVM or an Apple Silicon Mac"
+        )
+    if accel == "kvm" and not os.access("/dev/kvm", os.R_OK | os.W_OK):
+        raise RuntimeError(
+            "/dev/kvm is not accessible; enable KVM and grant this user access"
+        )
+    if accel == "hvf":
+        result = subprocess.run(
+            ["sysctl", "-n", "kern.hv_support"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.stdout.strip() != "1":
+            raise RuntimeError(
+                "Hypervisor.framework is unavailable (sysctl kern.hv_support is not 1)"
+            )
+    return accel
+
+
+def firmware(args):
+    if args.firmware_code or args.firmware_vars:
+        if not (args.firmware_code and args.firmware_vars):
+            raise RuntimeError("Pass both --firmware-code and --firmware-vars")
+        candidates = [(Path(args.firmware_code), Path(args.firmware_vars))]
+    else:
+        # QEMU's bundled edk2 build (Homebrew, MacPorts, source installs):
+        # its aarch64 code shares the ARM variable-store template.
+        share = Path(tool("qemu-system-aarch64")).resolve().parents[1] / "share/qemu"
+        candidates = [
+            SYSTEM_FIRMWARE,
+            (share / "edk2-aarch64-code.fd", share / "edk2-arm-vars.fd"),
+        ]
+    for code, variables in candidates:
+        if code.is_file() and variables.is_file():
+            return code.resolve(), variables.resolve()
+    tried = "; ".join(f"{code} + {variables}" for code, variables in candidates)
+    raise RuntimeError(
+        f"Missing ARM UEFI firmware (tried {tried}); install it or pass --firmware-code/--firmware-vars"
+    )
+
+
+def seed_media(state, virtio):
+    seed = state / "seed"
+    (seed / "drivers").mkdir(exist_ok=True)
+    # The pinned ISO shares extents between identical drivers, which
+    # libarchive lists as hard links into other NetKVM directories (w11/ARM64
+    # links to 2k25/...). Extract the whole tree, then copy only ARM64 Win11.
+    with tempfile.TemporaryDirectory(prefix="virtio-", dir=state) as scratch:
+        run(["bsdtar", "-x", "-f", virtio, "-C", scratch, "NetKVM"], timeout=120)
+        source = Path(scratch) / "NetKVM/w11/ARM64"
+        for item in source.iterdir() if source.is_dir() else ():
+            shutil.copyfile(item, seed / "drivers" / item.name)
+    if not (seed / "drivers/netkvm.inf").is_file():
+        raise RuntimeError("ARM64 NetKVM driver was not extracted")
+    # ISO 9660 with Joliet and Rock Ridge (libarchive's defaults); Windows
+    # setup reads Autounattend.xml from its root.
+    run(
+        [
+            "bsdtar",
+            "-c",
+            "-f",
+            state / "seed.iso",
+            "--format",
+            "iso9660",
+            "--options",
+            "iso9660:volume-id=FSWTH_SEED",
+            "-C",
+            seed,
+            *sorted(os.listdir(seed)),
+        ],
+        timeout=120,
+    )
+
+
 def prepare(state, args):
     if not args.accept_evaluation_terms:
         raise RuntimeError(
             "Read Microsoft's evaluation terms in docs/qemu-vm.md, then pass --accept-evaluation-terms"
         )
-    if platform.system() != "Linux" or platform.machine().lower() not in (
-        "aarch64",
-        "arm64",
-    ):
-        raise RuntimeError(
-            "This branch supports Linux ARM64/KVM; macOS support is pending"
-        )
-    if not os.access("/dev/kvm", os.R_OK | os.W_OK):
-        raise RuntimeError(
-            "/dev/kvm is not accessible; enable KVM and grant this user access"
-        )
+    accel = accelerator()
     if (state / "vm.json").exists() or (state / "windows.qcow2").exists():
         raise RuntimeError(
             "State already prepared; use up. A fresh installation needs a new --state directory"
         )
-    for name in (
-        "qemu-system-aarch64",
-        "qemu-img",
-        "ssh-keygen",
-        "ssh",
-        "scp",
-        "genisoimage",
-        "7z",
-        "curl",
-    ):
+    for name in TOOLS:
         tool(name)
-    firmware = Path(args.firmware_code).resolve()
-    variables = Path(args.firmware_vars).resolve()
-    if not firmware.is_file() or not variables.is_file():
-        raise RuntimeError(
-            "Missing ARM UEFI firmware; install qemu-efi-aarch64 or pass --firmware-code/--firmware-vars"
-        )
+    code, variables = firmware(args)
     media = (
         Path(args.media_dir).expanduser().resolve()
         if args.media_dir
@@ -267,36 +355,8 @@ def prepare(state, args):
         shutil.copyfile(media / name, seed / name)
     shutil.copyfile(state / "ssh-key.pub", seed / "authorized_keys")
     shutil.copyfile(RESOURCES / "bootstrap.ps1", seed / "bootstrap.ps1")
-    run(
-        [
-            "7z",
-            "e",
-            "-y",
-            "-bd",
-            "-bso0",
-            f"-o{seed / 'drivers'}",
-            media / "virtio-win.iso",
-            "NetKVM/w11/ARM64/*",
-        ],
-        timeout=120,
-    )
-    if not (seed / "drivers/netkvm.inf").is_file():
-        raise RuntimeError("ARM64 NetKVM driver was not extracted")
-    run(
-        [
-            "genisoimage",
-            "-quiet",
-            "-J",
-            "-R",
-            "-V",
-            "FSWTH_SEED",
-            "-o",
-            state / "seed.iso",
-            seed,
-        ],
-        timeout=120,
-    )
-    shutil.copyfile(firmware, state / "uefi-code.fd")
+    seed_media(state, media / "virtio-win.iso")
+    shutil.copyfile(code, state / "uefi-code.fd")
     shutil.copyfile(variables, state / "uefi-vars.fd")
     run(
         [
@@ -319,11 +379,18 @@ def prepare(state, args):
             "cpus": args.cpus,
             "memory_mib": args.memory_mib,
             "disk_gib": args.disk_gib,
+            "accelerator": accel,
+            "firmware": {
+                "code": str(code),
+                "code_sha256": sha256(code),
+                "vars": str(variables),
+                "vars_sha256": sha256(variables),
+            },
             "install_started": False,
             "provisioned": False,
         },
     )
-    print(f"Prepared {state}; next: up --install")
+    print(f"Prepared {state} for {accel}; next: up --install")
 
 
 def load_config(state):
@@ -337,12 +404,14 @@ def load_config(state):
 
 def qemu_command(state, config, install=False):
     runtime = runtime_dir(state)
+    # State prepared before HVF support has no accelerator: it was KVM.
+    accel = config.get("accelerator", "kvm")
     command = [
         "qemu-system-aarch64",
         "-name",
         "fswth-local",
         "-machine",
-        "virt,accel=kvm,gic-version=host",
+        f"virt,accel={accel},gic-version={GIC[accel]}",
         "-cpu",
         "host",
         "-smp",
@@ -557,8 +626,8 @@ def parse_args(argv=None):
     prep.add_argument("--cpus", type=positive, default=2)
     prep.add_argument("--memory-mib", type=positive, default=4096)
     prep.add_argument("--disk-gib", type=positive, default=128)
-    prep.add_argument("--firmware-code", default="/usr/share/AAVMF/AAVMF_CODE.fd")
-    prep.add_argument("--firmware-vars", default="/usr/share/AAVMF/AAVMF_VARS.fd")
+    prep.add_argument("--firmware-code", help="default: discovered (docs/qemu-vm.md)")
+    prep.add_argument("--firmware-vars", help="variable-store template for the code")
     start = sub.add_parser("up", help="start once; reuse a running VM")
     start.add_argument(
         "--install",
@@ -597,6 +666,9 @@ def parse_args(argv=None):
 
 
 def main(argv=None):
+    # macOS's /usr/bin/python3 is 3.9; fail by name, not on a missing API.
+    if sys.version_info < (3, 11):
+        raise RuntimeError("Python 3.11+ is required; see docs/qemu-vm.md")
     args = parse_args(argv)
     state = args.state.expanduser().resolve()
     if any(c in str(state) for c in ',"%\n\r'):

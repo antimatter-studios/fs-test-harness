@@ -10,13 +10,21 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 - An opt-in persistent Windows ARM64 QEMU/KVM guest for Linux ARM64, with
   pinned evaluation downloads, unattended installation media, SSH and WinFsp
   provisioning, explicit VM lifecycle commands, and transport wrappers for
-  the existing harness. See `docs/qemu-vm.md`; macOS support is pending.
+  the existing harness. See `docs/qemu-vm.md`.
   Readiness probes allow 60 seconds for cold PowerShell startup, measured at
   23.2 seconds on a fresh Pi guest, within an overall bounded wait.
   Provisioning aligns the bootstrap process policy before setting the user's
   policy, with a Windows regression test for execution-policy precedence.
   The Pi validation report records successful smoke testing and the full
   unchanged NTFS matrix's remaining gates; full parity is not yet accepted.
+- The same QEMU guest provider runs on Apple Silicon macOS with HVF. Both
+  hosts share one command set, state layout and dependency list; only the
+  accelerator is chosen per host. `bsdtar` (libarchive) now extracts the
+  VirtIO network driver and writes the seed ISO on both hosts, replacing
+  7-Zip and genisoimage: **Debian hosts install `libarchive-tools`**.
+  Firmware is discovered (Debian AAVMF, then QEMU's bundled edk2 beside
+  `qemu-system-aarch64`), and its paths and hashes are recorded in `vm.json`.
+  Python older than 3.11 is refused by name.
 
 ### Fixed
 

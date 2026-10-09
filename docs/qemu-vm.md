@@ -1,29 +1,42 @@
 # Persistent Windows ARM64 VM with QEMU
 
-This branch packages the Linux ARM64/KVM setup, including Raspberry Pi 5.
-**macOS/HVF support is pending.** The scenario runner, recipes, Windows
-operations, assertions and CI Windows runner remain the existing harness.
-This is a guest provider: prepare once, start when needed, run many matrices,
-and shut down explicitly. Tests do not reboot the VM.
+One setup for two hosts: Linux ARM64 with KVM (including Raspberry Pi 5) and
+Apple Silicon macOS with Hypervisor.framework (HVF). Both use the same tools,
+commands, media, state layout, guest and SSH transport; the accelerator is the
+only per-host difference, chosen automatically. The scenario runner, recipes,
+Windows operations, assertions and CI Windows runner remain the existing
+harness. This is a guest provider: prepare once, start when needed, run many
+matrices, and shut down explicitly. Tests do not reboot the VM.
 
 ## Prerequisites
 
-- Linux ARM64, hardware virtualization and read/write access to `/dev/kvm`.
-- Python 3.11+, QEMU, ARM UEFI firmware, OpenSSH client, curl, 7-Zip and
-  genisoimage. On Debian/Raspberry Pi OS:
+Every host needs Python 3.11+, QEMU with `qemu-img`, ARM UEFI firmware, an
+OpenSSH client, curl and `bsdtar` (libarchive, which both extracts the VirtIO
+driver and writes the seed ISO). Only the install command differs:
 
-  ```sh
-  sudo apt install qemu-system-arm qemu-utils qemu-efi-aarch64 \
-      openssh-client curl 7zip genisoimage python3
-  ```
+| Host | Accelerator | Install |
+|---|---|---|
+| Debian / Raspberry Pi OS, ARM64 | KVM: read/write access to `/dev/kvm` | `sudo apt install qemu-system-arm qemu-utils qemu-efi-aarch64 openssh-client curl libarchive-tools python3` |
+| macOS, Apple Silicon | HVF: `sysctl kern.hv_support` is 1 | `brew install qemu python` (`bsdtar`, curl and ssh ship with macOS) |
 
-  The extractor executable must be named `7z` (some distributions provide it
-  through `p7zip-full`). No host root access is needed after dependencies and
-  KVM permissions are configured.
-- Enough resources for 2 virtual CPUs, 4 GiB RAM, about 6 GiB of cached media,
-  and a sparse 128 GiB guest disk. Large matrices also need room for host
-  images. On a Pi, run one matrix at a time and choose consumer concurrency
-  to fit the guest memory; multiple drive letters do not guarantee capacity.
+macOS's `/usr/bin/python3` is 3.9 and is refused by name: run the commands
+with Homebrew's `python3` (put `$(brew --prefix)/bin` first on `PATH`). No
+host root access is needed after dependencies and KVM permissions are
+configured; HVF needs none.
+
+`prepare` finds the firmware itself: Debian's `qemu-efi-aarch64`
+(`/usr/share/AAVMF/AAVMF_CODE.fd` + `AAVMF_VARS.fd`) first, then QEMU's own
+build beside the `qemu-system-aarch64` on `PATH`
+(`share/qemu/edk2-aarch64-code.fd` + `edk2-arm-vars.fd`, as Homebrew installs
+it). `--firmware-code` and `--firmware-vars` override both and must be passed
+together. The chosen paths and their SHA-256 are recorded in `vm.json` and
+copied into the state directory, so a later QEMU upgrade does not change an
+installed guest's firmware.
+
+Resources: 2 virtual CPUs, 4 GiB RAM, about 6 GiB of cached media and a sparse
+128 GiB guest disk, on every host. Large matrices also need room for host
+images. Run one matrix at a time and choose consumer concurrency to fit the
+guest memory; multiple drive letters do not guarantee capacity.
 
 ## Windows evaluation terms
 

@@ -65,9 +65,9 @@ bash ../fs-windows-test-harness/scripts/run-tests.sh
 ```
 
 Setting up the Windows VM: [`docs/vm-setup.md`](./docs/vm-setup.md).
-Persistent QEMU VM on Linux ARM64 (including Raspberry Pi 5):
-[`docs/qemu-vm.md`](./docs/qemu-vm.md). The guest stays running between tests;
-CI continues to use its Windows runner directly. macOS QEMU support is pending.
+Persistent QEMU VM, one setup for Linux ARM64/KVM (including Raspberry Pi 5)
+and Apple Silicon macOS/HVF: [`docs/qemu-vm.md`](./docs/qemu-vm.md). The guest
+stays running between tests; CI continues to use its Windows runner directly.
 Full contract: [`docs/consumer-integration.md`](./docs/consumer-integration.md).
 Architecture overview: [`docs/architecture.md`](./docs/architecture.md).
 Diagnosing a red scenario: [`docs/triage-protocol.md`](./docs/triage-protocol.md).

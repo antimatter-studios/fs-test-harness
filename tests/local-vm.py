@@ -5,6 +5,8 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -284,11 +286,14 @@ class LocalVM(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "evaluation terms"):
             vm.prepare(self.state, args)
         args.accept_evaluation_terms = True
-        with (
-            patch.object(vm.platform, "system", return_value="Darwin"),
-            self.assertRaisesRegex(RuntimeError, "macOS support is pending"),
-        ):
-            vm.prepare(self.state, args)
+        for system, machine in (("Darwin", "x86_64"), ("Linux", "x86_64")):
+            with (
+                self.subTest(system=system, machine=machine),
+                patch.object(vm.platform, "system", return_value=system),
+                patch.object(vm.platform, "machine", return_value=machine),
+                self.assertRaisesRegex(RuntimeError, "Unsupported host"),
+            ):
+                vm.prepare(self.state, args)
         with (
             patch.object(vm.platform, "system", return_value="Linux"),
             patch.object(vm.platform, "machine", return_value="aarch64"),
@@ -296,6 +301,142 @@ class LocalVM(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "/dev/kvm"),
         ):
             vm.prepare(self.state, args)
+        with (
+            patch.object(vm.platform, "system", return_value="Darwin"),
+            patch.object(vm.platform, "machine", return_value="arm64"),
+            patch.object(
+                vm.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, stdout="0\n"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "Hypervisor.framework"),
+        ):
+            vm.prepare(self.state, args)
+        self.assertFalse((self.state / "vm.json").exists())
+
+    def test_each_supported_host_selects_its_accelerator(self):
+        hv_support = subprocess.CompletedProcess([], 0, stdout="1\n")
+        for system, machine, expected in (
+            ("Linux", "aarch64", "kvm"),
+            ("Linux", "arm64", "kvm"),
+            ("Darwin", "arm64", "hvf"),
+        ):
+            with (
+                self.subTest(system=system, machine=machine),
+                patch.object(vm.platform, "system", return_value=system),
+                patch.object(vm.platform, "machine", return_value=machine),
+                patch.object(vm.os, "access", return_value=True),
+                patch.object(vm.subprocess, "run", return_value=hv_support) as run,
+            ):
+                self.assertEqual(vm.accelerator(), expected)
+            if expected == "hvf":
+                self.assertEqual(
+                    run.call_args.args[0], ["sysctl", "-n", "kern.hv_support"]
+                )
+
+    def test_qemu_uses_hvf_with_emulated_gicv3(self):
+        # gic-version=host is refused without KVM (QEMU 10.2.2, Apple M3 Pro).
+        self.config["accelerator"] = "hvf"
+        with patch.object(vm, "runtime_dir", return_value=self.state):
+            cmd = vm.qemu_command(self.state, self.config)
+        self.assertIn("virt,accel=hvf,gic-version=3", cmd)
+        self.assertNotIn("kvm", " ".join(cmd))
+        self.assertEqual(cmd[cmd.index("-cpu") + 1], "host")
+
+    def test_firmware_override_must_name_both_files(self):
+        code = self.state / "code.fd"
+        code.write_bytes(b"code")
+        args = vm.parse_args(["prepare", "--firmware-code", str(code)])
+        with self.assertRaisesRegex(RuntimeError, "both --firmware-code"):
+            vm.firmware(args)
+        args.firmware_vars = str(self.state / "missing.fd")
+        with self.assertRaisesRegex(RuntimeError, "missing.fd"):
+            vm.firmware(args)
+
+    def test_firmware_is_found_beside_the_qemu_installation(self):
+        prefix = self.state / "Cellar/qemu/10.2.2"
+        (prefix / "bin").mkdir(parents=True)
+        (prefix / "share/qemu").mkdir(parents=True)
+        binary = prefix / "bin/qemu-system-aarch64"
+        binary.touch()
+        link = self.state / "bin-qemu"
+        link.symlink_to(binary)
+        args = vm.parse_args(["prepare"])
+        with (
+            patch.object(vm, "tool", return_value=str(link)),
+            patch.object(vm, "SYSTEM_FIRMWARE", (self.state / "none.fd",) * 2),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "edk2-aarch64-code.fd"):
+                vm.firmware(args)
+            # QEMU's bundled aarch64 build uses the shared ARM vars template.
+            for name in ("edk2-aarch64-code.fd", "edk2-arm-vars.fd"):
+                (prefix / "share/qemu" / name).write_bytes(name.encode())
+            self.assertEqual(
+                vm.firmware(args),
+                (
+                    prefix / "share/qemu/edk2-aarch64-code.fd",
+                    prefix / "share/qemu/edk2-arm-vars.fd",
+                ),
+            )
+            system = (self.state / "AAVMF_CODE.fd", self.state / "AAVMF_VARS.fd")
+            for path in system:
+                path.write_bytes(b"debian")
+            with patch.object(vm, "SYSTEM_FIRMWARE", system):
+                self.assertEqual(vm.firmware(args), system)
+
+    def test_seed_media_use_one_archiver_on_every_host(self):
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append([str(x) for x in argv])
+            if "-x" in argv:
+                # The pinned VirtIO ISO shares extents between identical
+                # drivers; libarchive lists w11/ARM64's files as hard links
+                # to NetKVM/2k25/..., so the whole tree must be extracted.
+                root = Path(argv[argv.index("-C") + 1]) / "NetKVM"
+                for name, body in (("w11/ARM64", b"arm64"), ("2k25/amd64", b"x64")):
+                    (root / name).mkdir(parents=True)
+                    (root / name / "netkvm.inf").write_bytes(body)
+                    (root / name / "netkvm.inf").chmod(0o555)
+                    (root / name).chmod(0o555)
+
+        (self.state / "seed").mkdir()
+        (self.state / "seed/bootstrap.ps1").touch()
+        with patch.object(vm, "run", side_effect=run):
+            vm.seed_media(self.state, self.state / "virtio-win.iso")
+        extract, create = calls
+        self.assertEqual(
+            extract[:4], ["bsdtar", "-x", "-f", str(self.state / "virtio-win.iso")]
+        )
+        self.assertEqual(extract[-1], "NetKVM")
+        self.assertNotIn("--strip-components", extract)
+        drivers = self.state / "seed/drivers"
+        self.assertEqual(os.listdir(drivers), ["netkvm.inf"])
+        self.assertEqual((drivers / "netkvm.inf").read_bytes(), b"arm64")
+        self.assertEqual(
+            sorted(os.listdir(self.state / "seed")), ["bootstrap.ps1", "drivers"]
+        )
+        self.assertEqual(
+            [p.name for p in self.state.iterdir() if p.name.startswith("virtio")], []
+        )
+        self.assertEqual(create[0], "bsdtar")
+        self.assertIn("iso9660", create)
+        self.assertIn("iso9660:volume-id=FSWTH_SEED", create)
+        self.assertEqual(create[create.index("-f") + 1], str(self.state / "seed.iso"))
+        self.assertEqual(create[-2:], ["bootstrap.ps1", "drivers"])
+        with (
+            patch.object(vm, "run"),
+            self.assertRaisesRegex(RuntimeError, "NetKVM driver was not extracted"),
+        ):
+            shutil.rmtree(drivers)
+            vm.seed_media(self.state, self.state / "virtio-win.iso")
+
+    def test_old_python_is_refused_by_name(self):
+        with (
+            patch.object(vm.sys, "version_info", (3, 9, 6)),
+            self.assertRaisesRegex(RuntimeError, "Python 3.11"),
+        ):
+            vm.main(["status"])
 
     def test_prepare_creates_private_seed_and_persistent_configuration(self):
         args = vm.parse_args(["prepare", "--accept-evaluation-terms"])
@@ -312,8 +453,7 @@ class LocalVM(unittest.TestCase):
             if argv[0] == "ssh-keygen":
                 (self.state / "ssh-key").write_text("test private key")
                 (self.state / "ssh-key.pub").write_text("test public key")
-            if argv[0] == "7z":
-                (self.state / "seed/drivers").mkdir()
+            if argv[0] == "bsdtar" and "-x" in argv:
                 (self.state / "seed/drivers/netkvm.inf").touch()
 
         with (
@@ -331,6 +471,16 @@ class LocalVM(unittest.TestCase):
         self.assertFalse(config["install_started"])
         self.assertFalse(config["provisioned"])
         self.assertEqual(config["disk_gib"], 128)
+        self.assertEqual(config["accelerator"], "kvm")
+        self.assertEqual(
+            config["firmware"],
+            {
+                "code": str(fw),
+                "code_sha256": hashlib.sha256(b"firmware").hexdigest(),
+                "vars": str(fw),
+                "vars_sha256": hashlib.sha256(b"firmware").hexdigest(),
+            },
+        )
         self.assertEqual((self.state / "ssh-key").stat().st_mode & 0o777, 0o600)
         answer = (self.state / "seed/Autounattend.xml").read_text()
         self.assertIn(
