@@ -394,6 +394,18 @@ class LocalVM(unittest.TestCase):
             call.call_args.kwargs["env"]["PATH"].startswith(str(self.state / "bin"))
         )
 
+    def test_ready_probe_allows_measured_cold_powershell_startup(self):
+        # Fresh Windows on Pi took 23.201s preparing PowerShell modules.
+        # A 15s per-probe cap kept killing a healthy, initializing shell.
+        with patch.object(
+            vm,
+            "ssh",
+            return_value=subprocess.CompletedProcess([], 0, stdout=b"FSWTH_READY"),
+        ) as ssh:
+            vm.wait_ready(self.state, 300)
+        self.assertGreaterEqual(ssh.call_args.kwargs["timeout"], 24)
+        self.assertLessEqual(ssh.call_args.kwargs["timeout"], 300)
+
     def test_main_rejects_missing_command_and_unprovisioned_guest(self):
         vm.write_json(self.state / "vm.json", self.config)
         for command, error in (

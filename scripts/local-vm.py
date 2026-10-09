@@ -454,7 +454,9 @@ def wait_ready(state, timeout):
             result = ssh(
                 state,
                 command,
-                timeout=min(15, max(1, deadline - time.monotonic())),
+                # The first shell prepares PowerShell modules: measured
+                # at 23.201s on Pi. Keep it bounded without killing it at 15s.
+                timeout=min(60, max(1, deadline - time.monotonic())),
                 capture_output=True,
             )
             if b"FSWTH_READY" in result.stdout:
@@ -469,7 +471,7 @@ def wait_ready(state, timeout):
 
 
 def provision(state, config):
-    wait_ready(state, 30)
+    wait_ready(state, 300)
     with (state / "provision.log").open("a") as log:
         run(
             [

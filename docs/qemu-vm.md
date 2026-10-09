@@ -83,6 +83,10 @@ has been copied, use ordinary `up` to boot the installed disk. A failed first
 launch or an unusable partial installation needs a separately named state
 directory; inspect `qemu.log` before retrying anything.
 
+The first PowerShell session prepares modules and can take tens of seconds
+on a Pi. Each readiness probe allows up to 60 seconds, bounded by the total
+wait; `provision` allows five minutes for readiness before starting its work.
+
 SSH/network setup runs during Windows specialize. WinFsp installation runs
 after setup, because installing its MSI during specialize stalled in the
 prototype. `provision` sets RemoteSigned for the dedicated account, performs
