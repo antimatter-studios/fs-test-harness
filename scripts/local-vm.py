@@ -86,7 +86,8 @@ def qmp(state, command, arguments=None):
             ):
                 stream.write(
                     (
-                        json.dumps(dict(execute=name, arguments=args, id=ident)) + "\n"
+                        json.dumps({"execute": name, "arguments": args, "id": ident})
+                        + "\n"
                     ).encode()
                 )
                 deadline = time.monotonic() + 10
@@ -311,16 +312,16 @@ def prepare(state, args):
     transport(state, args.ssh_port)
     write_json(
         state / "vm.json",
-        dict(
-            version=1,
-            media=str(media),
-            ssh_port=args.ssh_port,
-            cpus=args.cpus,
-            memory_mib=args.memory_mib,
-            disk_gib=args.disk_gib,
-            install_started=False,
-            provisioned=False,
-        ),
+        {
+            "version": 1,
+            "media": str(media),
+            "ssh_port": args.ssh_port,
+            "cpus": args.cpus,
+            "memory_mib": args.memory_mib,
+            "disk_gib": args.disk_gib,
+            "install_started": False,
+            "provisioned": False,
+        },
     )
     print(f"Prepared {state}; next: up --install")
 
@@ -492,7 +493,7 @@ def provision(state, config):
         )
     for block in qmp(state, "query-block"):
         if block.get("device") in ("installer", "seed") and block.get("inserted"):
-            qmp(state, "eject", dict(device=block["device"], force=False))
+            qmp(state, "eject", {"device": block["device"], "force": False})
     config["provisioned"] = True
     write_json(state / "vm.json", config)
     print(
@@ -530,7 +531,7 @@ def boot_installer(state, config):
         time.sleep(0.05)
     for _ in range(8):
         time.sleep(1)
-        qmp(state, "send-key", dict(keys=[dict(type="qcode", data="spc")]))
+        qmp(state, "send-key", {"keys": [{"type": "qcode", "data": "spc"}]})
     print("Installer boot command sent; use screenshot to check progress")
 
 
@@ -604,7 +605,7 @@ def main(argv=None):
         )
     os.umask(0o077)
     if args.action == "status":
-        print(json.dumps(dict(state=str(state), qemu=running(state)), indent=2))
+        print(json.dumps({"state": str(state), "qemu": running(state)}, indent=2))
         return 0
     with exclusive(state):
         if args.action == "prepare":
@@ -625,10 +626,10 @@ def main(argv=None):
             qmp(
                 state,
                 "screendump",
-                dict(filename=str(args.output.resolve()), format="png"),
+                {"filename": str(args.output.resolve()), "format": "png"},
             )
         elif args.action == "key":
-            qmp(state, "send-key", dict(keys=[dict(type="qcode", data=args.qcode)]))
+            qmp(state, "send-key", {"keys": [{"type": "qcode", "data": args.qcode}]})
         elif args.action in ("exec", "ssh"):
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
             if not command:

@@ -24,15 +24,15 @@ class LocalVM(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="fswth-test-")
         self.addCleanup(self.temp.cleanup)
         self.state = Path(self.temp.name)
-        self.config = dict(
-            version=1,
-            cpus=2,
-            memory_mib=4096,
-            media=str(self.state / "media"),
-            ssh_port=22261,
-            install_started=False,
-            provisioned=False,
-        )
+        self.config = {
+            "version": 1,
+            "cpus": 2,
+            "memory_mib": 4096,
+            "media": str(self.state / "media"),
+            "ssh_port": 22261,
+            "install_started": False,
+            "provisioned": False,
+        }
 
     def test_answer_has_no_secret_and_targets_only_disk_zero(self):
         answer = vm.render_answer("A!<&secret")
@@ -56,7 +56,7 @@ class LocalVM(unittest.TestCase):
 
     def test_size_and_hash_both_required(self):
         path = self.state / "media.iso"
-        expected = dict(bytes=4, sha256=hashlib.sha256(b"good").hexdigest())
+        expected = {"bytes": 4, "sha256": hashlib.sha256(b"good").hexdigest()}
         self.assertFalse(vm.verify(path, expected))
         path.write_bytes(b"bad!")
         self.assertFalse(vm.verify(path, expected))
@@ -71,7 +71,7 @@ class LocalVM(unittest.TestCase):
             patch.object(vm, "run") as run,
             self.assertRaisesRegex(RuntimeError, "Cached media"),
         ):
-            vm.fetch(self.state, {"image.iso": dict(bytes=5, sha256="a" * 64)})
+            vm.fetch(self.state, {"image.iso": {"bytes": 5, "sha256": "a" * 64}})
         run.assert_not_called()
         self.assertEqual((self.state / "image.iso").read_bytes(), b"bad")
 
@@ -82,18 +82,18 @@ class LocalVM(unittest.TestCase):
         with (
             patch.object(vm, "run", side_effect=download),
             patch.object(vm, "tool", return_value="curl"),
+            self.assertRaisesRegex(RuntimeError, "Download hash"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "Download hash"):
-                vm.fetch(
-                    self.state,
-                    {
-                        "image.iso": dict(
-                            bytes=5,
-                            sha256="a" * 64,
-                            url="https://example.invalid/image.iso",
-                        )
-                    },
-                )
+            vm.fetch(
+                self.state,
+                {
+                    "image.iso": {
+                        "bytes": 5,
+                        "sha256": "a" * 64,
+                        "url": "https://example.invalid/image.iso",
+                    }
+                },
+            )
         self.assertFalse((self.state / "image.iso").exists())
 
     def test_qemu_uses_kvm_loopback_and_no_installer_on_normal_boot(self):
@@ -147,15 +147,17 @@ class LocalVM(unittest.TestCase):
             patch.object(vm, "running", return_value=None),
             patch.object(vm, "runtime_dir", return_value=self.state),
             patch.object(vm, "run", side_effect=launch),
+            self.assertRaisesRegex(RuntimeError, "QEMU launch failed"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "QEMU launch failed"):
-                vm.up(self.state, self.config, True)
+            vm.up(self.state, self.config, True)
 
     def test_exclusive_lock_refuses_another_operation(self):
-        with vm.exclusive(self.state):
-            with self.assertRaisesRegex(RuntimeError, "Another lifecycle"):
-                with vm.exclusive(self.state):
-                    self.fail("lock allowed concurrent operation")
+        with (
+            vm.exclusive(self.state),
+            self.assertRaisesRegex(RuntimeError, "Another lifecycle"),
+            vm.exclusive(self.state),
+        ):
+            self.fail("lock allowed concurrent operation")
         with vm.exclusive(self.state):
             pass
 
@@ -211,9 +213,9 @@ class LocalVM(unittest.TestCase):
                 vm, "ssh", side_effect=subprocess.CalledProcessError(1, "ssh")
             ),
             patch.object(vm, "qmp") as qmp,
+            self.assertRaises(subprocess.CalledProcessError),
         ):
-            with self.assertRaises(subprocess.CalledProcessError):
-                vm.provision(self.state, self.config)
+            vm.provision(self.state, self.config)
         self.assertFalse(self.config["provisioned"])
         qmp.assert_not_called()
 
@@ -249,9 +251,9 @@ class LocalVM(unittest.TestCase):
             patch.object(vm, "running", return_value={"running": True}),
             patch.object(vm, "qmp") as qmp,
             patch.object(vm.time, "monotonic", side_effect=[0, 2]),
+            self.assertRaises(TimeoutError),
         ):
-            with self.assertRaises(TimeoutError):
-                vm.down(self.state, 1)
+            vm.down(self.state, 1)
         qmp.assert_called_once_with(self.state, "system_powerdown")
 
     def test_configuration_and_argument_validation(self):
@@ -259,7 +261,7 @@ class LocalVM(unittest.TestCase):
             vm.load_config(self.state)
         vm.write_json(self.state / "vm.json", self.config)
         self.assertEqual(vm.load_config(self.state), self.config)
-        vm.write_json(self.state / "vm.json", dict(version=100))
+        vm.write_json(self.state / "vm.json", {"version": 100})
         with self.assertRaisesRegex(RuntimeError, "Unsupported"):
             vm.load_config(self.state)
         self.assertEqual(vm.positive("2"), 2)
@@ -270,25 +272,29 @@ class LocalVM(unittest.TestCase):
         )
 
     def test_missing_tool_fails_with_prerequisite(self):
-        with patch.object(vm.shutil, "which", return_value=None):
-            with self.assertRaisesRegex(RuntimeError, "Missing qemu.*prerequisites"):
-                vm.tool("qemu")
+        with (
+            patch.object(vm.shutil, "which", return_value=None),
+            self.assertRaisesRegex(RuntimeError, "Missing qemu.*prerequisites"),
+        ):
+            vm.tool("qemu")
 
     def test_prepare_requires_terms_and_supported_host(self):
         args = vm.parse_args(["prepare"])
         with self.assertRaisesRegex(RuntimeError, "evaluation terms"):
             vm.prepare(self.state, args)
         args.accept_evaluation_terms = True
-        with patch.object(vm.platform, "system", return_value="Darwin"):
-            with self.assertRaisesRegex(RuntimeError, "macOS support is pending"):
-                vm.prepare(self.state, args)
+        with (
+            patch.object(vm.platform, "system", return_value="Darwin"),
+            self.assertRaisesRegex(RuntimeError, "macOS support is pending"),
+        ):
+            vm.prepare(self.state, args)
         with (
             patch.object(vm.platform, "system", return_value="Linux"),
             patch.object(vm.platform, "machine", return_value="aarch64"),
             patch.object(vm.os, "access", return_value=False),
+            self.assertRaisesRegex(RuntimeError, "/dev/kvm"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "/dev/kvm"):
-                vm.prepare(self.state, args)
+            vm.prepare(self.state, args)
 
     def test_prepare_creates_private_seed_and_persistent_configuration(self):
         args = vm.parse_args(["prepare", "--accept-evaluation-terms"])
@@ -361,9 +367,11 @@ class LocalVM(unittest.TestCase):
                     vm.qmp(self.state, "query-status")
         with patch.object(vm, "qmp", side_effect=ConnectionRefusedError):
             self.assertIsNone(vm.running(self.state))
-        with patch.object(vm, "qmp", side_effect=TimeoutError):
-            with self.assertRaises(TimeoutError):
-                vm.running(self.state)
+        with (
+            patch.object(vm, "qmp", side_effect=TimeoutError),
+            self.assertRaises(TimeoutError),
+        ):
+            vm.running(self.state)
 
     def test_boot_recovery_is_only_for_initial_install(self):
         with self.assertRaisesRegex(RuntimeError, "first installation"):
