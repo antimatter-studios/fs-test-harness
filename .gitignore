@@ -7,3 +7,4 @@ test-diagnostics/
 
 # Task logs: every chore task writes its whole run here and prints a verdict.
 /tmp/
+__pycache__/

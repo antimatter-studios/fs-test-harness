@@ -39,6 +39,7 @@ chore_min_version: 0.6.0
 #     output-budget     39 / 1,957    120 / 12,000   measured 2026-09-26
 #     agents-core       11 /   445     20 / 1,000   measured 2026-09-30
 #     remote-timeout    18 / 1,022     25 / 1,500   measured 2026-10-02
+#     local-vm          40 / 3,805     70 / 9,000   measured 2026-10-09 (28 tests)
 #     smoke            348 / 42,000   500 / 60,000   end-to-end VM transcript
 #
 #   THE LINT AND TEST ROWS MOVED ON 2026-10-02. On fs-windows-test-harness#40
@@ -115,8 +116,13 @@ tasks:
     cmds:
       - scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
 
+  local-vm:
+    desc: QEMU lifecycle, media verification, locking and SSH transport checks (no VM needed)
+    cmds:
+      - scripts/task.sh local-vm local-vm 70 9000 -- python3 -B tests/local-vm.py
+
   check:
-    desc: Every CI job that runs off Windows -- lint, test, state-machine, remote-timeout, output-budget, agents-core, config
+    desc: Every CI job that runs off Windows -- lint, test, state-machine, remote-timeout, output-budget, agents-core, config, local-vm
     # Sequential on purpose: the first failure stops the run and is the
     # last thing on screen.
     cmds:
@@ -127,6 +133,7 @@ tasks:
       - task: output-budget
       - task: agents-core
       - task: config
+      - task: local-vm
 
   smoke:
     desc: End-to-end smoke test against a Windows host with WinFsp (CI job `smoke`)

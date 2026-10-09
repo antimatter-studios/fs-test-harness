@@ -170,6 +170,9 @@ jobs:
       - name: agent-guide self-test (the shared block is intact; drift is refused)
         run: bash scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
 
+      - name: local QEMU lifecycle checks (no guest needed)
+        run: bash scripts/task.sh local-vm local-vm 70 9000 -- python3 -B tests/local-vm.py
+
       - name: upload state-machine logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -5,6 +5,13 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+### Added
+
+- An opt-in persistent Windows ARM64 QEMU/KVM guest for Linux ARM64, with
+  pinned evaluation downloads, unattended installation media, SSH and WinFsp
+  provisioning, explicit VM lifecycle commands, and transport wrappers for
+  the existing harness. See `docs/qemu-vm.md`; macOS support is pending.
+
 ### Changed
 
 - **The agents-core check runs in place from rust-fs-core.** The copy in

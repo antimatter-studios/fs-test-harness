@@ -1,0 +1,23 @@
+{
+  "windows11-iot-arm64-eval.iso": {
+    "bytes": 5042194432,
+    "sha256": "3dcdba9c9c0aa0430d4332b60c9afcb3cd613d648a49cbba2d4ef7b5978f32e8",
+    "url": "https://go.microsoft.com/fwlink/?clcid=0x409&country=us&culture=en-us&linkid=2269595",
+    "provenance": "Downloaded directly from Microsoft over HTTPS; matches the firsthand download hash reported in Microsoft Q&A 2181328. Published Microsoft hash PDF is for the earlier release and does not match this refresh."
+  },
+  "virtio-win.iso": {
+    "sha256": "303f7ae40dad495d6ae474fdc571df58958a4dbc5c37a522d80f9a203867949d",
+    "bytes": 877373440,
+    "url": "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.302-1/virtio-win-0.1.302.iso"
+  },
+  "winfsp-2.1.25156.msi": {
+    "sha256": "073a70e00f77423e34bed98b86e600def93393ba5822204fac57a29324db9f7a",
+    "bytes": 2191360,
+    "url": "https://github.com/winfsp/winfsp/releases/download/v2.1/winfsp-2.1.25156.msi"
+  },
+  "OpenSSH-ARM64.zip": {
+    "sha256": "698c6aec31c1dd0fb996206e8741f4531a97355686b5431ef347d531b07fcd42",
+    "bytes": 5026201,
+    "url": "https://github.com/PowerShell/Win32-OpenSSH/releases/download/10.0.0.0p2-Preview/OpenSSH-ARM64.zip"
+  }
+}
