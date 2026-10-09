@@ -498,6 +498,9 @@ def up(state, config, install=False):
 
 
 def ssh(state, command, **kwargs):
+    # Before any module loads: progress records otherwise reach the host as
+    # CLIXML, as in scripts/run-tests.sh.
+    command = "$ProgressPreference = 'SilentlyContinue'\n" + command
     encoded = base64.b64encode(command.encode("utf-16-le")).decode()
     return run(
         [

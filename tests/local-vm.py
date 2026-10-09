@@ -2,6 +2,7 @@
 """Host-side lifecycle checks; real Windows evidence is recorded separately."""
 
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
@@ -187,6 +188,19 @@ class LocalVM(unittest.TestCase):
         self.assertIn(
             f'IdentityFile "{state / "ssh-key"}"', (state / "ssh_config").read_text()
         )
+
+    def test_powershell_commands_suppress_progress_before_running(self):
+        # A fresh guest's first shell printed "Preparing modules for first
+        # use" as CLIXML into provision.log (macOS validation, 2026-10-10).
+        with patch.object(vm, "run") as run:
+            vm.ssh(self.state, "& C:\\fswth-bootstrap\\finish.ps1")
+        argv = run.call_args.args[0]
+        script = base64.b64decode(argv[argv.index("-EncodedCommand") + 1]).decode(
+            "utf-16-le"
+        )
+        first, rest = script.split("\n", 1)
+        self.assertEqual(first, "$ProgressPreference = 'SilentlyContinue'")
+        self.assertEqual(rest, "& C:\\fswth-bootstrap\\finish.ps1")
 
     def test_wait_requires_setup_completion_marker(self):
         responses = [

@@ -39,6 +39,8 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   its source so module initialization does not leak CLIXML into test logs.
   Smoke checks reject CLIXML transcripts while preserving errors and
   the intentional wrong-content canary failure.
+- The QEMU provider's own PowerShell commands (`wait`, `provision`, `ssh`)
+  suppress progress too, so `provision.log` and `ssh` output carry no CLIXML.
 
 ### Changed
 
