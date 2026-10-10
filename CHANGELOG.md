@@ -5,6 +5,17 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A recipe reference inside a resolved value is expanded, and a missing one
+  stops the step (#45).** A step value such as `"{scenario.volume_params.label}"`
+  reached Windows as that literal text, because placeholders were expanded in
+  one pass; a required reference that resolved to nothing became an empty
+  string. References now expand through scenario and step values, up to eight
+  deep, with a cycle or a deeper chain reported; every unresolved required
+  reference fails the step before its command runs, naming each one; and
+  `{{`, `}}` and `{"literal": ...}` values stay literal.
+
 ### Changed
 
 - **The agents-core check runs in place from rust-fs-core.** The copy in

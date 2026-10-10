@@ -41,7 +41,23 @@ data without the harness having to enumerate fields up-front.
 |---|---|
 | `{scenario.<dotted.path>}` | A field on the enclosing scenario's JSON. E.g. `{scenario.volume_params.label}` → the scenario's `volume_params.label`. Walks objects via key, arrays via numeric index. |
 | `{step.<dotted.path>}` | A field on the *current* recipe step's JSON. E.g. `{step.path}` for `{ "op": "ls", "path": "/" }`. Cleared between steps. |
-| `{<token>?}` | Same as the un-suffixed form, but missing → empty string instead of an error marker. Use for fields that scenarios may or may not fill. |
+| `{<token>?}` | Same as the un-suffixed form, but missing → empty string instead of an error. Use for fields that scenarios may or may not fill. |
+
+**Nested references.** A `{scenario.*}` or `{step.*}` value that is
+itself a string is expanded in turn, so a step can point at scenario
+data: `{ "op": "format", "label": "{scenario.volume_params.label}" }`
+hands the op the scenario's label, not that text. A chain may be
+8 references deep; a longer one, or one that leads back to itself,
+stops the step with the chain named.
+
+**A missing required reference stops the step.** If any un-suffixed
+reference resolves to nothing, at any depth, the step fails before its
+command runs, naming every such reference. It used to become an empty
+string, so a typo reached the host or Windows as an empty argument (#45).
+
+**Literal data.** `{{` and `}}` are a literal brace. A value written as
+`{ "literal": "..." }` is used verbatim, braces and all. Flat tokens
+(`{content}`, `{path}`, `{binary}`, ...) are never expanded again.
 
 **Lookup order**: flat token first (so `{tools.fsck}` resolves even
 though it has a dot), then dotted-path. Flat shadows dotted; the v1

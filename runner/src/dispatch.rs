@@ -328,8 +328,27 @@ fn run_step(
         }
     }
 
-    let command = sub.expand(&op_def.command);
     let expected_exit = op_def.expect_exit.unwrap_or(0);
+    // A command that cannot be built completely is not run: an unresolved
+    // reference would otherwise reach the host or Windows as literal text
+    // or an empty argument (#45).
+    let command = match sub.expand_checked(&op_def.command) {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(StepResult {
+                index: idx,
+                op: op_name,
+                host: host_name(host),
+                command: String::new(),
+                exit_code: None,
+                expected_exit,
+                duration_ms: 0,
+                skipped: false,
+                skip_reason: None,
+                error: Some(format!("op '{}' command: {e}", op_def.command)),
+            })
+        }
+    };
 
     let started = Instant::now();
     let outcome = match host {
@@ -602,13 +621,17 @@ fn run_builtin_ship(
     let src = step
         .get("src")
         .and_then(|v| v.as_str())
-        .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'src' field"))?;
+    let src = sub
+        .expand_checked(src)
+        .map_err(|e| format!("step {idx}: '{op_name}' src: {e}"))?;
     let dest = step
         .get("dest")
         .and_then(|v| v.as_str())
-        .map(|s| sub.expand(s))
         .ok_or_else(|| format!("step {idx}: '{op_name}' requires a 'dest' field"))?;
+    let dest = sub
+        .expand_checked(dest)
+        .map_err(|e| format!("step {idx}: '{op_name}' dest: {e}"))?;
 
     let vm_host_owned: String = config
         .vm

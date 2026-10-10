@@ -53,17 +53,148 @@ pub enum SubstitutionError {
 }
 
 /// How many references deep a value may point before expansion stops.
-#[allow(dead_code)] // used by the expansion the next commit implements
 pub const MAX_DEPTH: usize = 8;
 
+impl std::fmt::Display for SubstitutionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SubstitutionError::Unresolved(paths) => write!(
+                f,
+                "unresolved required reference(s): {}",
+                paths
+                    .iter()
+                    .map(|p| format!("{{{p}}}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            SubstitutionError::Cycle(chain) => {
+                write!(f, "reference cycle: {}", chain.join(" -> "))
+            }
+            SubstitutionError::TooDeep(chain) => write!(
+                f,
+                "references nested deeper than {MAX_DEPTH}: {}",
+                chain.join(" -> ")
+            ),
+        }
+    }
+}
+
 impl Substitution {
-    /// Expand `template` completely, or say why it cannot be (#45). Not
-    /// implemented yet: this stub is the one-pass, silent-empty `expand`.
+    /// Expand `template` completely, or say why it cannot be (#45). What
+    /// the dispatcher runs: a command is built from this or not at all.
+    ///
+    /// * A `{scenario.*}` or `{step.*}` value that is itself a string is
+    ///   expanded in turn, so a step can name a scenario value. A chain
+    ///   that leads back to a reference already being expanded is a
+    ///   [`SubstitutionError::Cycle`]; one deeper than [`MAX_DEPTH`] is
+    ///   [`SubstitutionError::TooDeep`].
+    /// * A required reference that resolves to nothing, at any depth, is
+    ///   collected, and every one is reported together as
+    ///   [`SubstitutionError::Unresolved`]. A `?` reference still yields
+    ///   an empty string.
+    /// * Literal data is left alone: a `{"literal": "..."}` value is used
+    ///   verbatim, `{{` and `}}` are a literal brace, and flat tokens
+    ///   (`{content}`, `{path}`, `{binary}`, ...) are never re-expanded.
     pub fn expand_checked(&self, template: &str) -> Result<String, SubstitutionError> {
-        Ok(self.expand(template))
+        let mut missing = Vec::new();
+        let out = self.expand_in(template, &mut Vec::new(), &mut missing)?;
+        if missing.is_empty() {
+            Ok(out)
+        } else {
+            Err(SubstitutionError::Unresolved(missing))
+        }
     }
 
-    /// Substitute every `{...}` placeholder in `template`.
+    /// One level of [`Self::expand_checked`]: `chain` is the references
+    /// being expanded on the way here, outermost first.
+    fn expand_in(
+        &self,
+        template: &str,
+        chain: &mut Vec<String>,
+        missing: &mut Vec<String>,
+    ) -> Result<String, SubstitutionError> {
+        let mut out = String::with_capacity(template.len());
+        let bytes = template.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            match (bytes[i], bytes.get(i + 1)) {
+                (b'{', Some(b'{')) | (b'}', Some(b'}')) => {
+                    out.push(bytes[i] as char);
+                    i += 2;
+                    continue;
+                }
+                (b'{', _) => {
+                    if let Some(end_rel) = bytes[i + 1..].iter().position(|&b| b == b'}') {
+                        let inner = &bytes[i + 1..i + 1 + end_rel];
+                        if let Some((path, optional)) = parse_placeholder(inner) {
+                            match self.resolve(&path, chain, missing)? {
+                                Some(s) => out.push_str(&s),
+                                None if optional => {}
+                                None => {
+                                    if !missing.contains(&path) {
+                                        missing.push(path);
+                                    }
+                                }
+                            }
+                            i += 1 + end_rel + 1;
+                            continue;
+                        }
+                    }
+                }
+                _ => {}
+            }
+            let ch = template[i..]
+                .chars()
+                .next()
+                .expect("i is on a char boundary");
+            out.push(ch);
+            i += ch.len_utf8();
+        }
+        Ok(out)
+    }
+
+    /// A reference's text, expanded when it is a scenario or step string;
+    /// `None` when it resolves to nothing.
+    fn resolve(
+        &self,
+        path: &str,
+        chain: &mut Vec<String>,
+        missing: &mut Vec<String>,
+    ) -> Result<Option<String>, SubstitutionError> {
+        if let Some(s) = self.flat.get(path) {
+            return Ok(Some(s.clone()));
+        }
+        let Some(v) = self.lookup_value(path) else {
+            return Ok(None);
+        };
+        if let Some(literal) = v
+            .as_object()
+            .filter(|m| m.len() == 1)
+            .and_then(|m| m.get("literal"))
+            .and_then(Value::as_str)
+        {
+            return Ok(Some(literal.to_string()));
+        }
+        let Value::String(s) = v else {
+            return Ok(Some(value_to_string(&v)));
+        };
+        let mut at = chain.clone();
+        at.push(path.to_string());
+        if chain.iter().any(|p| p == path) {
+            return Err(SubstitutionError::Cycle(at));
+        }
+        if chain.len() >= MAX_DEPTH {
+            return Err(SubstitutionError::TooDeep(at));
+        }
+        chain.push(path.to_string());
+        let expanded = self.expand_in(&s, chain, missing);
+        chain.pop();
+        expanded.map(Some)
+    }
+
+    /// Substitute every `{...}` placeholder in `template`, in one pass and
+    /// with a missing required reference silently empty. The dispatcher
+    /// uses [`Self::expand_checked`]; this stays for its plain contract.
     ///
     /// Token resolution:
     ///
