@@ -190,19 +190,23 @@ exceeded the consumer's budget. Full parity is not yet accepted; that report
 retains the evidence and the remaining gates. No NTFS source or tests were
 changed.
 
-## MacBook handoff and VMware retirement
+The [2026-10-10 macOS validation](validation/qemu-ntfs-macos-2026-10-10/README.md)
+did the same on an Apple Silicon MacBook with HVF: fresh provisioning,
+smoke twice on one Windows boot, a clean shutdown and restart, and the same
+unchanged NTFS consumer. All 72 scenarios match the Pi run, the same failure
+and four fallbacks included. Its VMware comparison was not measured.
 
-The current provider runs on Linux ARM64/KVM. It cannot create or boot a
-local macOS guest yet. Before a local Apple Silicon handoff, implement and
-check the HVF backend, QEMU ARM firmware discovery, installer-media creation,
-and macOS dependency paths. Do not copy the Linux QEMU command unchanged or
-present unit tests as evidence that Windows boots on macOS.
+## MacBook, Pi and VMware retirement
 
-To offload all test work, SSH from the MacBook into the Pi and run the
+A MacBook runs the same provider locally: same commands, same state layout,
+HVF in place of KVM. Install its dependencies as in Prerequisites and follow
+the same steps. Keep the lid open during long runs.
+
+To offload test work to a Pi instead, SSH from the MacBook into it and run the
 existing `local-vm.py exec --` commands there. This keeps the host tool build,
 image work and Windows guest on the Pi and preserves the provider lock.
 The Pi must have the intended consumer revision and fixtures available;
-verify its commit before running. No macOS VM backend is needed for this mode.
+verify its commit before running.
 
 A MacBook can already use the ordinary SSH-based harness against the Pi's
 running Windows guest. The guest SSH port is bound to the Pi's loopback:

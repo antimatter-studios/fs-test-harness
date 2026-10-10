@@ -1,0 +1,5799 @@
+{
+ "date": "2026-10-10",
+ "full_parity_accepted": false,
+ "harness": {
+  "branch": "feat/qemu-local-vm",
+  "started_from": "c113f23",
+  "ntfs_matrix_harness_tree": "f8d392859c37316f63e7a799814002a640240f5c (c113f23 plus this branch's macOS commits before rebase; see matrix-harness-delta.patch)",
+  "smoke_and_checks_after_rebase_onto": "357a6e9"
+ },
+ "consumer_commit": "fe450f1798993cf1c8d7b4866a0855761d9aa5c6",
+ "consumer_tracked_files_unchanged": true,
+ "input_sha256": {
+  "ntfs_matrix": "b4cf8001c9c6ae01927c50187b0e1ee096ad85f03552dcbd6aaa07c60acf8bef",
+  "ntfs_config": "56a06a6d4cb4c8076b231d9ad969de8e823419c81746615890e3e665cbaeb395",
+  "ntfs_binary_macos_arm64": "afc2126ded1bc0dbfa644648203c071467d3b0819b396e458cdcc1f155e9324e",
+  "ntfs_cli_binary_macos_arm64": "277aed162e87859f5eb4d072d23481dc33913c632f2df79c28eb61cfa3cc8698",
+  "windows_vhd_helper": "d538bbcaa15e375f03fac510e57f98420904b90ebfd4f1bf701573f6def82ac0",
+  "windows_libunwind": "c007b0ed5eb1671b64f57e46db90980132ded6f46cebad8a3a2b54f042a931dd",
+  "llvm_mingw_macos_universal": "a7a19b11048e89372637d26279cdb7c430ed3cf8c1e224310421312bf986ebf6",
+  "uefi_code": "47765fe344818cbc464b1c14ae658fb4b854f5c2ceffa982411731eb4865594d",
+  "uefi_vars_template": "b3b855c5a80310168051164986855692d1bdb06e67619856177965cd87c6774f",
+  "media": {
+   "windows11-iot-arm64-eval.iso": "3dcdba9c9c0aa0430d4332b60c9afcb3cd613d648a49cbba2d4ef7b5978f32e8",
+   "virtio-win.iso": "303f7ae40dad495d6ae474fdc571df58958a4dbc5c37a522d80f9a203867949d",
+   "winfsp-2.1.25156.msi": "073a70e00f77423e34bed98b86e600def93393ba5822204fac57a29324db9f7a",
+   "OpenSSH-ARM64.zip": "698c6aec31c1dd0fb996206e8741f4531a97355686b5431ef347d531b07fcd42"
+  }
+ },
+ "environment": {
+  "host": "MacBook Pro, Apple M3 Pro, 36 GiB RAM, macOS 26.4.1 (25E253), on battery",
+  "qemu": "10.2.2 (Homebrew), accel=hvf, gic-version=3",
+  "firmware": {
+   "code": "Homebrew share/qemu/edk2-aarch64-code.fd",
+   "vars": "Homebrew share/qemu/edk2-arm-vars.fd"
+  },
+  "python": "3.14.8 (Homebrew)",
+  "bsdtar": "3.5.3, libarchive 3.7.4 (macOS)",
+  "openssh_client": "OpenSSH_10.2p1, LibreSSL 3.3.6",
+  "harness_runner_rust": "1.98.1",
+  "consumer_and_helper_rust": "1.95.0 (rust-toolchain.toml pins)",
+  "chore": "0.15.0",
+  "rust_fs_core": "v0.3.7",
+  "guest_vcpus": 2,
+  "guest_memory_mib": 4096,
+  "guest_disk_gib": 128,
+  "consumer_max_parallel": 4,
+  "step_timeout_seconds": 900,
+  "windows_vhd_helper": "rust-img-vhd 0.6.0 (with rust-fs-core v0.3.7), aarch64-pc-windows-gnullvm, LLVM MinGW 20261006 ucrt macOS universal, installed in C:\\fswth-tools on the machine PATH",
+  "guest_after_provision": {
+   "caption": "Microsoft Windows 11 IoT Enterprise LTSC Evaluation",
+   "version": "10.0.26100",
+   "build": "26100",
+   "architecture": "ARM 64-bit Processor",
+   "boot": "2026-10-09T21:32:23.4372650Z",
+   "install_date": "2026-10-09T21:30:55.0000000Z",
+   "license_status": 1,
+   "grace_minutes": 129600,
+   "ntfs_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "chkdsk_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "winfsp": "C:\\Program Files (x86)\\WinFsp\\",
+   "memfs": true,
+   "sshd": "OpenSSH_10.0p2 for Windows",
+   "vhd_tool": null,
+   "c_free_gib": 112.8
+  },
+  "guest_before_matrix": {
+   "caption": "Microsoft Windows 11 IoT Enterprise LTSC Evaluation",
+   "version": "10.0.26100",
+   "build": "26100",
+   "architecture": "ARM 64-bit Processor",
+   "boot": "2026-10-09T22:09:43.4058640Z",
+   "install_date": "2026-10-09T21:30:55.0000000Z",
+   "license_status": 1,
+   "grace_minutes": 129600,
+   "ntfs_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "chkdsk_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "winfsp": "C:\\Program Files (x86)\\WinFsp\\",
+   "memfs": true,
+   "sshd": "OpenSSH_10.0p2 for Windows",
+   "vhd_tool": "C:\\fswth-tools\\rust-img-vhd.exe",
+   "c_free_gib": 110
+  },
+  "guest_after_matrix": {
+   "caption": "Microsoft Windows 11 IoT Enterprise LTSC Evaluation",
+   "version": "10.0.26100",
+   "build": "26100",
+   "architecture": "ARM 64-bit Processor",
+   "boot": "2026-10-09T22:09:43.4058640Z",
+   "install_date": "2026-10-09T21:30:55.0000000Z",
+   "license_status": 1,
+   "grace_minutes": 129588,
+   "ntfs_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "chkdsk_version": "10.0.26100.1 (WinBuild.160101.0800)",
+   "winfsp": "C:\\Program Files (x86)\\WinFsp\\",
+   "memfs": true,
+   "sshd": "OpenSSH_10.0p2 for Windows",
+   "vhd_tool": "C:\\fswth-tools\\rust-img-vhd.exe",
+   "c_free_gib": 107
+  },
+  "same_boot_through_matrix": true,
+  "guest_clock_note": "Windows reads QEMU's UTC RTC as local time (GMT Standard Time), so guest timestamps run one hour behind UTC; boot times above are the guest's own."
+ },
+ "provisioning": {
+  "prepare_seconds": 3.565,
+  "installer_boot": "UEFI Shell prompt; boot-installer used once",
+  "windows_setup_wait_seconds": 175.596,
+  "provision_seconds": 24.992,
+  "activation_expires": "2027-01-07 (guest local time)"
+ },
+ "checks": {
+  "chore_check_before_fixes": "run 06 failed only config: ModuleNotFoundError: No module named 'jsonschema' (host dependency); run 08 passed with jsonschema 4.26.0",
+  "chore_check_final": "run 63 passed all eight tasks on the pushed code",
+  "chore_check_failures_recorded": {
+   "60": "local-vm passed but printed 74 lines over its 70-line budget; fixed by reaping the keep-awake process and making the shutdown tests' SSH failure explicit (61 lines)",
+   "61,62": "runner test a_step_that_never_returns_fails_within_its_bound_naming_the_command: scratch-directory collision, pre-existing (2 of 6 runs at c113f23); fixed"
+  },
+  "rust_runner_tests": 48,
+  "local_vm_python_tests": 39
+ },
+ "smoke": {
+  "first": {
+   "exit": 0,
+   "seconds": 339.431,
+   "positive_steps_passed": 18,
+   "canary_steps_executed": 3,
+   "canary_failed_as_designed": true,
+   "clixml_records": 0,
+   "host_slept_during_run": true,
+   "raw": {
+    "sha256": "928e15d64df99a23da8b7a5e5c2193c193f022103f58967e02327d69df105d98",
+    "lines": 182,
+    "bytes": 9691
+   }
+  },
+  "repeat_same_boot": {
+   "exit": 0,
+   "seconds": 260.477,
+   "positive_steps_passed": 18,
+   "canary_steps_executed": 3,
+   "canary_failed_as_designed": true,
+   "clixml_records": 0,
+   "raw": {
+    "sha256": "483f465fc7ea5b449f136fd41e60dd6ff932f49c449e7515a00bc9c8fdb55269",
+    "lines": 141,
+    "bytes": 8371
+   }
+  },
+  "after_rebase": {
+   "exit": 0,
+   "seconds": 86.956,
+   "positive_steps_passed": 18,
+   "canary_steps_executed": 3,
+   "canary_failed_as_designed": true,
+   "clixml_records": 0,
+   "raw": {
+    "sha256": "4f08229b559c6bfe6f5d4e33325cd91759c9aadc549f6f4fe7b0eabd46b6a068",
+    "lines": 140,
+    "bytes": 8390
+   }
+  },
+  "same_boot_first_and_repeat": true
+ },
+ "lifecycle": {
+  "acpi_down_host_asleep": "two attempts timed out while the battery Mac idle-slept (pmset log); no forced kill",
+  "acpi_down_host_awake": "QEMU exited in 4.1 s; next boot logged Kernel-Power 41 and EventLog 6008 (unexpected shutdown); reproduced",
+  "guest_initiated_shutdown": "shutdown.exe /s /t 0 over SSH: User32 1074, EventLog 6006 and Kernel-Power 109 logged; QEMU exited in 3.3 s; next boot clean",
+  "fixed_down": "3.1 s, clean next boot (no 41/6008)",
+  "restart_preserves_installation": true,
+  "preserved": [
+   "install_date",
+   "license_status",
+   "grace_minutes",
+   "WinFsp",
+   "memfs",
+   "sshd",
+   "C:\\fswth-tools\\rust-img-vhd.exe on PATH"
+  ]
+ },
+ "ntfs": {
+  "summary": {
+   "scenarios": 72,
+   "passed": 71,
+   "failed": 1,
+   "other": [],
+   "expected_steps": 438,
+   "executed_steps": 435,
+   "skipped_steps": 0,
+   "failed_scenarios": [
+    "win-format-win-write-many-mac-reject-index-allocation-win-chkdsk"
+   ],
+   "online_scan_fallback_scenarios": [
+    "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+    "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+    "mac-format-tiny-32mib",
+    "mac-format-volume-32mib-cluster-512"
+   ],
+   "transfer": {
+    "ship_seconds": 893.967,
+    "all_step_seconds": 4770.235,
+    "ship_share_of_step_time": 0.1874,
+    "slowest_ships": [
+     {
+      "seconds": 169.984,
+      "scenario": "mac-format-volume-16gib-cluster-4k",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 61.488,
+      "scenario": "mac-format-volume-4gib-cluster-4k",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 43.993,
+      "scenario": "mac-format-volume-4gib-cluster-64k",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 34.411,
+      "scenario": "cli-populate-win-verify-chkdsk",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 22.885,
+      "scenario": "cli-corrupt-mirror-fsck-win-chkdsk",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 22.273,
+      "scenario": "mac-format-mkdir-rmdir-win-chkdsk-64k",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 22.176,
+      "scenario": "cli-mkfs-win-chkdsk",
+      "op": "ship-to-vm"
+     },
+     {
+      "seconds": 21.579,
+      "scenario": "cli-corrupt-signature-fsck-win-chkdsk",
+      "op": "ship-to-vm"
+     }
+    ]
+   }
+  },
+  "exit_code": 101,
+  "wall_seconds": 1524.559,
+  "runner_seconds": 1481.76,
+  "automatic_retries": false,
+  "log": {
+   "sha256": "3e6a54f100d62a15bfe98782fd9e8d569df6dcf22a961917c91d6b84da2ad430",
+   "lines": 1365,
+   "bytes": 98097,
+   "budget_lines": 1300,
+   "budget_bytes": 90000,
+   "within_budget": false
+  },
+  "scenarios": [
+   {
+    "name": "cli-corrupt-mirror-fsck-win-chkdsk",
+    "status": "passed",
+    "seconds": 240.283,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mkfs",
+      "exit": 0,
+      "expected": 0,
+      "ms": 373
+     },
+     {
+      "op": "cli-corrupt",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "cli-fsck-finds",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22885
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 216903
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "damaged",
+     "modes": {
+      "readonly": {
+       "exit": 3,
+       "state": "failed",
+       "reason": "chkdsk exited 3"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/F /X": {
+       "exit": 1,
+       "state": "scanned",
+       "reason": "exit 1 accepted for this verdict shape"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 3,
+      "/scan": 0,
+      "/F /X": 1,
+      "/scan-post": 0
+     },
+     "damage_found": true,
+     "fix_exit": 1,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-corrupt-signature-fsck-win-chkdsk",
+    "status": "passed",
+    "seconds": 60.44,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mkfs",
+      "exit": 0,
+      "expected": 0,
+      "ms": 370
+     },
+     {
+      "op": "cli-corrupt",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "cli-fsck-finds",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21579
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 38359
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "damaged",
+     "modes": {
+      "readonly": {
+       "exit": 3,
+       "state": "failed",
+       "reason": "chkdsk exited 3"
+      },
+      "/scan": {
+       "exit": 13,
+       "state": "failed",
+       "reason": "chkdsk exited 13"
+      },
+      "/F /X": {
+       "exit": 1,
+       "state": "scanned",
+       "reason": "exit 1 accepted for this verdict shape"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 3,
+      "/scan": 13,
+      "/F /X": 1,
+      "/scan-post": 0
+     },
+     "damage_found": true,
+     "fix_exit": 1,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-mkfs-win-chkdsk",
+    "status": "passed",
+    "seconds": 239.005,
+    "expected_steps": 3,
+    "executed_steps": 3,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mkfs",
+      "exit": 0,
+      "expected": 0,
+      "ms": 377
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22176
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 216444
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-populate-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 78.812,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mkfs",
+      "exit": 0,
+      "expected": 0,
+      "ms": 372
+     },
+     {
+      "op": "cli-populate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 643
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 34411
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5349
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24633
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 13398
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-set-dirty-fsck-win-dirty-chkdsk",
+    "status": "passed",
+    "seconds": 53.21,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mkfs",
+      "exit": 0,
+      "expected": 0,
+      "ms": 112
+     },
+     {
+      "op": "cli-set-dirty",
+      "exit": 0,
+      "expected": 0,
+      "ms": 107
+     },
+     {
+      "op": "cli-fsck-finds",
+      "exit": 0,
+      "expected": 0,
+      "ms": 53
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 14460
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 25628
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 12840
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "repair-required",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 13,
+       "state": "failed",
+       "reason": "chkdsk exited 13"
+      },
+      "/F /X": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 13,
+      "/F /X": 0,
+      "/scan-post": 0
+     },
+     "pre_scan_exit": 13,
+     "fix_exit": 0,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-6-grow-mft-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 60.175,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-grow-mft",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3587
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 12553
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4210
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 29542
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10277
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 55.491,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 326
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8424
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4117
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 26223
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8173
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8223
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 51.83,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mount-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 426
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9639
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3197
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22859
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7677
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8024
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 42.659,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 284
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5339
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4103
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 20805
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5679
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6444
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 37.821,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-mount-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 335
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5234
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1149
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18568
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5912
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6617
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 215.905,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 343
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3398
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1360
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18625
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 185014
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7157
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 226.893,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 462
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3279
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1110
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19491
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 13732
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 188809
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 11,
+       "state": "not-scanned",
+       "reason": "no volume snapshot, so the online scan did not run"
+      },
+      "/scan-offline-fallback": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "offline /F /X found nothing to fix, in place of the online scan"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 11,
+      "/scan-offline-fallback": 0
+     }
+    },
+    "online_scan_not_scanned": true
+   },
+   {
+    "name": "cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 45.669,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 388
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5631
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1529
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19081
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 11915
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7118
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 39.281,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 296
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5104
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1478
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19174
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5879
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7344
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 41.37,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 345
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3429
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1162
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18494
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10869
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7066
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 37.566,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 290
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3340
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1266
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18839
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6770
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7055
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 38.867,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 342
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4609
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1426
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18365
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7043
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7077
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 38.899,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 332
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4534
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1362
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18355
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7276
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7033
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 42.17,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 346
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4500
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1409
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18521
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10054
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7334
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk",
+    "status": "passed",
+    "seconds": 37.035,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "cli-replay",
+      "exit": 0,
+      "expected": 0,
+      "ms": 287
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4391
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1242
+     },
+     {
+      "op": "win-dirty-query",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18479
+     },
+     {
+      "op": "win-cli-verify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5368
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7263
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+    "status": "passed",
+    "seconds": 29.137,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "stage-fragmented-indx",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 405
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2352
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18359
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7956
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 11,
+       "state": "not-scanned",
+       "reason": "no volume snapshot, so the online scan did not run"
+      },
+      "/scan-offline-fallback": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "offline /F /X found nothing to fix, in place of the online scan"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 11,
+      "/scan-offline-fallback": 0
+     }
+    },
+    "online_scan_not_scanned": true
+   },
+   {
+    "name": "mac-format-basic-256mib",
+    "status": "passed",
+    "seconds": 37.197,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 173
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5219
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24649
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7088
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-cluster-1k",
+    "status": "passed",
+    "seconds": 34.286,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 176
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9358
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24687
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-cluster-512",
+    "status": "passed",
+    "seconds": 35.28,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 279
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 56
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9447
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 25493
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-cluster-64k",
+    "status": "passed",
+    "seconds": 41.219,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 927
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 56
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 14007
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 26210
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-cluster-8k",
+    "status": "passed",
+    "seconds": 33.102,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 164
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9868
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 23005
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-hardlink-unlink-win-chkdsk",
+    "status": "passed",
+    "seconds": 32.967,
+    "expected_steps": 9,
+    "executed_steps": 9,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 229
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 56
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "mac-link",
+      "exit": 0,
+      "expected": 0,
+      "ms": 53
+     },
+     {
+      "op": "mac-rm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 111
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8842
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 23492
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-label-32chars",
+    "status": "passed",
+    "seconds": 212.2,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 110
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 171
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8137
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 203774
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-label-cjk",
+    "status": "passed",
+    "seconds": 26.768,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 116
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 58
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4688
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21902
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-label-empty",
+    "status": "passed",
+    "seconds": 30.999,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 111
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7085
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 23734
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-label-latin1",
+    "status": "passed",
+    "seconds": 28.83,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 119
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 113
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5222
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 23372
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-large-1gib",
+    "status": "passed",
+    "seconds": 42.451,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 707
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 14533
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 27067
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-enumerate-empty",
+    "status": "passed",
+    "seconds": 0.233,
+    "expected_steps": 3,
+    "executed_steps": 3,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 106
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-mkdir-mac-touch-mac-enumerate",
+    "status": "passed",
+    "seconds": 0.524,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 282
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 52
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-split-index-root-win-chkdsk",
+    "status": "passed",
+    "seconds": 56.114,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 58
+     },
+     {
+      "op": "mac-touch-many",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19489
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4601
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22277
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4263
+     },
+     {
+      "op": "win-assert-routed-names",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5294
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-split-routed-leaf-win-chkdsk",
+    "status": "passed",
+    "seconds": 35.684,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 282
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-touch-many",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2223
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4828
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22680
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4764
+     },
+     {
+      "op": "win-assert-routed-names",
+      "exit": 0,
+      "expected": 0,
+      "ms": 762
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-touch-mac-write-mac-enumerate",
+    "status": "passed",
+    "seconds": 0.354,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 114
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-write-mac-rm-mac-enumerate-empty",
+    "status": "passed",
+    "seconds": 0.461,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 58
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 166
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 58
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "mac-rm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 51
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-write-sparse-mixed-win-chkdsk",
+    "status": "passed",
+    "seconds": 36.66,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 115
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 53
+     },
+     {
+      "op": "mac-write-sparse",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6337
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21132
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8891
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-write-sparse-zeros-win-chkdsk",
+    "status": "passed",
+    "seconds": 40.673,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 161
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     },
+     {
+      "op": "mac-write-sparse",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5310
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21357
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 13597
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mac-write-win-repeat-mount-3-win-chkdsk",
+    "status": "passed",
+    "seconds": 55.445,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 110
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 52
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 51
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6690
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 28727
+     },
+     {
+      "op": "win-repeat-mount",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9264
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10488
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mkdir-rmdir-win-chkdsk",
+    "status": "passed",
+    "seconds": 38.037,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 163
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 63
+     },
+     {
+      "op": "mac-rmdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8327
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 29356
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mkdir-rmdir-win-chkdsk-64k",
+    "status": "passed",
+    "seconds": 48.383,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1313
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 112
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "mac-rmdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22273
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24544
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-mkdir-set-dirty-win-chkdsk",
+    "status": "passed",
+    "seconds": 30.655,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 168
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 174
+     },
+     {
+      "op": "mac-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 222
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "mac-set-dirty",
+      "exit": 0,
+      "expected": 0,
+      "ms": 51
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5786
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24187
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "repair-required",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 13,
+       "state": "failed",
+       "reason": "chkdsk exited 13"
+      },
+      "/F /X": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 13,
+      "/F /X": 0,
+      "/scan-post": 0
+     },
+     "pre_scan_exit": 13,
+     "fix_exit": 0,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-rename-win-chkdsk",
+    "status": "passed",
+    "seconds": 28.221,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 107
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     },
+     {
+      "op": "mac-rename",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4736
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 23078
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-set-dirty-win-chkdsk",
+    "status": "passed",
+    "seconds": 30.045,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 120
+     },
+     {
+      "op": "mac-set-dirty",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5048
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24729
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "repair-required",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 13,
+       "state": "failed",
+       "reason": "chkdsk exited 13"
+      },
+      "/F /X": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 13,
+      "/F /X": 0,
+      "/scan-post": 0
+     },
+     "pre_scan_exit": 13,
+     "fix_exit": 0,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-small-64mib",
+    "status": "passed",
+    "seconds": 25.556,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2827
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22610
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-tiny-32mib",
+    "status": "passed",
+    "seconds": 24.517,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 58
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 51
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2216
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22186
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 11,
+       "state": "not-scanned",
+       "reason": "no volume snapshot, so the online scan did not run"
+      },
+      "/scan-offline-fallback": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "offline /F /X found nothing to fix, in place of the online scan"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 11,
+      "/scan-offline-fallback": 0
+     }
+    },
+    "online_scan_not_scanned": true
+   },
+   {
+    "name": "mac-format-volume-16gib-cluster-4k",
+    "status": "passed",
+    "seconds": 241.11,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10202
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 331
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 169984
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60136
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-volume-32mib-cluster-512",
+    "status": "passed",
+    "seconds": 27.574,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 118
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 109
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2310
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 25033
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 11,
+       "state": "not-scanned",
+       "reason": "no volume snapshot, so the online scan did not run"
+      },
+      "/scan-offline-fallback": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "offline /F /X found nothing to fix, in place of the online scan"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 11,
+      "/scan-offline-fallback": 0
+     }
+    },
+    "online_scan_not_scanned": true
+   },
+   {
+    "name": "mac-format-volume-4gib-cluster-4k",
+    "status": "passed",
+    "seconds": 327.101,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 1747
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 163
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61488
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 28537
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-volume-4gib-cluster-64k",
+    "status": "passed",
+    "seconds": 399.514,
+    "expected_steps": 4,
+    "executed_steps": 4,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 2579
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 57
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 43993
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 28936
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-repeat-mount-10-win-chkdsk",
+    "status": "passed",
+    "seconds": 66.751,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 162
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7536
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24222
+     },
+     {
+      "op": "win-repeat-mount",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24095
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10665
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-repeat-mount-5-win-chkdsk",
+    "status": "passed",
+    "seconds": 56.514,
+    "expected_steps": 6,
+    "executed_steps": 6,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 293
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 53
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7780
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24860
+     },
+     {
+      "op": "win-repeat-mount",
+      "exit": 0,
+      "expected": 0,
+      "ms": 13094
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10316
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-deep-nesting-win-chkdsk",
+    "status": "passed",
+    "seconds": 80.109,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 238
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 115
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7369
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 40474
+     },
+     {
+      "op": "win-mkdir",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6186
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8481
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 12928
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4293
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-large",
+    "status": "passed",
+    "seconds": 50.552,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 181
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3105
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24109
+     },
+     {
+      "op": "win-write-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5065
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 12547
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5476
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-mac-enumerate",
+    "status": "passed",
+    "seconds": 42.053,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 554
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 352
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6830
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19577
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6467
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8209
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-many-small",
+    "status": "passed",
+    "seconds": 234.032,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 117
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10911
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 204687
+     },
+     {
+      "op": "win-write-many-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5479
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 8159
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4606
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-many-win-delete-half-win-chkdsk",
+    "status": "passed",
+    "seconds": 237.488,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 164
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9765
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 204675
+     },
+     {
+      "op": "win-write-many-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5453
+     },
+     {
+      "op": "win-delete-many",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4987
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7552
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4819
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-medium",
+    "status": "passed",
+    "seconds": 52.607,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 116
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 271
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5360
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 25883
+     },
+     {
+      "op": "win-write-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6031
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9747
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5182
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-modify-win-chkdsk",
+    "status": "passed",
+    "seconds": 50.278,
+    "expected_steps": 9,
+    "executed_steps": 9,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 165
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 51
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3245
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 24682
+     },
+     {
+      "op": "win-write-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3916
+     },
+     {
+      "op": "win-modify",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3750
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6686
+     },
+     {
+      "op": "win-read",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3935
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3834
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-remount-win-chkdsk",
+    "status": "passed",
+    "seconds": 44.789,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 52
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 119
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4144
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21298
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4114
+     },
+     {
+      "op": "win-repeat-mount",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4183
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6988
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3877
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-rename-win-chkdsk",
+    "status": "passed",
+    "seconds": 45.332,
+    "expected_steps": 8,
+    "executed_steps": 8,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 115
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4981
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21572
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3982
+     },
+     {
+      "op": "win-rename",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3766
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6992
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3845
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-then-delete",
+    "status": "passed",
+    "seconds": 45.316,
+    "expected_steps": 9,
+    "executed_steps": 9,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 52
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 111
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3073
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 18443
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3844
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3933
+     },
+     {
+      "op": "win-delete",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4792
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7078
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3976
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-tiny",
+    "status": "passed",
+    "seconds": 47.025,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 53
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 112
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4865
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22800
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4626
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9900
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4652
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-win-write-win-delete-mac-verify-empty",
+    "status": "passed",
+    "seconds": 53.447,
+    "expected_steps": 11,
+    "executed_steps": 11,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 115
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7475
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 19497
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4684
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4740
+     },
+     {
+      "op": "win-delete",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4014
+     },
+     {
+      "op": "win-delete",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3795
+     },
+     {
+      "op": "win-delete",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3849
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5139
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "mac-format-write-set-dirty-win-chkdsk",
+    "status": "passed",
+    "seconds": 36.336,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 59
+     },
+     {
+      "op": "mac-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 112
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 61
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-set-dirty",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7741
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 28232
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "repair-required",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 13,
+       "state": "failed",
+       "reason": "chkdsk exited 13"
+      },
+      "/F /X": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan-post": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 13,
+      "/F /X": 0,
+      "/scan-post": 0
+     },
+     "pre_scan_exit": 13,
+     "fix_exit": 0,
+     "post_scan_exit": 0
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "win-format-mac-enumerate-empty",
+    "status": "passed",
+    "seconds": 40.989,
+    "expected_steps": 5,
+    "executed_steps": 5,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 223
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9196
+     },
+     {
+      "op": "win-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22274
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 9224
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "win-format-win-write-mac-delete-win-verify",
+    "status": "passed",
+    "seconds": 82.962,
+    "expected_steps": 10,
+    "executed_steps": 10,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 118
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6865
+     },
+     {
+      "op": "win-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22369
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 5313
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6106
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 6971
+     },
+     {
+      "op": "mac-rm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 56
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4188
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 26973
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3985
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "win-format-win-write-mac-verify",
+    "status": "passed",
+    "seconds": 52.452,
+    "expected_steps": 7,
+    "executed_steps": 7,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 14229
+     },
+     {
+      "op": "win-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22124
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4315
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4014
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7633
+     },
+     {
+      "op": "mac-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 54
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "win-format-win-write-mac-write-win-verify",
+    "status": "passed",
+    "seconds": 253.038,
+    "expected_steps": 10,
+    "executed_steps": 10,
+    "unexecuted_operations": [],
+    "skipped_steps": 0,
+    "error": null,
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 281
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 13744
+     },
+     {
+      "op": "win-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22102
+     },
+     {
+      "op": "win-write-content",
+      "exit": 0,
+      "expected": 0,
+      "ms": 184195
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4294
+     },
+     {
+      "op": "mac-touch",
+      "exit": 0,
+      "expected": 0,
+      "ms": 60
+     },
+     {
+      "op": "mac-write",
+      "exit": 0,
+      "expected": 0,
+      "ms": 55
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3095
+     },
+     {
+      "op": "win-chkdsk",
+      "exit": 0,
+      "expected": 0,
+      "ms": 21404
+     },
+     {
+      "op": "win-enumerate",
+      "exit": 0,
+      "expected": 0,
+      "ms": 3782
+     }
+    ],
+    "windows_verdict": {
+     "passed": true,
+     "verdict_shape": "clean",
+     "modes": {
+      "readonly": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      },
+      "/scan": {
+       "exit": 0,
+       "state": "scanned",
+       "reason": "chkdsk found nothing to report"
+      }
+     },
+     "exits": {
+      "readonly": 0,
+      "/scan": 0
+     }
+    },
+    "online_scan_not_scanned": false
+   },
+   {
+    "name": "win-format-win-write-many-mac-reject-index-allocation-win-chkdsk",
+    "status": "failed",
+    "seconds": 44.068,
+    "expected_steps": 9,
+    "executed_steps": 6,
+    "unexecuted_operations": [
+     "ship-to-vm",
+     "win-chkdsk",
+     "win-enumerate"
+    ],
+    "skipped_steps": 0,
+    "error": "step 5 (mac-touch-index-allocation-rejected) exit Some(0) != expected 1",
+    "step_exits": [
+     {
+      "op": "init-image",
+      "exit": 0,
+      "expected": 0,
+      "ms": 120
+     },
+     {
+      "op": "ship-to-vm",
+      "exit": 0,
+      "expected": 0,
+      "ms": 10013
+     },
+     {
+      "op": "win-format",
+      "exit": 0,
+      "expected": 0,
+      "ms": 22018
+     },
+     {
+      "op": "win-write-many-size",
+      "exit": 0,
+      "expected": 0,
+      "ms": 4747
+     },
+     {
+      "op": "ship-to-host",
+      "exit": 0,
+      "expected": 0,
+      "ms": 7091
+     },
+     {
+      "op": "mac-touch-index-allocation-rejected",
+      "exit": 0,
+      "expected": 1,
+      "ms": 59
+     }
+    ],
+    "windows_verdict": null,
+    "online_scan_not_scanned": false
+   }
+  ]
+ },
+ "vmware": {
+  "measured": false,
+  "reason": "Power-on refused: stale disk lock Virtual Disk.vmdk.lck/M10056.lck left when the Mac rebooted at 2026-10-08T22:13:16Z with the guest running (its log stops at 22:12:30Z). Not cleared without the owner's approval. One power-on attempt rotated Fusion's vmware*.log files.",
+  "guest": "VMware Fusion 25.0.0, Windows 11 64-bit Arm, 2 vCPU, 4096 MiB"
+ },
+ "virtiofs_spike": {
+  "rig": {
+   "qemu": "10.2.2 (Homebrew), HVF, -object memory-backend-shm,size=4096M,share=on, -device vhost-user-fs-pci,queue-size=1024,tag=fswth",
+   "virtiofsd": "christhomas/virtiofsd cth/macos @ 390cc88, cargo build --release --locked, rustc 1.98.1, sha256 867a208d290f759739b136c34c9255247e9ebf54eb53e98f574fc14ad979c1b1, --sandbox none --cache never",
+   "guest": "validated guest through a qcow2 overlay; viofs + virtiofs.exe from virtio-win 0.1.302 viofs/w11/ARM64 (viofs.sys sha256 41fdaad7..., virtiofs.exe sha256 48310721...), VirtioFsSvc depends on WinFsp.Launcher/VirtioFsDrv; share mounted as Z:",
+   "images": {
+    "16GiB": "init-image.sh 16384 + rust-ntfs format -L SIXTEEN_GIB -c 4096, sha256 4b13aee9d916aa055c1660024663c261aa7e543c3f307b63caf78f95561cffa2",
+    "256MiB": "cli-oracle.sh mkfs 256 CLIMKFS, sha256 de1a9ed7ccaf4602f540daba82b314932b54574abde68af74ab64c01880b8d19"
+   }
+  },
+  "host_to_guest_seconds": {
+   "scp_256MiB": 2.391,
+   "scp_16GiB": 139.926,
+   "virtiofs_copy_256MiB": 0.34,
+   "virtiofs_copy_16GiB": 45.657
+  },
+  "guest_to_host_seconds": {
+   "scp_16GiB": 226.75,
+   "virtiofs_copy_256MiB": 0.44,
+   "virtiofs_copy_16GiB": 35.466
+  },
+  "guest_reads_share_directly": {
+   "get_filehash_16GiB_seconds": 511.463,
+   "get_filehash_16GiB_local_copy_seconds": 30.275
+  },
+  "hashes_match_host": true,
+  "coherence_cache_never": {
+   "checks": 40,
+   "stale": 0
+  },
+  "vhd_attach": {
+   "C:": "OK",
+   "Z: (virtiofs)": "OK"
+  }
+ },
+ "commands": [
+  {
+   "step": "01-prepare",
+   "start": "2026-10-09T22:26:47Z",
+   "end": "2026-10-09T22:26:51Z",
+   "seconds": 3.565,
+   "exit": 0,
+   "output_lines": 6,
+   "output_bytes": 429,
+   "output_sha256": "854fb5f30426b9828e6e507b29999cff6e5e4ea73d72e9894e4a6daf8028f193",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py prepare --accept-evaluation-terms --media-dir ${MEDIA}"
+  },
+  {
+   "step": "02-up-install",
+   "start": "2026-10-09T22:26:55Z",
+   "end": "2026-10-09T22:26:55Z",
+   "seconds": 0.237,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up --install"
+  },
+  {
+   "step": "03-boot-installer",
+   "start": "2026-10-09T22:27:23Z",
+   "end": "2026-10-09T22:27:32Z",
+   "seconds": 9.634,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 62,
+   "output_sha256": "da2d138586ba7c77878deabbacdaf0c2481806d3cc56135a04ab5b30915068ad",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py boot-installer"
+  },
+  {
+   "step": "05-build-windows-vhd-helper",
+   "start": "2026-10-09T22:28:18Z",
+   "end": "2026-10-09T22:29:32Z",
+   "seconds": 74.384,
+   "exit": 0,
+   "output_lines": 17,
+   "output_bytes": 1027,
+   "output_sha256": "07d462ece9540aef3bbd224b5f8102fe52d5d4b69e7562254b391a7b866cddf0",
+   "cwd": "${HOME}/wt/qemu-macos-validation/rust-img-vhd",
+   "command": "cargo install --path ${HOME}/wt/qemu-macos-validation/rust-img-vhd --root ${HOME}/wt/qemu-macos-validation/windows-tools --target aarch64-pc-windows-gnullvm --features cli --bin rust-img-vhd"
+  },
+  {
+   "step": "04-wait",
+   "start": "2026-10-09T22:28:01Z",
+   "end": "2026-10-09T22:30:56Z",
+   "seconds": 175.596,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 1800"
+  },
+  {
+   "step": "06-chore-check",
+   "start": "2026-10-09T22:30:53Z",
+   "end": "2026-10-09T22:31:20Z",
+   "seconds": 26.567,
+   "exit": 1,
+   "output_lines": 10,
+   "output_bytes": 1066,
+   "output_sha256": "8ee6ba7591c11f815d28ff379a3ccb1e671e28fc1b4c968b79a1ef9365b481e9",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "07-provision",
+   "start": "2026-10-09T22:31:31Z",
+   "end": "2026-10-09T22:31:56Z",
+   "seconds": 24.992,
+   "exit": 0,
+   "output_lines": 2,
+   "output_bytes": 178,
+   "output_sha256": "6958819b09252fb1928073710475b0dbf42b1ad6e4afcb9fd69d89de7584e4a3",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py provision"
+  },
+  {
+   "step": "08-chore-check",
+   "start": "2026-10-09T22:32:41Z",
+   "end": "2026-10-09T22:32:57Z",
+   "seconds": 15.393,
+   "exit": 0,
+   "output_lines": 8,
+   "output_bytes": 1052,
+   "output_sha256": "4d0596d6c6e0d20178fd09c7e8a1b0b0493e5c06aea138187f93e9a855345a46",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "09-smoke-1",
+   "start": "2026-10-09T22:34:03Z",
+   "end": "2026-10-09T22:39:42Z",
+   "seconds": 339.431,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 125,
+   "output_sha256": "9e49b36d7a59711d16230d11bce7ed1c4304f70bf2919ea324cba58aab0ecb3d",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py exec -- chore smoke --vm-host fswth-local --vm-workdir C:/fswth/smoke-consumer"
+  },
+  {
+   "step": "10-smoke-2",
+   "start": "2026-10-09T22:40:20Z",
+   "end": "2026-10-09T22:44:41Z",
+   "seconds": 260.477,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 125,
+   "output_sha256": "0699fd7b352bc177cbc6dc5fd65a04b8f54df10aae5372cabfa6c821260d37d5",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py exec -- chore smoke --vm-host fswth-local --vm-workdir C:/fswth/smoke-consumer"
+  },
+  {
+   "step": "11-helper-mkdir",
+   "start": "2026-10-09T22:45:28Z",
+   "end": "2026-10-09T22:45:31Z",
+   "seconds": 3.033,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 4,
+   "output_sha256": "9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py ssh -- New-Item\\ -ItemType\\ Directory\\ -Force\\ -Path\\ C:\\\\fswth-tools\\ \\|\\ Out-Null\\;\\ \\'ok\\'"
+  },
+  {
+   "step": "12-helper-copy",
+   "start": "2026-10-09T22:45:31Z",
+   "end": "2026-10-09T22:45:33Z",
+   "seconds": 2.404,
+   "exit": 0,
+   "output_lines": 0,
+   "output_bytes": 0,
+   "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py exec -- scp ${HOME}/wt/qemu-macos-validation/windows-tools/bin/rust-img-vhd.exe ${HOME}/wt/qemu-macos-validation/windows-tools/bin/libunwind.dll fswth-local:C:/fswth-tools/"
+  },
+  {
+   "step": "13-helper-path",
+   "start": "2026-10-09T22:45:33Z",
+   "end": "2026-10-09T22:45:38Z",
+   "seconds": 4.281,
+   "exit": 0,
+   "output_lines": 10,
+   "output_bytes": 604,
+   "output_sha256": "62e95d1a9e64dd9fc9e04dc5bf316011249075382cb59b3fa07b8366beade84c",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py ssh -- \\$p=\\[Environment\\]::GetEnvironmentVariable\\(\\'Path\\'\\,\\'Machine\\'\\)\\;\\ if\\ \\(\\(\\$p\\ -split\\ \\'\\;\\'\\)\\ -notcontains\\ \\'C:\\\\fswth-tools\\'\\)\\ \\{\\ \\[Environment\\]::SetEnvironmentVariable\\(\\'Path\\'\\,\\ \\$p\\ +\\ \\'\\;C:\\\\fswth-tools\\'\\,\\ \\'Machine\\'\\)\\ \\}\\;\\ \\[Environment\\]::GetEnvironmentVariable\\(\\'Path\\'\\,\\'Machine\\'\\)\\;\\ Get-FileHash\\ C:\\\\fswth-tools\\\\\\*\\ \\|\\ Format-Table\\ -AutoSize\\ Hash\\,Path\\ \\|\\ Out-String\\ -Width\\ 200\\;\\ \\&\\ C:\\\\fswth-tools\\\\rust-img-vhd.exe\\ --version"
+  },
+  {
+   "step": "14-down",
+   "start": "2026-10-09T22:45:49Z",
+   "end": "2026-10-09T22:49:29Z",
+   "seconds": 219.907,
+   "exit": 1,
+   "output_lines": 1,
+   "output_bytes": 66,
+   "output_sha256": "8c9652b461c4769923b686ce61faae3f04d4ab38f89fc8766ab0be105ed00236",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down"
+  },
+  {
+   "step": "15-down-retry-diagnostic",
+   "start": "2026-10-09T22:57:15Z",
+   "end": "2026-10-09T23:01:18Z",
+   "seconds": 242.51,
+   "exit": 1,
+   "output_lines": 1,
+   "output_bytes": 66,
+   "output_sha256": "8c9652b461c4769923b686ce61faae3f04d4ab38f89fc8766ab0be105ed00236",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down --timeout 90"
+  },
+  {
+   "step": "17-up-restart",
+   "start": "2026-10-09T23:04:54Z",
+   "end": "2026-10-09T23:04:55Z",
+   "seconds": 0.236,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up"
+  },
+  {
+   "step": "18-wait-restart",
+   "start": "2026-10-09T23:04:55Z",
+   "end": "2026-10-09T23:05:12Z",
+   "seconds": 17.594,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 900"
+  },
+  {
+   "step": "19-down-awake",
+   "start": "2026-10-09T23:07:31Z",
+   "end": "2026-10-09T23:07:35Z",
+   "seconds": 4.145,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 21,
+   "output_sha256": "95f0df100f746681b1b6ed60ef5f998cca7eb34204a1f78a0a867d389bbd9a42",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down"
+  },
+  {
+   "step": "20-up-after-clean-down",
+   "start": "2026-10-09T23:07:44Z",
+   "end": "2026-10-09T23:07:44Z",
+   "seconds": 0.153,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up"
+  },
+  {
+   "step": "21-wait-after-clean-down",
+   "start": "2026-10-09T23:07:44Z",
+   "end": "2026-10-09T23:08:02Z",
+   "seconds": 17.806,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 900"
+  },
+  {
+   "step": "22-diag-guest-initiated-shutdown",
+   "start": "2026-10-09T23:08:26Z",
+   "end": "2026-10-09T23:08:29Z",
+   "seconds": 3.389,
+   "exit": 0,
+   "output_lines": 2,
+   "output_bytes": 52,
+   "output_sha256": "2014df6596e51b2f75011e81f8b2c646e456b9550eba5828ab02921af16ef9d6",
+   "cwd": "${HARNESS}",
+   "command": "python3 ${EVIDENCE}/diag-guest-shutdown.py scripts/local-vm.py"
+  },
+  {
+   "step": "23-up-after-guest-shutdown",
+   "start": "2026-10-09T23:08:30Z",
+   "end": "2026-10-09T23:08:30Z",
+   "seconds": 0.158,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up"
+  },
+  {
+   "step": "24-wait-after-guest-shutdown",
+   "start": "2026-10-09T23:08:30Z",
+   "end": "2026-10-09T23:08:47Z",
+   "seconds": 17.153,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 900"
+  },
+  {
+   "step": "25-down-fixed",
+   "start": "2026-10-09T23:09:34Z",
+   "end": "2026-10-09T23:09:37Z",
+   "seconds": 3.145,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 21,
+   "output_sha256": "95f0df100f746681b1b6ed60ef5f998cca7eb34204a1f78a0a867d389bbd9a42",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down"
+  },
+  {
+   "step": "26-up-after-fixed-down",
+   "start": "2026-10-09T23:09:37Z",
+   "end": "2026-10-09T23:09:38Z",
+   "seconds": 0.153,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up"
+  },
+  {
+   "step": "27-wait-after-fixed-down",
+   "start": "2026-10-09T23:09:38Z",
+   "end": "2026-10-09T23:09:55Z",
+   "seconds": 17.094,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 900"
+  },
+  {
+   "step": "30-ntfs-matrix-qemu-macos",
+   "start": "2026-10-09T23:19:23Z",
+   "end": "2026-10-09T23:44:48Z",
+   "seconds": 1524.559,
+   "exit": 101,
+   "output_lines": 1,
+   "output_bytes": 121,
+   "output_sha256": "b5edc31c4e076db4d79badedba9e6b2341e47aab56f993eac103764d977e0805",
+   "cwd": "${CONSUMER}",
+   "command": "python3 ${HARNESS}/scripts/local-vm.py exec -- bash ../rust-fs-core/scripts/tier.sh --refuse-skips --refuse-ignored matrix -- bash scripts/run-matrix.sh"
+  },
+  {
+   "step": "31-fetch-diag-qemu",
+   "start": "2026-10-09T23:45:01Z",
+   "end": "2026-10-09T23:45:26Z",
+   "seconds": 25.168,
+   "exit": 0,
+   "output_lines": 5,
+   "output_bytes": 887,
+   "output_sha256": "8af23fc39b75d4cd89ff96095307c04ffbf0a110002bc3252e15fa56ea13cd3b",
+   "cwd": "${CONSUMER}",
+   "command": "python3 ${HARNESS}/scripts/local-vm.py exec -- bash scripts/matrix-fetch-diag.sh"
+  },
+  {
+   "step": "32-clean-images-qemu",
+   "start": "2026-10-09T23:45:32Z",
+   "end": "2026-10-09T23:45:34Z",
+   "seconds": 1.059,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 66,
+   "output_sha256": "ecd9c85edb9904e0d7c0a195108009c3bc636102ab3051e0cced2dea10463851",
+   "cwd": "${CONSUMER}",
+   "command": "python3 ${HARNESS}/scripts/local-vm.py exec -- bash scripts/vm-clean-images.sh"
+  },
+  {
+   "step": "33-down-after-matrix",
+   "start": "2026-10-09T23:46:30Z",
+   "end": "2026-10-09T23:46:35Z",
+   "seconds": 4.776,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 21,
+   "output_sha256": "95f0df100f746681b1b6ed60ef5f998cca7eb34204a1f78a0a867d389bbd9a42",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down"
+  },
+  {
+   "step": "34-build-virtiofsd-fork",
+   "start": "2026-10-09T23:46:39Z",
+   "end": "2026-10-09T23:47:02Z",
+   "seconds": 23.901,
+   "exit": 0,
+   "output_lines": 270,
+   "output_bytes": 8879,
+   "output_sha256": "80c866a6480d060e7722a4810af6e82cbf77094080f6b1c1c272689f5bfa6c42",
+   "cwd": "${HOME}/wt/qemu-macos-validation/virtiofsd",
+   "command": "cargo build --release --locked"
+  },
+  {
+   "step": "40-vmware-up",
+   "start": "2026-10-09T23:47:51Z",
+   "end": "2026-10-09T23:47:56Z",
+   "seconds": 5.171,
+   "exit": 1,
+   "output_lines": 2,
+   "output_bytes": 163,
+   "output_sha256": "58da2fb3f675a986a75fcd04c1fdb18d4ba8c0ad045d0e11f018caed007e0cd4",
+   "cwd": "${CONSUMER}",
+   "command": "caffeinate -i bash scripts/vm.sh up"
+  },
+  {
+   "step": "50-spike-scp-256m",
+   "start": "2026-10-09T23:55:33Z",
+   "end": "2026-10-09T23:55:35Z",
+   "seconds": 2.391,
+   "exit": 0,
+   "output_lines": 0,
+   "output_bytes": 0,
+   "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "scp -F ${HOME}/wt/qemu-macos-validation/spike-virtiofs/ssh_config -q ${HOME}/wt/qemu-macos-validation/spike-virtiofs/share/img256.img fswth-spike:C:/fswth-spike/data/scp256.img"
+  },
+  {
+   "step": "51-spike-scp-16g",
+   "start": "2026-10-09T23:55:35Z",
+   "end": "2026-10-09T23:57:55Z",
+   "seconds": 139.926,
+   "exit": 0,
+   "output_lines": 0,
+   "output_bytes": 0,
+   "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "scp -F ${HOME}/wt/qemu-macos-validation/spike-virtiofs/ssh_config -q ${HOME}/wt/qemu-macos-validation/spike-virtiofs/share/img16.img fswth-spike:C:/fswth-spike/data/scp16.img"
+  },
+  {
+   "step": "52-spike-vfs-copy",
+   "start": "2026-10-09T23:58:05Z",
+   "end": "2026-10-10T00:08:34Z",
+   "seconds": 629.286,
+   "exit": 0,
+   "output_lines": 10,
+   "output_bytes": 536,
+   "output_sha256": "366fdbfe6c6beea52cd7e7a008ead4f6e487025aa9acf63c6a60ea2e365b5642",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "./ps.sh $'\\n$r = [ordered]@{}\\n$r.copy256_s = (Measure-Command { Copy-Item Z:\\\\img256.img C:\\\\fswth-spike\\\\data\\\\vfs256.img }).TotalSeconds\\n$r.copy16g_s = (Measure-Command { Copy-Item Z:\\\\img16.img C:\\\\fswth-spike\\\\data\\\\vfs16.img }).TotalSeconds\\n$t = Measure-Command { $h = (Get-FileHash -Algorithm SHA256 Z:\\\\img16.img).Hash }\\n$r.hash16g_from_share_s = $t.TotalSeconds; $r.hash16g_from_share = $h.ToLower()\\n$t = Measure-Command { $h2 = (Get-FileHash -Algorithm SHA256 C:\\\\fswth-spike\\\\data\\\\vfs16.img).Hash }\\n$r.hash16g_local_copy_s = $t.TotalSeconds; $r.hash16g_local_copy = $h2.ToLower()\\n$r.hash16g_scp_copy = (Get-FileHash -Algorithm SHA256 C:\\\\fswth-spike\\\\data\\\\scp16.img).Hash.ToLower()\\n$r.hash256_share = (Get-FileHash -Algorithm SHA256 Z:\\\\img256.img).Hash.ToLower()\\n$r | ConvertTo-Json'"
+  },
+  {
+   "step": "53-spike-vfs-writeback",
+   "start": "2026-10-10T00:08:52Z",
+   "end": "2026-10-10T00:09:29Z",
+   "seconds": 36.561,
+   "exit": 0,
+   "output_lines": 4,
+   "output_bytes": 68,
+   "output_sha256": "92f506c6e629c6d99075f29f0f90da63cbf45fb20f42bb61747c073d10314a08",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "./ps.sh $'\\n$r = [ordered]@{}\\n$r.write256_s = (Measure-Command { Copy-Item C:\\\\fswth-spike\\\\data\\\\vfs256.img Z:\\\\back256.img }).TotalSeconds\\n$r.write16g_s = (Measure-Command { Copy-Item C:\\\\fswth-spike\\\\data\\\\vfs16.img Z:\\\\back16.img }).TotalSeconds\\n$r | ConvertTo-Json'"
+  },
+  {
+   "step": "54-spike-vfs-coherence",
+   "start": "2026-10-10T00:14:53Z",
+   "end": "2026-10-10T00:15:14Z",
+   "seconds": 20.992,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 30,
+   "output_sha256": "4da57bd748f4ea4b1c6618898e13c8d743188a33857baa5796be4eb99549b721",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "./coherence.sh"
+  },
+  {
+   "step": "55-spike-vhd-attach",
+   "start": "2026-10-10T00:15:21Z",
+   "end": "2026-10-10T00:15:23Z",
+   "seconds": 1.703,
+   "exit": 0,
+   "output_lines": 4,
+   "output_bytes": 130,
+   "output_sha256": "2b19d1a9a637923ca9dd3a805d96fee502360d73afeb2c452c2372fe2bbb7800",
+   "cwd": "${HOME}/wt/qemu-macos-validation/spike-virtiofs",
+   "command": "./ps.sh $'\\nforeach ($dir in \"C:\\\\fswth-spike\\\\data\", \"Z:\\\\\") {\\n  $vhd = Join-Path $dir \"attach-test.vhd\"\\n  Remove-Item $vhd -ErrorAction SilentlyContinue\\n  & rust-img-vhd img $vhd create 67108864 --type fixed *> $null\\n  \"create on ${dir}: exit $LASTEXITCODE\"\\n  try {\\n    $img = Mount-DiskImage -ImagePath $vhd -NoDriveLetter -PassThru -ErrorAction Stop\\n    \"attach on ${dir}: OK disk $((Get-DiskImage -ImagePath $vhd).Number)\"\\n    Dismount-DiskImage -ImagePath $vhd | Out-Null\\n  } catch { \"attach on ${dir}: FAILED $($_.Exception.Message.Trim())\" }\\n  Remove-Item $vhd -ErrorAction SilentlyContinue\\n}'"
+  },
+  {
+   "step": "60-chore-check-rebased",
+   "start": "2026-10-10T00:17:07Z",
+   "end": "2026-10-10T00:17:25Z",
+   "seconds": 17.091,
+   "exit": 65,
+   "output_lines": 15,
+   "output_bytes": 1437,
+   "output_sha256": "2cac4fa3ef3d643504172a556f14cc839a88cfd5ba40daebccffa735b220f39c",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "61-chore-check-rebased-final",
+   "start": "2026-10-10T00:19:55Z",
+   "end": "2026-10-10T00:19:58Z",
+   "seconds": 2.839,
+   "exit": 101,
+   "output_lines": 5,
+   "output_bytes": 419,
+   "output_sha256": "2f5709ee3e81cf22cae62acfb050e1fd64a0f18a6f7bca23a4ab1422839a33a9",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "62-chore-check-rebased-rerun",
+   "start": "2026-10-10T00:20:41Z",
+   "end": "2026-10-10T00:20:44Z",
+   "seconds": 2.935,
+   "exit": 101,
+   "output_lines": 5,
+   "output_bytes": 419,
+   "output_sha256": "2f5709ee3e81cf22cae62acfb050e1fd64a0f18a6f7bca23a4ab1422839a33a9",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "63-chore-check-after-runner-fix",
+   "start": "2026-10-10T00:22:55Z",
+   "end": "2026-10-10T00:23:10Z",
+   "seconds": 14.733,
+   "exit": 0,
+   "output_lines": 8,
+   "output_bytes": 1052,
+   "output_sha256": "a1cdffbcc592f584d002f95ca6707b1f383271ff43f8bfd5d8275b8f226aa2f4",
+   "cwd": "${HARNESS}",
+   "command": "chore check"
+  },
+  {
+   "step": "64-up-for-rebased-smoke",
+   "start": "2026-10-10T00:23:17Z",
+   "end": "2026-10-10T00:23:17Z",
+   "seconds": 0.165,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 61,
+   "output_sha256": "b43048a70fa1cfbe8bfef4deb5640c4e177295a6ae8df1ad620aaedc507f3128",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py up"
+  },
+  {
+   "step": "65-wait-for-rebased-smoke",
+   "start": "2026-10-10T00:23:17Z",
+   "end": "2026-10-10T00:23:38Z",
+   "seconds": 21.071,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 41,
+   "output_sha256": "89ee69b9564b295dc23e942a06f09b2d656722fd89a029dd21e4e97512060bb1",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py wait --timeout 900"
+  },
+  {
+   "step": "66-smoke-rebased",
+   "start": "2026-10-10T00:23:40Z",
+   "end": "2026-10-10T00:25:07Z",
+   "seconds": 86.956,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 125,
+   "output_sha256": "fa731bcfcd11dcb761e6cef176af48be62fe13dab9058e1196765af46a2093f2",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py exec -- chore smoke --vm-host fswth-local --vm-workdir C:/fswth/smoke-consumer"
+  },
+  {
+   "step": "67-down-final",
+   "start": "2026-10-10T00:25:39Z",
+   "end": "2026-10-10T00:25:41Z",
+   "seconds": 2.508,
+   "exit": 0,
+   "output_lines": 1,
+   "output_bytes": 21,
+   "output_sha256": "95f0df100f746681b1b6ed60ef5f998cca7eb34204a1f78a0a867d389bbd9a42",
+   "cwd": "${HARNESS}",
+   "command": "python3 scripts/local-vm.py down"
+  }
+ ],
+ "comparison_with_linux_2026_10_09": {
+  "scenarios_compared": 72,
+  "fields": [
+   "status",
+   "executed_steps",
+   "expected_steps",
+   "chkdsk mode states",
+   "verdict shape",
+   "verdict passed"
+  ],
+  "differences": []
+ }
+}

@@ -1,0 +1,503 @@
+diff --git a/runner/src/dispatch.rs b/runner/src/dispatch.rs
+index 33b6b6d..63738b0 100644
+--- a/runner/src/dispatch.rs
++++ b/runner/src/dispatch.rs
+@@ -331 +331,3 @@ fn run_step(
+-    let command = sub.expand(&op_def.command);
++    let command = sub
++        .expand_checked(&op_def.command)
++        .map_err(|error| format!("scenario '{scenario_name}' step {idx} ({op_name}): {error}"))?;
+@@ -605 +606,0 @@ fn run_builtin_ship(
+-        .map(|s| sub.expand(s))
+@@ -606,0 +608,3 @@ fn run_builtin_ship(
++    let src = sub
++        .expand_checked(src)
++        .map_err(|error| format!("step {idx} ({op_name}) src: {error}"))?;
+@@ -610 +613,0 @@ fn run_builtin_ship(
+-        .map(|s| sub.expand(s))
+@@ -611,0 +615,3 @@ fn run_builtin_ship(
++    let dest = sub
++        .expand_checked(dest)
++        .map_err(|error| format!("step {idx} ({op_name}) dest: {error}"))?;
+@@ -967,0 +974,91 @@ mod tests {
++    #[test]
++    fn recipe_label_is_expanded_before_the_host_command_runs() {
++        let cfg = config_with_ops(&[(
++            "label",
++            OpDef {
++                host: Host::Host,
++                command: r#"bash -c 'printf %s "$1"' _ '{step.label}'"#.into(),
++                expect_exit: Some(0),
++                when: None,
++            },
++        )]);
++        let mut scn = scenario_with_recipe(vec![json!({
++            "op": "label", "label": "{scenario.volume_params.label}"
++        })]);
++        scn.extra
++            .insert("volume_params".into(), json!({"label": "ACTUAL-LABEL"}));
++        let dir = tempdir();
++        let result = run_recipe(
++            "label",
++            &scn,
++            &cfg,
++            &LocalConfig::default(),
++            &dir,
++            &dir,
++            0,
++            |_| {},
++        )
++        .unwrap();
++        assert!(result.overall_passed);
++        assert!(result.steps[0].command.contains("'ACTUAL-LABEL'"));
++        assert_eq!(
++            std::fs::read_to_string(dir.join("step-00/stdout.txt")).unwrap(),
++            "ACTUAL-LABEL"
++        );
++    }
++
++    #[test]
++    fn missing_recipe_token_fails_before_spawning_a_command() {
++        let cfg = config_with_ops(&[(
++            "missing",
++            OpDef {
++                host: Host::Host,
++                command: "a-command-that-must-not-run {step.typo}".into(),
++                expect_exit: Some(0),
++                when: None,
++            },
++        )]);
++        let scn = scenario_with_recipe(vec![json!({"op": "missing"})]);
++        let dir = tempdir();
++        let error = run_recipe(
++            "missing",
++            &scn,
++            &cfg,
++            &LocalConfig::default(),
++            &dir,
++            &dir,
++            0,
++            |_| {},
++        )
++        .unwrap_err();
++        assert!(error.contains("scenario 'missing' step 0 (missing)"));
++        assert!(error.contains("step.typo"));
++        assert!(!dir.join("step-00/stdout.txt").exists());
++    }
++
++    #[test]
++    fn missing_ship_token_fails_before_contacting_the_guest() {
++        for (src, dest, field) in [
++            ("{step.typo}", "target", "src"),
++            ("source", "{step.typo}", "dest"),
++        ] {
++            let cfg = config_with_ops(&[]);
++            let scn =
++                scenario_with_recipe(vec![json!({"op": "ship-to-vm", "src": src, "dest": dest})]);
++            let dir = tempdir();
++            let error = run_recipe(
++                "ship",
++                &scn,
++                &cfg,
++                &LocalConfig::default(),
++                &dir,
++                &dir,
++                0,
++                |_| {},
++            )
++            .unwrap_err();
++            assert!(error.contains(&format!("step 0 (ship-to-vm) {field}")));
++            assert!(error.contains("step.typo"));
++        }
++    }
++
+@@ -1310,0 +1408,30 @@ mod tests {
++    /// Tests start together on parallel threads; their scratch directories
++    /// must still be distinct. Named by timestamp alone they collided on
++    /// macOS, whose clock ticks in microseconds, and one test's cleanup
++    /// deleted another's directory mid-run.
++    #[test]
++    fn scratch_directories_are_distinct_when_tests_start_together() {
++        let start = std::sync::Arc::new(std::sync::Barrier::new(16));
++        let dirs: Vec<PathBuf> = (0..16)
++            .map(|_| {
++                let start = start.clone();
++                std::thread::spawn(move || {
++                    start.wait();
++                    tempdir()
++                })
++            })
++            .collect::<Vec<_>>()
++            .into_iter()
++            .map(|t| t.join().unwrap())
++            .collect();
++        let distinct: std::collections::HashSet<&PathBuf> = dirs.iter().collect();
++        for dir in &dirs {
++            let _ = std::fs::remove_dir_all(dir);
++        }
++        assert_eq!(
++            distinct.len(),
++            dirs.len(),
++            "shared scratch directories: {dirs:?}"
++        );
++    }
++
+@@ -1311,0 +1439 @@ mod tests {
++        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+@@ -1313 +1441,3 @@ mod tests {
+-            "fs-windows-test-harness-dispatch-test-{}",
++            "fs-windows-test-harness-dispatch-test-{}-{}-{}",
++            std::process::id(),
++            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+diff --git a/runner/src/substitution.rs b/runner/src/substitution.rs
+index dfd7f08..b737f1c 100644
+--- a/runner/src/substitution.rs
++++ b/runner/src/substitution.rs
+@@ -11 +11 @@
+-//!   yield empty strings instead of `<missing:...>` markers.
++//!   yield empty strings. Checked recipe expansion rejects missing required paths.
+@@ -27,0 +28,2 @@ use std::collections::BTreeMap;
++const MAX_TEMPLATE_BYTES: usize = 1_048_576;
++
+@@ -61,3 +63,2 @@ impl Substitution {
+-    ///    * required → empty string with a `<missing:...>` marker
+-    ///      embedded for human debugging (matches the documented
+-    ///      contract that undeclared tokens collapse to empty).
++    ///    * required → empty string in this legacy API. Recipe dispatch uses
++    ///      `expand_checked` to reject missing required paths instead.
+@@ -67,0 +69,22 @@ impl Substitution {
++        // Keep the legacy missing-token behavior for callers outside recipes.
++        self.expand_inner(template, false, &mut Vec::new())
++            .unwrap_or_else(|_| template.to_string())
++    }
++
++    /// Expand a recipe template, rejecting missing required references and
++    /// cyclic or excessively deep step-field templates. Scenario and flat
++    /// values are data: their contents are never reinterpreted as templates.
++    /// Double braces escape a literal placeholder: `{{step.label}}`.
++    pub fn expand_checked(&self, template: &str) -> Result<String, String> {
++        self.expand_inner(template, true, &mut Vec::new())
++    }
++
++    fn expand_inner(
++        &self,
++        template: &str,
++        checked: bool,
++        stack: &mut Vec<String>,
++    ) -> Result<String, String> {
++        if template.len() > MAX_TEMPLATE_BYTES {
++            return Err("recipe template exceeds 1048576 bytes".into());
++        }
+@@ -71,0 +95,12 @@ impl Substitution {
++            if out.len() > MAX_TEMPLATE_BYTES {
++                return Err("expanded recipe template exceeds 1048576 bytes".into());
++            }
++            if template[i..].starts_with("{{") {
++                if let Some(end) = template[i + 2..].find("}}") {
++                    out.push('{');
++                    out.push_str(&template[i + 2..i + 2 + end]);
++                    out.push('}');
++                    i += end + 4;
++                    continue;
++                }
++            }
+@@ -73,2 +107,0 @@ impl Substitution {
+-                // Scan to the matching `}`. If unbalanced, fall through
+-                // and emit the `{` literally.
+@@ -79,9 +112,25 @@ impl Substitution {
+-                            Some(s) => out.push_str(&s),
+-                            None if optional => { /* yield empty */ }
+-                            None => {
+-                                // Required-but-missing collapses to empty
+-                                // for now. Future iteration could emit a
+-                                // `<missing:path>` marker; left as a
+-                                // follow-up to avoid breaking existing
+-                                // consumers that rely on the silent-empty
+-                                // contract.
++                            Some(value) => {
++                                if path.starts_with("step.")
++                                    && !self.flat.contains_key(&path)
++                                    && self
++                                        .lookup_value(&path)
++                                        .is_some_and(|value| value.is_string())
++                                {
++                                    if stack.contains(&path) {
++                                        return Err(format!(
++                                            "cyclic recipe reference: {} -> {path}",
++                                            stack.join(" -> ")
++                                        ));
++                                    }
++                                    if stack.len() >= 32 {
++                                        return Err(format!(
++                                            "recipe reference depth exceeds 32 at {path}"
++                                        ));
++                                    }
++                                    stack.push(path);
++                                    let expanded = self.expand_inner(&value, checked, stack);
++                                    stack.pop();
++                                    out.push_str(&expanded?);
++                                } else {
++                                    out.push_str(&value);
++                                }
+@@ -88,0 +138,24 @@ impl Substitution {
++                            None if !stack.is_empty()
++                                && !["scenario.", "step.", "tools.", "vm."]
++                                    .iter()
++                                    .any(|prefix| path.starts_with(prefix))
++                                && !matches!(
++                                    path.as_str(),
++                                    "binary"
++                                        | "image"
++                                        | "drive"
++                                        | "path"
++                                        | "from"
++                                        | "to"
++                                        | "content"
++                                        | "extra"
++                                        | "run_id"
++                                        | "scenario_name"
++                                        | "image_dir"
++                                ) =>
++                            {
++                                // Consumer scripts can carry their own markers, e.g. {N}.
++                                out.push_str(&template[i..i + end_rel + 2]);
++                            }
++                            None if optional || !checked => {}
++                            None => return Err(format!("missing required template token: {path}")),
+@@ -90 +163 @@ impl Substitution {
+-                        i += 1 + end_rel + 1;
++                        i += end_rel + 2;
+@@ -93 +165,0 @@ impl Substitution {
+-                    // Inner wasn't a valid placeholder — emit `{...}` as-is.
+@@ -96,2 +168,7 @@ impl Substitution {
+-            out.push(bytes[i] as char);
+-            i += 1;
++            // Advancing by characters preserves literal UTF-8 in templates.
++            let ch = template[i..].chars().next().expect("remaining character");
++            out.push(ch);
++            i += ch.len_utf8();
++        }
++        if out.len() > MAX_TEMPLATE_BYTES {
++            return Err("expanded recipe template exceeds 1048576 bytes".into());
+@@ -99 +176 @@ impl Substitution {
+-        out
++        Ok(out)
+@@ -260,0 +338,122 @@ mod tests {
++    #[test]
++    fn expands_recipe_label_reference() {
++        let mut s = fixture();
++        s.step = json!({"label": "{scenario.volume_params.label}"});
++        assert_eq!(s.expand("-Label '{step.label}'"), "-Label 'TEST'");
++    }
++
++    #[test]
++    fn checked_expansion_rejects_missing_required_but_allows_optional() {
++        let s = fixture();
++        assert!(s
++            .expand_checked("{step.nope}")
++            .unwrap_err()
++            .contains("step.nope"));
++        assert_eq!(s.expand_checked("a{step.nope?}b"), Ok("ab".into()));
++    }
++
++    #[test]
++    fn checked_expansion_resolves_nested_optional_and_required_references() {
++        let mut s = fixture();
++        s.step = json!({"label": "{scenario.absent}", "optional": "{scenario.absent?}"});
++        assert!(s
++            .expand_checked("{step.label}")
++            .unwrap_err()
++            .contains("scenario.absent"));
++        assert_eq!(s.expand_checked("{step.optional}"), Ok(String::new()));
++    }
++
++    #[test]
++    fn checked_expansion_rejects_cycles() {
++        let mut s = fixture();
++        s.step = json!({"label": "{step.alias}", "alias": "{step.label}"});
++        let error = s.expand_checked("{step.label}").unwrap_err();
++        assert!(error.contains("step.label -> step.alias -> step.label"));
++        assert_eq!(s.expand("{step.label}"), "{step.label}");
++    }
++
++    #[test]
++    fn checked_expansion_bounds_reference_depth() {
++        let mut s = fixture();
++        let mut fields = serde_json::Map::new();
++        for i in 0..32 {
++            fields.insert(
++                format!("field{i}"),
++                json!(format!("{{step.field{}}}", i + 1)),
++            );
++        }
++        fields.insert("field32".into(), json!("label"));
++        s.step = Value::Object(fields);
++        assert!(s
++            .expand_checked("{step.field0}")
++            .unwrap_err()
++            .contains("depth exceeds 32"));
++        assert_eq!(s.expand_checked("{step.field1}"), Ok("label".into()));
++    }
++
++    #[test]
++    fn checked_expansion_preserves_terminal_data_and_literal_braces() {
++        let mut s = fixture();
++        s.scenario = json!({"label": "{step.label}"});
++        s.flat.insert("tools.literal".into(), "{step.label}".into());
++        s.step = json!({"label": "{{step.label}}", "object": {"label": "{step.label}"}});
++        assert_eq!(
++            s.expand_checked("{scenario.label} {tools.literal} {step.label}"),
++            Ok("{step.label} {step.label} {step.label}".into())
++        );
++        assert_eq!(
++            s.expand_checked("{step.object}"),
++            Ok(r#"{"label":"{step.label}"}"#.into())
++        );
++        s.flat
++            .insert("step.label".into(), "{scenario.label}".into());
++        assert_eq!(
++            s.expand_checked("{step.label}"),
++            Ok("{scenario.label}".into())
++        );
++    }
++
++    #[test]
++    fn checked_expansion_preserves_unicode_and_invalid_braces() {
++        let s = fixture();
++        assert_eq!(
++            s.expand_checked("éclipse {{binary}} {3invalid} {"),
++            Ok("éclipse {binary} {3invalid} {".into())
++        );
++        assert_eq!(s.expand("éclipse"), "éclipse");
++    }
++
++    #[test]
++    fn checked_expansion_bounds_input_and_output_size() {
++        let mut s = fixture();
++        assert!(s
++            .expand_checked(&"x".repeat(MAX_TEMPLATE_BYTES + 1))
++            .unwrap_err()
++            .contains("exceeds"));
++        s.flat
++            .insert("large".into(), "x".repeat(MAX_TEMPLATE_BYTES));
++        assert_eq!(
++            s.expand_checked("{large}").unwrap().len(),
++            MAX_TEMPLATE_BYTES
++        );
++        for template in ["{large}x", "{large}xx", "{large}{{binary}}"] {
++            assert!(s.expand_checked(template).unwrap_err().contains("exceeds"));
++        }
++    }
++
++    #[test]
++    fn checked_expansion_preserves_consumer_batch_markers() {
++        let mut s = fixture();
++        s.step = json!({"path": "/file_{N}.txt", "tool": "{tools.absent}", "binary": "{binary}"});
++        assert_eq!(s.expand_checked("{step.path}"), Ok("/file_{N}.txt".into()));
++        assert!(s
++            .expand_checked("{step.tool}")
++            .unwrap_err()
++            .contains("tools.absent"));
++        s.flat.remove("binary");
++        assert!(s
++            .expand_checked("{step.binary}")
++            .unwrap_err()
++            .contains("binary"));
++    }
++
+diff --git a/scripts/local-vm.py b/scripts/local-vm.py
+index 4ca2aa5..fe99e45 100755
+--- a/scripts/local-vm.py
++++ b/scripts/local-vm.py
+@@ -624 +624,2 @@ def boot_installer(state, config):
+-def keep_awake():
++@contextlib.contextmanager
++def keep_awake(action):
+@@ -627,9 +628,22 @@ def keep_awake():
+-    # MacBook. Hold an idle-sleep assertion until this process exits; closing
+-    # the lid still sleeps.
+-    if platform.system() == "Darwin":
+-        subprocess.Popen(
+-            ["caffeinate", "-i", "-w", str(os.getpid())],
+-            stdin=subprocess.DEVNULL,
+-            stdout=subprocess.DEVNULL,
+-            stderr=subprocess.DEVNULL,
+-        )
++    # MacBook. Hold an idle-sleep assertion for the command; -w also ends it
++    # if this process is killed. Closing the lid still sleeps.
++    if platform.system() != "Darwin" or action not in (
++        "wait",
++        "provision",
++        "down",
++        "exec",
++        "ssh",
++    ):
++        yield
++        return
++    assertion = subprocess.Popen(
++        ["caffeinate", "-i", "-w", str(os.getpid())],
++        stdin=subprocess.DEVNULL,
++        stdout=subprocess.DEVNULL,
++        stderr=subprocess.DEVNULL,
++    )
++    try:
++        yield
++    finally:
++        assertion.terminate()
++        assertion.wait()
+@@ -713,3 +727 @@ def main(argv=None):
+-    with exclusive(state):
+-        if args.action in ("wait", "provision", "down", "exec", "ssh"):
+-            keep_awake()
++    with exclusive(state), keep_awake(args.action):
+diff --git a/tests/local-vm.py b/tests/local-vm.py
+index d208029..4349d6a 100755
+--- a/tests/local-vm.py
++++ b/tests/local-vm.py
+@@ -5,0 +6 @@ import base64
++import contextlib
+@@ -7,0 +9 @@ import importlib.util
++import io
+@@ -260,0 +263,3 @@ class LocalVM(unittest.TestCase):
++            patch.object(
++                vm, "ssh", side_effect=subprocess.CalledProcessError(255, "ssh")
++            ),
+@@ -261,0 +267 @@ class LocalVM(unittest.TestCase):
++            contextlib.redirect_stderr(io.StringIO()),
+@@ -289,0 +296 @@ class LocalVM(unittest.TestCase):
++                contextlib.redirect_stderr(io.StringIO()) as stderr,
+@@ -292,0 +300 @@ class LocalVM(unittest.TestCase):
++            self.assertIn("unexpected shutdown", stderr.getvalue())
+@@ -296,0 +305,3 @@ class LocalVM(unittest.TestCase):
++            patch.object(
++                vm, "ssh", side_effect=subprocess.CalledProcessError(255, "ssh")
++            ),
+@@ -297,0 +309 @@ class LocalVM(unittest.TestCase):
++            contextlib.redirect_stderr(io.StringIO()),
+@@ -499,0 +512,3 @@ class LocalVM(unittest.TestCase):
++                # Released and reaped when the command ends, not left behind.
++                popen.return_value.terminate.assert_called_once()
++                popen.return_value.wait.assert_called_once()
+diff --git a/tests/smoke-consumer/assert_verdicts.py b/tests/smoke-consumer/assert_verdicts.py
+index 51f44de..2959b32 100644
+--- a/tests/smoke-consumer/assert_verdicts.py
++++ b/tests/smoke-consumer/assert_verdicts.py
+@@ -100,0 +101,4 @@ def check_pass(rc, scenarios, diag, log):
++                literal_path = scn["recipe"][step["index"]].get("literal_path")
++                if literal_path:
++                    check(literal_path.replace("/", "\\") in stdout,
++                          f"{label}: Windows output lost the literal path {literal_path!r}")
+diff --git a/tests/smoke-consumer/test-matrix.json b/tests/smoke-consumer/test-matrix.json
+index b87f85b..db8c6d5 100644
+--- a/tests/smoke-consumer/test-matrix.json
++++ b/tests/smoke-consumer/test-matrix.json
+@@ -7,0 +8 @@
++      "volume_params": {"hello_path": "/hello.txt"},
+@@ -12 +13 @@
+-        { "op": "win-cat-via-mount", "drive": "X", "path": "/hello.txt", "expect_content": "hello-from-the-host", "expect_size": "19", "expect_sha256": "4b446221383191e3c60c8c7de9fe13ffd1e7fd9bb2dcac11b3322b0ff1f17da6" },
++        { "op": "win-cat-via-mount", "drive": "X", "path": "{scenario.volume_params.hello_path}", "expect_content": "hello-from-the-host", "expect_size": "19", "expect_sha256": "4b446221383191e3c60c8c7de9fe13ffd1e7fd9bb2dcac11b3322b0ff1f17da6" },
+@@ -16,2 +17,2 @@
+-        { "op": "win-write", "drive": "X", "path": "/scratch.txt", "content": "temporary" },
+-        { "op": "win-unlink", "drive": "X", "path": "/scratch.txt" },
++        { "op": "win-write", "drive": "X", "path": "{step.literal_path}", "literal_path": "/scratch-{N}.txt", "content": "temporary" },
++        { "op": "win-unlink", "drive": "X", "path": "{step.literal_path}", "literal_path": "/scratch-{N}.txt" },
