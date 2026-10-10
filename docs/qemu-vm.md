@@ -150,10 +150,21 @@ python3 scripts/local-vm.py ssh -- 'cscript.exe //nologo C:\Windows\System32\slm
 python3 scripts/local-vm.py down
 ```
 
-Shutdown is ACPI and bounded; a timeout is an error and leaves the guest
-running. No forced kill is hidden behind it. QEMU is daemonized, with no
-system service or autostart installed. A host restart or stopping its owning
-service can stop it; ordinary `up` restarts the persistent disk.
+`down` asks Windows to shut down (`shutdown.exe /s /t 0` over the guest's
+SSH) and waits for QEMU to exit; it is bounded, a timeout is an error and
+leaves the guest running, and no forced kill is hidden behind it. Only when
+SSH fails does it press the ACPI power button instead, with a warning: on
+HVF that path powered the guest off but Windows recorded an unexpected
+shutdown (Kernel-Power 41, EventLog 6008) on its next boot, while its own
+shutdown booted clean. QEMU is daemonized, with no system service or
+autostart installed. A host restart or stopping its owning service can stop
+it; ordinary `up` restarts the persistent disk.
+
+A Mac idle-sleeps on a timer, and a sleeping host freezes the guest. On macOS,
+`wait`, `provision`, `down`, `exec` and `ssh` therefore hold an idle-sleep
+assertion (`caffeinate -i`) until they exit. Closing the lid still sleeps the
+Mac, and a guest left running between commands is frozen while it sleeps:
+keep the lid open (on power, for long matrices) while a run is in progress.
 
 State is private to the host account: SSH key, generated local Windows
 administrator password, unattended seed and guest disk are never repository
