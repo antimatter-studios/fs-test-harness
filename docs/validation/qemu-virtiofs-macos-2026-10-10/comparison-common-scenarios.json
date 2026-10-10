@@ -1,0 +1,38 @@
+{
+ "scenarios_passed_in_all_four": 67,
+ "fixed-scp-1": {
+  "step_seconds": 5912.8,
+  "ship_seconds": 859.2,
+  "scenario_seconds": 6391.2
+ },
+ "fixed-virtiofs-1": {
+  "step_seconds": 5043.6,
+  "ship_seconds": 170.3,
+  "scenario_seconds": 5109.7
+ },
+ "fixed-scp-2": {
+  "step_seconds": 6438.2,
+  "ship_seconds": 945.9,
+  "scenario_seconds": 7264.4
+ },
+ "fixed-virtiofs-2": {
+  "step_seconds": 4815.0,
+  "ship_seconds": 163.1,
+  "scenario_seconds": 4863.8
+ },
+ "scp-mean": {
+  "step_seconds": 6175.5,
+  "ship_seconds": 902.5,
+  "scenario_seconds": 6827.8
+ },
+ "virtiofs-mean": {
+  "step_seconds": 4929.3,
+  "ship_seconds": 166.7,
+  "scenario_seconds": 4986.8
+ },
+ "saving": {
+  "step_seconds": "20.2%",
+  "ship_seconds": "81.5%",
+  "scenario_seconds": "27.0%"
+ }
+}

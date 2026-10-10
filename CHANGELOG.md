@@ -35,7 +35,9 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   `virtiofsd` beside QEMU and `share-driver` installs the guest's `viofs`
   driver and service at `Z:`; with `VM_SHARE_HOST_DIR` and
   `VM_SHARE_GUEST_DIR` in `.test-env`, ship steps for images inside the share
-  copy inside Windows instead of over scp. Off unless configured.
+  copy inside Windows instead of over scp. Off unless configured, and
+  experimental: on macOS it cut shipping by about 81% but Windows
+  intermittently failed to read from the share (3 of 72 scenarios per run).
 
 ### Fixed
 

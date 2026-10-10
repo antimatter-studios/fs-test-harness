@@ -163,6 +163,14 @@ does not implement automatic deployment fingerprinting.
 
 ## Optional: share images instead of copying them
 
+> **Experimental: known read failure.** On macOS with the virtiofsd port
+> and virtio-win 0.1.302, Windows intermittently fails to read a file from
+> the share (`Error performing inpage operation`): 3 of 72 NTFS scenarios in
+> each of two runs, while virtiofsd answered every request successfully.
+> Shipping was about 81% faster, but a test harness cannot accept spurious
+> failures; keep scp for real runs until this is understood
+> ([measurements](validation/qemu-virtiofs-macos-2026-10-10/README.md)).
+
 By default every image crosses into and out of the guest over scp. A host
 directory can instead be shared with the guest through virtio-fs, so ship
 steps copy inside Windows (see [the vocabulary](vocabulary.md)). It is off

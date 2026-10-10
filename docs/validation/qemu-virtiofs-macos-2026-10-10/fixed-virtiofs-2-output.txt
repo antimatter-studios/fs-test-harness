@@ -1,0 +1,1363 @@
+[run-matrix] SSH mux: ready (/tmp/ntfs-ssh-mux-19889)
+[harness] fs-windows-test-harness v4.3.1-20-g3847a18 (feat/qemu-virtiofs @ 3847a18)
+[run-tests] preflight: SSH fswth-local
+[run-tests] VM lock: acquiring C:/fswth/rust-fs-ntfs-timed (each VM command bounded: 300s, each step: 900s)
+[run-tests] VM matrix lock acquired: C:\fswth\rust-fs-ntfs-timed\.fswth-matrix.lock (run_id=1791621532393209000, host=Unknown, pid=20205)
+[ship] harness scripts/vm/ -> C:/fswth/rust-fs-ntfs-timed/../fs-windows-test-harness/scripts/vm
+[ship] consumer scripts/fs-windows-test-harness/
+[ship] consumer binary target/release/rust-ntfs
+[run]  cargo run --bin run-matrix locally
+[run]  HARNESS_IMAGE_DIR=${HOST_IMAGE_DIR:-diskimages}
+[run]  test_threads=4 (from max_parallel=4)
+
+    Finished `release` profile [optimized] target(s) in 0.14s
+     Running `${HARNESS}/runner/target/release/run-matrix --test-threads=4`
+runner: max_parallel=4
+================================================================
+rust-fs-ntfs — test matrix  |  2026-10-10 08:39:02 UTC  |  72 scenarios  |  parallel 4
+================================================================
+runner: exclusive_group 'large-volume' serializes 3 scenario(s)
+
+running 72 tests
+
+[08:39:02][+00:00:00] >>> cli-corrupt-signature-fsck-win-chkdsk
+
+[08:39:02][+00:00:00] >>> cli-mkfs-win-chkdsk
+
+[08:39:02][+00:00:00] >>> cli-corrupt-mirror-fsck-win-chkdsk
+
+[08:39:02][+00:00:00] >>> cli-populate-win-verify-chkdsk
+[08:39:02][+00:00:00]   00 cli-mkfs             start (cli-mkfs-win-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             start (cli-corrupt-signature-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             start (cli-corrupt-mirror-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             start (cli-populate-win-verify-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             ok    00:00:00
+[08:39:02][+00:00:00]   01 cli-corrupt          start (cli-corrupt-mirror-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             ok    00:00:00
+[08:39:02][+00:00:00]   00 cli-mkfs             ok    00:00:00
+[08:39:02][+00:00:00]   01 cli-corrupt          start (cli-corrupt-signature-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   01 ship-to-vm           start (cli-mkfs-win-chkdsk)
+[08:39:02][+00:00:00]   00 cli-mkfs             ok    00:00:00
+[08:39:02][+00:00:00]   01 cli-populate         start (cli-populate-win-verify-chkdsk)
+[08:39:02][+00:00:00]   01 cli-corrupt          ok    00:00:00
+[08:39:02][+00:00:00]   02 cli-fsck-finds       start (cli-corrupt-signature-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   01 cli-corrupt          ok    00:00:00
+[08:39:02][+00:00:00]   02 cli-fsck-finds       start (cli-corrupt-mirror-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   02 cli-fsck-finds       ok    00:00:00
+[08:39:02][+00:00:00]   03 ship-to-vm           start (cli-corrupt-signature-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   02 cli-fsck-finds       ok    00:00:00
+[08:39:02][+00:00:00]   03 ship-to-vm           start (cli-corrupt-mirror-fsck-win-chkdsk)
+[08:39:02][+00:00:00]   01 cli-populate         ok    00:00:00
+[08:39:02][+00:00:00]   02 ship-to-vm           start (cli-populate-win-verify-chkdsk)
+[08:39:05][+00:00:03]   02 ship-to-vm           ok    00:00:02  (share-copy)
+[08:39:05][+00:00:03]   03 ship-to-vm           start (cli-populate-win-verify-chkdsk)
+[08:39:05][+00:00:03]   01 ship-to-vm           ok    00:00:03  (share-copy)
+[08:39:05][+00:00:03]   02 win-chkdsk           start (cli-mkfs-win-chkdsk)
+[08:39:05][+00:00:03]   03 ship-to-vm           ok    00:00:03  (share-copy)
+[08:39:05][+00:00:03]   04 win-chkdsk           start (cli-corrupt-mirror-fsck-win-chkdsk)
+[08:39:05][+00:00:03]   03 ship-to-vm           ok    00:00:03  (share-copy)
+[08:39:05][+00:00:03]   04 win-chkdsk           start (cli-corrupt-signature-fsck-win-chkdsk)
+[08:39:06][+00:00:04]   03 ship-to-vm           ok    00:00:01  (share-copy)
+[08:39:06][+00:00:04]   04 win-cli-verify       start (cli-populate-win-verify-chkdsk)
+[08:39:30][+00:00:28]   04 win-cli-verify       ok    00:00:23
+[08:39:30][+00:00:28]   05 win-chkdsk           start (cli-populate-win-verify-chkdsk)
+[08:39:32][+00:00:30] first attempt — 0/72 done
+[08:39:41][+00:00:39]   02 win-chkdsk           ok    00:00:36
+[08:39:41][+00:00:39] pass cli-mkfs-win-chkdsk  (total 00:00:39)
+
+test cli-mkfs-win-chkdsk                                                      ... ok
+
+[08:39:41][+00:00:39] >>> cli-set-dirty-fsck-win-dirty-chkdsk
+[08:39:41][+00:00:39]   00 cli-mkfs             start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:39:41][+00:00:39]   00 cli-mkfs             ok    00:00:00
+[08:39:41][+00:00:39]   01 cli-set-dirty        start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:39:42][+00:00:40]   01 cli-set-dirty        ok    00:00:00
+[08:39:42][+00:00:40]   02 cli-fsck-finds       start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:39:42][+00:00:40]   02 cli-fsck-finds       ok    00:00:00
+[08:39:42][+00:00:40]   03 ship-to-vm           start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:39:43][+00:00:41]   03 ship-to-vm           ok    00:00:01  (share-copy)
+[08:39:43][+00:00:41]   04 win-dirty-query      start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:39:48][+00:00:46]   04 win-chkdsk           ok    00:00:42
+[08:39:48][+00:00:46] pass cli-corrupt-signature-fsck-win-chkdsk  (total 00:00:46)
+
+test cli-corrupt-signature-fsck-win-chkdsk                                    ... ok
+
+[08:39:48][+00:00:46] >>> cli-windows-6-grow-mft-win-verify-chkdsk
+[08:39:48][+00:00:46]   00 cli-grow-mft         start (cli-windows-6-grow-mft-win-verify-chkdsk)
+[08:39:49][+00:00:47]   04 win-chkdsk           ok    00:00:43
+[08:39:49][+00:00:47] pass cli-corrupt-mirror-fsck-win-chkdsk  (total 00:00:47)
+
+test cli-corrupt-mirror-fsck-win-chkdsk                                       ... ok
+
+[08:39:49][+00:00:47] >>> cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk
+[08:39:49][+00:00:47]   00 cli-replay           start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:39:49][+00:00:47]   00 cli-replay           ok    00:00:00
+[08:39:49][+00:00:47]   01 ship-to-vm           start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:39:50][+00:00:48]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:39:50][+00:00:48]   02 ship-to-vm           start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:39:51][+00:00:49]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:39:51][+00:00:49]   03 win-dirty-query      start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:39:52][+00:00:50]   00 cli-grow-mft         ok    00:00:04
+[08:39:52][+00:00:50]   01 ship-to-vm           start (cli-windows-6-grow-mft-win-verify-chkdsk)
+[08:39:53][+00:00:51]   05 win-chkdsk           ok    00:00:23
+[08:39:53][+00:00:51] pass cli-populate-win-verify-chkdsk  (total 00:00:51)
+
+test cli-populate-win-verify-chkdsk                                           ... ok
+
+[08:39:53][+00:00:51] >>> cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk
+[08:39:53][+00:00:51]   00 cli-mount-replay     start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:39:54][+00:00:52]   00 cli-mount-replay     ok    00:00:00
+[08:39:54][+00:00:52]   01 ship-to-vm           start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:39:54][+00:00:52]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:39:54][+00:00:52]   02 ship-to-vm           start (cli-windows-6-grow-mft-win-verify-chkdsk)
+[08:39:55][+00:00:53]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:39:55][+00:00:53]   03 win-cli-verify       start (cli-windows-6-grow-mft-win-verify-chkdsk)
+[08:39:55][+00:00:53]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:39:55][+00:00:53]   02 ship-to-vm           start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:39:56][+00:00:54]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:39:56][+00:00:54]   03 win-dirty-query      start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:40:02][+00:01:00] first attempt — 4/72 done
+[08:40:05][+00:01:03]   04 win-dirty-query      ok    00:00:22
+[08:40:05][+00:01:03]   05 win-chkdsk           start (cli-set-dirty-fsck-win-dirty-chkdsk)
+[08:40:13][+00:01:11]   03 win-dirty-query      ok    00:00:21
+[08:40:13][+00:01:11]   04 win-cli-verify       start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:40:17][+00:01:15]   03 win-dirty-query      ok    00:00:20
+[08:40:17][+00:01:15]   04 win-cli-verify       start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:40:20][+00:01:18]   04 win-cli-verify       ok    00:00:06
+[08:40:20][+00:01:18]   05 win-chkdsk           start (cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk)
+[08:40:22][+00:01:19]   03 win-cli-verify       ok    00:00:26
+[08:40:22][+00:01:19]   04 win-chkdsk           start (cli-windows-6-grow-mft-win-verify-chkdsk)
+[08:40:23][+00:01:21]   04 win-cli-verify       ok    00:00:06
+[08:40:23][+00:01:21]   05 win-chkdsk           start (cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk)
+[08:40:32][+00:01:30] first attempt — 4/72 done
+[08:40:39][+00:01:37]   05 win-chkdsk           ok    00:00:19
+[08:40:39][+00:01:37] pass cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk  (total 00:00:50)
+
+test cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk                  ... ok
+
+[08:40:39][+00:01:37] >>> cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk
+[08:40:39][+00:01:37]   00 cli-replay           start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:40:39][+00:01:37]   00 cli-replay           ok    00:00:00
+[08:40:39][+00:01:37]   01 ship-to-vm           start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:40:41][+00:01:39]   05 win-chkdsk           ok    00:00:35
+[08:40:41][+00:01:39] pass cli-set-dirty-fsck-win-dirty-chkdsk  (total 00:00:59)
+
+
+[08:40:41][+00:01:39] >>> cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk
+test cli-set-dirty-fsck-win-dirty-chkdsk                                      ... ok
+[08:40:41][+00:01:39]   00 cli-mount-replay     start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:40:41][+00:01:39]   04 win-chkdsk           ok    00:00:19
+[08:40:41][+00:01:39] pass cli-windows-6-grow-mft-win-verify-chkdsk  (total 00:00:53)
+
+test cli-windows-6-grow-mft-win-verify-chkdsk                                 ... ok
+
+[08:40:41][+00:01:39] >>> cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk
+[08:40:41][+00:01:39]   00 cli-replay           start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:40:41][+00:01:39]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:41][+00:01:39]   02 ship-to-vm           start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:40:41][+00:01:39]   00 cli-mount-replay     ok    00:00:00
+[08:40:41][+00:01:39]   01 ship-to-vm           start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:40:41][+00:01:39]   00 cli-replay           ok    00:00:00
+[08:40:41][+00:01:39]   01 ship-to-vm           start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:40:42][+00:01:40]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:42][+00:01:40]   03 win-dirty-query      start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:40:43][+00:01:41]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:43][+00:01:41]   02 ship-to-vm           start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:40:44][+00:01:42]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:44][+00:01:42]   03 win-dirty-query      start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:40:44][+00:01:42]   01 ship-to-vm           ok    00:00:02  (share-copy)
+[08:40:44][+00:01:42]   02 ship-to-vm           start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:40:45][+00:01:43]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:45][+00:01:43]   03 win-dirty-query      start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:40:48][+00:01:46]   05 win-chkdsk           ok    00:00:25
+[08:40:48][+00:01:46] pass cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk  (total 00:00:55)
+
+test cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk           ... ok
+
+[08:40:48][+00:01:46] >>> cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk
+[08:40:48][+00:01:46]   00 cli-replay           start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:40:49][+00:01:47]   00 cli-replay           ok    00:00:00
+[08:40:49][+00:01:47]   01 ship-to-vm           start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:40:52][+00:01:50]   01 ship-to-vm           ok    00:00:02  (share-copy)
+[08:40:52][+00:01:50]   02 ship-to-vm           start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:40:53][+00:01:51]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:40:53][+00:01:51]   03 win-dirty-query      start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:41:02][+00:02:00] first attempt — 8/72 done
+[08:41:06][+00:02:04]   03 win-dirty-query      ok    00:00:23
+[08:41:06][+00:02:04]   04 win-cli-verify       start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:41:08][+00:02:06]   03 win-dirty-query      ok    00:00:24
+[08:41:08][+00:02:06]   04 win-cli-verify       start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:41:09][+00:02:07]   03 win-dirty-query      ok    00:00:23
+[08:41:09][+00:02:07]   04 win-cli-verify       start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:41:17][+00:02:15]   04 win-cli-verify       ok    00:00:08
+[08:41:17][+00:02:15]   05 win-chkdsk           start (cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk)
+[08:41:17][+00:02:15]   04 win-cli-verify       ok    00:00:11
+[08:41:17][+00:02:15]   05 win-chkdsk           start (cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk)
+[08:41:22][+00:02:20]   04 win-cli-verify       ok    00:00:13
+[08:41:22][+00:02:20]   05 win-chkdsk           start (cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk)
+[08:41:32][+00:02:30] first attempt — 8/72 done
+[08:41:34][+00:02:32]   05 win-chkdsk           ok    00:00:17
+[08:41:34][+00:02:32] pass cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk  (total 00:00:53)
+
+test cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk          ... ok
+
+[08:41:34][+00:02:32] >>> cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk
+[08:41:34][+00:02:32]   00 cli-replay           start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:41:35][+00:02:33]   05 win-chkdsk           ok    00:00:17
+[08:41:35][+00:02:33] pass cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk  (total 00:00:55)
+
+test cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk                  ... ok
+
+[08:41:35][+00:02:33] >>> cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk
+[08:41:35][+00:02:33]   00 cli-replay           start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:41:35][+00:02:33]   00 cli-replay           ok    00:00:00
+[08:41:35][+00:02:33]   01 ship-to-vm           start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:41:36][+00:02:34]   00 cli-replay           ok    00:00:01
+[08:41:36][+00:02:34]   01 ship-to-vm           start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:41:37][+00:02:35]   01 ship-to-vm           ok    00:00:02  (share-copy)
+[08:41:37][+00:02:35]   02 ship-to-vm           start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:41:37][+00:02:35]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:41:37][+00:02:35]   02 ship-to-vm           start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:41:38][+00:02:36]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:41:38][+00:02:36]   03 win-dirty-query      start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:41:38][+00:02:36]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:41:38][+00:02:36]   03 win-dirty-query      start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:41:44][+00:02:42]   05 win-chkdsk           ok    00:00:22
+[08:41:44][+00:02:42] pass cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk  (total 00:01:03)
+
+test cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk           ... ok
+
+[08:41:44][+00:02:42] >>> cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk
+[08:41:44][+00:02:42]   00 cli-replay           start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:41:44][+00:02:42]   00 cli-replay           ok    00:00:00
+[08:41:44][+00:02:42]   01 ship-to-vm           start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:41:45][+00:02:43]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:41:45][+00:02:43]   02 ship-to-vm           start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:41:46][+00:02:44]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:41:46][+00:02:44]   03 win-dirty-query      start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:42:00][+00:02:58]   03 win-dirty-query      ok    00:00:22
+[08:42:00][+00:02:58]   04 win-cli-verify       start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:42:01][+00:02:59]   03 win-dirty-query      ok    00:00:22
+[08:42:01][+00:02:59]   04 win-cli-verify       start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:42:02][+00:03:00] first attempt — 11/72 done
+[08:42:08][+00:03:06]   04 win-cli-verify       ok    00:00:07
+[08:42:08][+00:03:06]   05 win-chkdsk           start (cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk)
+[08:42:16][+00:03:14]   04 win-cli-verify       ok    00:00:16
+[08:42:16][+00:03:14]   05 win-chkdsk           start (cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk)
+[08:42:23][+00:03:21]   05 win-chkdsk           ok    00:00:14
+[08:42:23][+00:03:21] pass cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk  (total 00:00:48)
+
+test cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk              ... ok
+
+[08:42:23][+00:03:21] >>> cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk
+[08:42:23][+00:03:21]   00 cli-replay           start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:42:23][+00:03:21]   00 cli-replay           ok    00:00:00
+[08:42:23][+00:03:21]   01 ship-to-vm           start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:42:24][+00:03:22]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:42:24][+00:03:22]   02 ship-to-vm           start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:42:25][+00:03:23]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:42:25][+00:03:23]   03 win-dirty-query      start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:42:30][+00:03:28]   05 win-chkdsk           ok    00:00:13
+[08:42:30][+00:03:28] pass cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk  (total 00:00:55)
+
+test cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk ... ok
+
+[08:42:30][+00:03:28] >>> cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk
+[08:42:30][+00:03:28]   00 cli-replay           start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:42:30][+00:03:28]   00 cli-replay           ok    00:00:00
+[08:42:30][+00:03:28]   01 ship-to-vm           start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:42:31][+00:03:29]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:42:31][+00:03:29]   02 ship-to-vm           start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:42:31][+00:03:29]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:42:31][+00:03:29]   03 win-dirty-query      start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:42:32][+00:03:30] first attempt — 13/72 done
+[08:42:44][+00:03:42]   03 win-dirty-query      ok    00:00:19
+[08:42:44][+00:03:42]   04 win-cli-verify       start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:42:52][+00:03:50]   03 win-dirty-query      ok    00:00:20
+[08:42:52][+00:03:50]   04 win-cli-verify       start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:42:53][+00:03:51]   04 win-cli-verify       ok    00:00:08
+[08:42:53][+00:03:51]   05 win-chkdsk           start (cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk)
+[08:43:02][+00:04:00] first attempt — 13/72 done
+[08:43:03][+00:04:01]   04 win-cli-verify       ok    00:00:11
+[08:43:03][+00:04:01]   05 win-chkdsk           start (cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk)
+[08:43:08][+00:04:06]   05 win-chkdsk           ok    00:00:14
+[08:43:08][+00:04:06] pass cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk  (total 00:00:45)
+
+test cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk  ... ok
+
+[08:43:08][+00:04:06] >>> cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk
+[08:43:08][+00:04:06]   00 cli-replay           start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:09][+00:04:06]   00 cli-replay           ok    00:00:00
+[08:43:09][+00:04:06]   01 ship-to-vm           start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:09][+00:04:07]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:43:09][+00:04:07]   02 ship-to-vm           start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:10][+00:04:08]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:43:10][+00:04:08]   03 win-dirty-query      start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:17][+00:04:15]   05 win-chkdsk           ok    00:00:14
+[08:43:17][+00:04:15] pass cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk  (total 00:00:47)
+
+test cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk               ... ok
+
+[08:43:17][+00:04:15] >>> cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk
+[08:43:17][+00:04:15]   00 cli-replay           start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:43:18][+00:04:16]   00 cli-replay           ok    00:00:00
+[08:43:18][+00:04:16]   01 ship-to-vm           start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:43:18][+00:04:16]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:43:18][+00:04:16]   02 ship-to-vm           start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:43:19][+00:04:17]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:43:19][+00:04:17]   03 win-dirty-query      start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:43:31][+00:04:29]   03 win-dirty-query      ok    00:00:20
+[08:43:31][+00:04:29]   04 win-cli-verify       start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:32][+00:04:30] first attempt — 15/72 done
+[08:43:40][+00:04:38]   03 win-dirty-query      ok    00:00:20
+[08:43:40][+00:04:38]   04 win-cli-verify       start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:43:42][+00:04:40]   04 win-cli-verify       ok    00:00:11
+[08:43:42][+00:04:40]   05 win-chkdsk           start (cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk)
+[08:43:58][+00:04:56]   04 win-cli-verify       ok    00:00:17
+[08:43:58][+00:04:56]   05 win-chkdsk           start (cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk)
+[08:44:01][+00:04:59]   05 win-chkdsk           ok    00:00:18
+[08:44:01][+00:04:59] pass cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk  (total 00:00:53)
+
+
+[08:44:01][+00:04:59] >>> cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk
+test cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk      ... ok
+[08:44:01][+00:04:59]   00 cli-replay           start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:02][+00:05:00] first attempt — 16/72 done
+[08:44:02][+00:05:00]   00 cli-replay           ok    00:00:00
+[08:44:02][+00:05:00]   01 ship-to-vm           start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:03][+00:05:01]   01 ship-to-vm           ok    00:00:00  (share-copy)
+[08:44:03][+00:05:01]   02 ship-to-vm           start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:03][+00:05:01]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:44:03][+00:05:01]   03 win-dirty-query      start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:13][+00:05:11]   05 win-chkdsk           ok    00:00:14
+[08:44:13][+00:05:11] pass cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk  (total 00:00:55)
+
+test cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk     ... ok
+
+[08:44:13][+00:05:11] >>> foreign-fragmented-indx-512-win-enumerate-chkdsk
+[08:44:13][+00:05:11]   00 stage-fragmented-indx start (foreign-fragmented-indx-512-win-enumerate-chkdsk)
+[08:44:13][+00:05:11]   00 stage-fragmented-indx ok    00:00:00
+[08:44:13][+00:05:11]   01 mac-enumerate        start (foreign-fragmented-indx-512-win-enumerate-chkdsk)
+[08:44:13][+00:05:11]   01 mac-enumerate        ok    00:00:00
+[08:44:13][+00:05:11]   02 ship-to-vm           start (foreign-fragmented-indx-512-win-enumerate-chkdsk)
+[08:44:14][+00:05:12]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:44:14][+00:05:12]   03 win-enumerate        start (foreign-fragmented-indx-512-win-enumerate-chkdsk)
+[08:44:16][+00:05:14]   03 win-dirty-query      ok    00:03:22
+[08:44:16][+00:05:14]   04 win-cli-verify       start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:44:24][+00:05:22]   03 win-dirty-query      ok    00:00:21
+[08:44:24][+00:05:22]   04 win-cli-verify       start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:32][+00:05:30] first attempt — 17/72 done
+[08:44:32][+00:05:30]   04 win-cli-verify       ok    00:00:07
+[08:44:32][+00:05:30]   05 win-chkdsk           start (cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk)
+[08:44:35][+00:05:33]   03 win-enumerate        ok    00:00:20
+[08:44:35][+00:05:33]   04 win-chkdsk           start (foreign-fragmented-indx-512-win-enumerate-chkdsk)
+[08:44:47][+00:05:45]   05 win-chkdsk           ok    00:00:14
+[08:44:47][+00:05:45] pass cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk  (total 00:00:45)
+
+test cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk          ... ok
+
+[08:44:47][+00:05:45] >>> mac-format-basic-256mib
+[08:44:47][+00:05:45]   00 init-image           start (mac-format-basic-256mib)
+[08:44:47][+00:05:45]   00 init-image           ok    00:00:00
+[08:44:47][+00:05:45]   01 mac-format           start (mac-format-basic-256mib)
+[08:44:47][+00:05:45]   01 mac-format           ok    00:00:00
+[08:44:47][+00:05:45]   02 ship-to-vm           start (mac-format-basic-256mib)
+[08:44:48][+00:05:46]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:44:48][+00:05:46]   03 win-chkdsk           start (mac-format-basic-256mib)
+[08:45:02][+00:06:00] first attempt — 18/72 done
+[08:45:08][+00:06:06]   03 win-dirty-query      ok    00:03:22
+[08:45:08][+00:06:06]   04 win-cli-verify       start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:45:20][+00:06:18]   03 win-chkdsk           ok    00:00:32
+[08:45:20][+00:06:18]   04 win-enumerate        start (mac-format-basic-256mib)
+[08:45:26][+00:06:24]   04 win-enumerate        ok    00:00:06
+[08:45:26][+00:06:24] pass mac-format-basic-256mib  (total 00:00:39)
+
+test mac-format-basic-256mib                                                  ... ok
+
+[08:45:26][+00:06:24] >>> mac-format-cluster-1k
+[08:45:26][+00:06:24]   00 init-image           start (mac-format-cluster-1k)
+[08:45:27][+00:06:25]   04 win-cli-verify       ok    00:00:18
+[08:45:27][+00:06:25]   05 win-chkdsk           start (cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk)
+[08:45:27][+00:06:25]   00 init-image           ok    00:00:00
+[08:45:27][+00:06:25]   01 mac-format           start (mac-format-cluster-1k)
+[08:45:27][+00:06:25]   01 mac-format           ok    00:00:00
+[08:45:27][+00:06:25]   02 ship-to-vm           start (mac-format-cluster-1k)
+[08:45:28][+00:06:26]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:45:28][+00:06:26]   03 win-chkdsk           start (mac-format-cluster-1k)
+[08:45:32][+00:06:30] first attempt — 19/72 done
+[08:45:43][+00:06:41]   05 win-chkdsk           ok    00:00:16
+[08:45:43][+00:06:41] pass cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk  (total 00:03:59)
+
+
+[08:45:43][+00:06:41] >>> mac-format-cluster-512
+test cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk      ... ok
+[08:45:43][+00:06:41]   00 init-image           start (mac-format-cluster-512)
+[08:45:43][+00:06:41]   00 init-image           ok    00:00:00
+[08:45:43][+00:06:41]   01 mac-format           start (mac-format-cluster-512)
+[08:45:43][+00:06:41]   01 mac-format           ok    00:00:00
+[08:45:43][+00:06:41]   02 ship-to-vm           start (mac-format-cluster-512)
+[08:45:44][+00:06:42]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:45:44][+00:06:42]   03 win-chkdsk           start (mac-format-cluster-512)
+[08:46:00][+00:06:58]   03 win-chkdsk           ok    00:00:31
+[08:46:00][+00:06:58] pass mac-format-cluster-1k  (total 00:00:33)
+
+test mac-format-cluster-1k                                                    ... ok
+
+[08:46:00][+00:06:58] >>> mac-format-cluster-64k
+[08:46:00][+00:06:58]   00 init-image           start (mac-format-cluster-64k)
+[08:46:00][+00:06:58]   00 init-image           ok    00:00:00
+[08:46:00][+00:06:58]   01 mac-format           start (mac-format-cluster-64k)
+[08:46:01][+00:06:59]   01 mac-format           ok    00:00:00
+[08:46:01][+00:06:59]   02 ship-to-vm           start (mac-format-cluster-64k)
+[08:46:02][+00:07:00] first attempt — 21/72 done
+[08:46:05][+00:07:03]   02 ship-to-vm           ok    00:00:04  (share-copy)
+[08:46:05][+00:07:03]   03 win-chkdsk           start (mac-format-cluster-64k)
+[08:46:16][+00:07:14]   03 win-chkdsk           ok    00:00:32
+[08:46:16][+00:07:14] pass mac-format-cluster-512  (total 00:00:33)
+
+test mac-format-cluster-512                                                   ... ok
+
+[08:46:16][+00:07:14] >>> mac-format-cluster-8k
+[08:46:16][+00:07:14]   00 init-image           start (mac-format-cluster-8k)
+[08:46:16][+00:07:14]   00 init-image           ok    00:00:00
+[08:46:16][+00:07:14]   01 mac-format           start (mac-format-cluster-8k)
+[08:46:16][+00:07:14]   01 mac-format           ok    00:00:00
+[08:46:16][+00:07:14]   02 ship-to-vm           start (mac-format-cluster-8k)
+[08:46:18][+00:07:15]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:46:18][+00:07:15]   03 win-chkdsk           start (mac-format-cluster-8k)
+[08:46:32][+00:07:30] first attempt — 22/72 done
+[08:46:40][+00:07:38]   03 win-chkdsk           ok    00:00:34
+[08:46:40][+00:07:38] pass mac-format-cluster-64k  (total 00:00:39)
+
+test mac-format-cluster-64k                                                   ... ok
+
+[08:46:40][+00:07:38] >>> mac-format-hardlink-unlink-win-chkdsk
+[08:46:40][+00:07:38]   00 init-image           start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   00 init-image           ok    00:00:00
+[08:46:40][+00:07:38]   01 mac-format           start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   01 mac-format           ok    00:00:00
+[08:46:40][+00:07:38]   02 mac-touch            start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   02 mac-touch            ok    00:00:00
+[08:46:40][+00:07:38]   03 mac-write            start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   03 mac-write            ok    00:00:00
+[08:46:40][+00:07:38]   04 mac-link             start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   04 mac-link             ok    00:00:00
+[08:46:40][+00:07:38]   05 mac-rm               start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   05 mac-rm               ok    00:00:00
+[08:46:40][+00:07:38]   06 mac-enumerate        start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:40][+00:07:38]   06 mac-enumerate        ok    00:00:00
+[08:46:40][+00:07:38]   07 ship-to-vm           start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:42][+00:07:40]   07 ship-to-vm           ok    00:00:01  (share-copy)
+[08:46:42][+00:07:40]   08 win-chkdsk           start (mac-format-hardlink-unlink-win-chkdsk)
+[08:46:50][+00:07:48]   03 win-chkdsk           ok    00:00:32
+[08:46:50][+00:07:48] pass mac-format-cluster-8k  (total 00:00:34)
+
+test mac-format-cluster-8k                                                    ... ok
+
+[08:46:50][+00:07:48] >>> mac-format-label-32chars
+[08:46:50][+00:07:48]   00 init-image           start (mac-format-label-32chars)
+[08:46:50][+00:07:48]   00 init-image           ok    00:00:00
+[08:46:50][+00:07:48]   01 mac-format           start (mac-format-label-32chars)
+[08:46:51][+00:07:48]   01 mac-format           ok    00:00:00
+[08:46:51][+00:07:48]   02 ship-to-vm           start (mac-format-label-32chars)
+[08:46:52][+00:07:50]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:46:52][+00:07:50]   03 win-chkdsk           start (mac-format-label-32chars)
+[08:47:02][+00:08:00] first attempt — 24/72 done
+[08:47:14][+00:08:12]   08 win-chkdsk           ok    00:00:32
+[08:47:14][+00:08:12] pass mac-format-hardlink-unlink-win-chkdsk  (total 00:00:34)
+
+test mac-format-hardlink-unlink-win-chkdsk                                    ... ok
+
+[08:47:14][+00:08:12] >>> mac-format-label-cjk
+[08:47:14][+00:08:12]   00 init-image           start (mac-format-label-cjk)
+[08:47:14][+00:08:12]   00 init-image           ok    00:00:00
+[08:47:14][+00:08:12]   01 mac-format           start (mac-format-label-cjk)
+[08:47:14][+00:08:12]   01 mac-format           ok    00:00:00
+[08:47:14][+00:08:12]   02 ship-to-vm           start (mac-format-label-cjk)
+[08:47:15][+00:08:13]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:47:15][+00:08:13]   03 win-chkdsk           start (mac-format-label-cjk)
+[08:47:25][+00:08:23]   03 win-chkdsk           ok    00:00:33
+[08:47:25][+00:08:23] pass mac-format-label-32chars  (total 00:00:34)
+
+test mac-format-label-32chars                                                 ... ok
+
+[08:47:25][+00:08:23] >>> mac-format-label-empty
+[08:47:25][+00:08:23]   00 init-image           start (mac-format-label-empty)
+[08:47:25][+00:08:23]   00 init-image           ok    00:00:00
+[08:47:25][+00:08:23]   01 mac-format           start (mac-format-label-empty)
+[08:47:25][+00:08:23]   01 mac-format           ok    00:00:00
+[08:47:25][+00:08:23]   02 ship-to-vm           start (mac-format-label-empty)
+[08:47:26][+00:08:24]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:47:26][+00:08:24]   03 win-chkdsk           start (mac-format-label-empty)
+[08:47:32][+00:08:30] first attempt — 26/72 done
+[08:47:41][+00:08:39]   04 win-cli-verify       ok    00:03:25
+[08:47:41][+00:08:39]   05 win-chkdsk           start (cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk)
+[08:47:48][+00:08:46]   03 win-chkdsk           ok    00:00:32
+[08:47:48][+00:08:46] pass mac-format-label-cjk  (total 00:00:33)
+
+test mac-format-label-cjk                                                     ... ok
+
+[08:47:48][+00:08:46] >>> mac-format-label-latin1
+[08:47:48][+00:08:46]   00 init-image           start (mac-format-label-latin1)
+[08:47:48][+00:08:46]   00 init-image           ok    00:00:00
+[08:47:48][+00:08:46]   01 mac-format           start (mac-format-label-latin1)
+[08:47:48][+00:08:46]   01 mac-format           ok    00:00:00
+[08:47:48][+00:08:46]   02 ship-to-vm           start (mac-format-label-latin1)
+[08:47:49][+00:08:47]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:47:49][+00:08:47]   03 win-chkdsk           start (mac-format-label-latin1)
+[08:47:52][+00:08:50]   04 win-chkdsk           ok    00:03:17
+[08:47:52][+00:08:50] pass foreign-fragmented-indx-512-win-enumerate-chkdsk  (total 00:03:39)
+
+test foreign-fragmented-indx-512-win-enumerate-chkdsk                         ... ok
+
+[08:47:52][+00:08:50] >>> mac-format-large-1gib
+[08:47:52][+00:08:50]   00 init-image           start (mac-format-large-1gib)
+[08:47:53][+00:08:51]   00 init-image           ok    00:00:00
+[08:47:53][+00:08:51]   01 mac-format           start (mac-format-large-1gib)
+[08:47:53][+00:08:51]   01 mac-format           ok    00:00:00
+[08:47:53][+00:08:51]   02 ship-to-vm           start (mac-format-large-1gib)
+[08:47:58][+00:08:56]   02 ship-to-vm           FAIL  00:00:05  (share-copy)
+[08:47:58][+00:08:56] FAIL mac-format-large-1gib  (total 00:00:06)  — step 2 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-l ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+test mac-format-large-1gib                                                    ... FAILED
+
+[08:47:58][+00:08:56] >>> mac-format-mac-enumerate-empty
+[08:47:58][+00:08:56]   00 init-image           start (mac-format-mac-enumerate-empty)
+[08:48:00][+00:08:58]   00 init-image           ok    00:00:01
+[08:48:00][+00:08:58]   01 mac-format           start (mac-format-mac-enumerate-empty)
+[08:48:00][+00:08:58]   01 mac-format           ok    00:00:00
+[08:48:00][+00:08:58]   02 mac-enumerate        start (mac-format-mac-enumerate-empty)
+[08:48:01][+00:08:59]   02 mac-enumerate        ok    00:00:00
+[08:48:01][+00:08:59] pass mac-format-mac-enumerate-empty  (total 00:00:02)
+
+test mac-format-mac-enumerate-empty                                           ... ok
+
+[08:48:01][+00:08:59] >>> mac-format-mac-mkdir-mac-touch-mac-enumerate
+[08:48:01][+00:08:59]   00 init-image           start (mac-format-mac-mkdir-mac-touch-mac-enumerate)
+[08:48:01][+00:08:59]   00 init-image           ok    00:00:00
+[08:48:01][+00:08:59]   01 mac-format           start (mac-format-mac-mkdir-mac-touch-mac-enumerate)
+[08:48:01][+00:08:59]   01 mac-format           ok    00:00:00
+[08:48:01][+00:08:59]   02 mac-mkdir            start (mac-format-mac-mkdir-mac-touch-mac-enumerate)
+[08:48:01][+00:08:59]   02 mac-mkdir            ok    00:00:00
+[08:48:01][+00:08:59]   03 mac-touch            start (mac-format-mac-mkdir-mac-touch-mac-enumerate)
+[08:48:01][+00:08:59]   03 mac-touch            ok    00:00:00
+[08:48:01][+00:08:59]   04 mac-enumerate        start (mac-format-mac-mkdir-mac-touch-mac-enumerate)
+[08:48:01][+00:08:59]   04 mac-enumerate        ok    00:00:00
+[08:48:01][+00:08:59] pass mac-format-mac-mkdir-mac-touch-mac-enumerate  (total 00:00:00)
+
+test mac-format-mac-mkdir-mac-touch-mac-enumerate                             ... ok
+[08:48:01
+][+00:08:59] >>> mac-format-mac-split-index-root-win-chkdsk
+[08:48:01][+00:08:59]   00 init-image           start (mac-format-mac-split-index-root-win-chkdsk)
+[08:48:02][+00:09:00] first attempt — 31/72 done
+[08:48:02][+00:09:00]   00 init-image           ok    00:00:00
+[08:48:02][+00:09:00]   01 mac-format           start (mac-format-mac-split-index-root-win-chkdsk)
+[08:48:02][+00:09:00]   01 mac-format           ok    00:00:00
+[08:48:02][+00:09:00]   02 mac-mkdir            start (mac-format-mac-split-index-root-win-chkdsk)
+[08:48:02][+00:09:00]   02 mac-mkdir            ok    00:00:00
+[08:48:02][+00:09:00]   03 mac-touch-many       start (mac-format-mac-split-index-root-win-chkdsk)
+[08:48:04][+00:09:02]   03 win-chkdsk           ok    00:00:37
+[08:48:04][+00:09:02] pass mac-format-label-empty  (total 00:00:38)
+
+test mac-format-label-empty                                                   ... ok
+
+[08:48:04][+00:09:02] >>> mac-format-mac-split-routed-leaf-win-chkdsk
+[08:48:04][+00:09:02]   00 init-image           start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:04][+00:09:02]   00 init-image           ok    00:00:00
+[08:48:04][+00:09:02]   01 mac-format           start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:04][+00:09:02]   01 mac-format           ok    00:00:00
+[08:48:04][+00:09:02]   02 mac-mkdir            start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:04][+00:09:02]   02 mac-mkdir            ok    00:00:00
+[08:48:04][+00:09:02]   03 mac-touch-many       start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:05][+00:09:03]   05 win-chkdsk           ok    00:00:23
+[08:48:05][+00:09:03] pass cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk  (total 00:07:16)
+
+test cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk          ... ok
+
+[08:48:05][+00:09:03] >>> mac-format-mac-touch-mac-write-mac-enumerate
+[08:48:05][+00:09:03]   00 init-image           start (mac-format-mac-touch-mac-write-mac-enumerate)
+[08:48:06][+00:09:04]   00 init-image           ok    00:00:01
+[08:48:06][+00:09:04]   01 mac-format           start (mac-format-mac-touch-mac-write-mac-enumerate)
+[08:48:06][+00:09:04]   01 mac-format           ok    00:00:00
+[08:48:06][+00:09:04]   02 mac-touch            start (mac-format-mac-touch-mac-write-mac-enumerate)
+[08:48:06][+00:09:04]   02 mac-touch            ok    00:00:00
+[08:48:06][+00:09:04]   03 mac-write            start (mac-format-mac-touch-mac-write-mac-enumerate)
+[08:48:06][+00:09:04]   03 mac-write            ok    00:00:00
+[08:48:06][+00:09:04]   04 mac-enumerate        start (mac-format-mac-touch-mac-write-mac-enumerate)
+[08:48:06][+00:09:04]   04 mac-enumerate        ok    00:00:00
+[08:48:06][+00:09:04] pass mac-format-mac-touch-mac-write-mac-enumerate  (total 00:00:01)
+
+test mac-format-mac-touch-mac-write-mac-enumerate                             ... ok
+
+[08:48:06][+00:09:04] >>> mac-format-mac-write-mac-rm-mac-enumerate-empty
+[08:48:06][+00:09:04]   00 init-image           start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   00 init-image           ok    00:00:00
+[08:48:07][+00:09:05]   01 mac-format           start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   01 mac-format           ok    00:00:00
+[08:48:07][+00:09:05]   02 mac-touch            start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   02 mac-touch            ok    00:00:00
+[08:48:07][+00:09:05]   03 mac-write            start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   03 mac-touch-many       ok    00:00:02
+[08:48:07][+00:09:05]   04 ship-to-vm           start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:07][+00:09:05]   03 mac-write            ok    00:00:00
+[08:48:07][+00:09:05]   04 mac-rm               start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   04 mac-rm               ok    00:00:00
+[08:48:07][+00:09:05]   05 mac-enumerate        start (mac-format-mac-write-mac-rm-mac-enumerate-empty)
+[08:48:07][+00:09:05]   05 mac-enumerate        ok    00:00:00
+[08:48:07][+00:09:05] pass mac-format-mac-write-mac-rm-mac-enumerate-empty  (total 00:00:00)
+
+test mac-format-mac-write-mac-rm-mac-enumerate-empty                          ... ok
+
+[08:48:07][+00:09:05] >>> mac-format-mac-write-sparse-mixed-win-chkdsk
+[08:48:07][+00:09:05]   00 init-image           start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:07][+00:09:05]   00 init-image           ok    00:00:00
+[08:48:07][+00:09:05]   01 mac-format           start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:07][+00:09:05]   01 mac-format           ok    00:00:00
+[08:48:07][+00:09:05]   02 mac-touch            start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:07][+00:09:05]   02 mac-touch            ok    00:00:00
+[08:48:07][+00:09:05]   03 mac-write-sparse     start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:08][+00:09:06]   03 mac-write-sparse     ok    00:00:00
+[08:48:08][+00:09:06]   04 ship-to-vm           start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:09][+00:09:07]   04 ship-to-vm           ok    00:00:01  (share-copy)
+[08:48:09][+00:09:07]   05 win-chkdsk           start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:09][+00:09:07]   04 ship-to-vm           ok    00:00:01  (share-copy)
+[08:48:09][+00:09:07]   05 win-chkdsk           start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:24][+00:09:22]   03 win-chkdsk           ok    00:00:34
+[08:48:24][+00:09:22] pass mac-format-label-latin1  (total 00:00:36)
+
+test mac-format-label-latin1                                                  ... ok
+
+[08:48:24][+00:09:22] >>> mac-format-mac-write-sparse-zeros-win-chkdsk
+[08:48:24][+00:09:22]   00 init-image           start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:25][+00:09:22]   00 init-image           ok    00:00:00
+[08:48:25][+00:09:22]   01 mac-format           start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:25][+00:09:23]   01 mac-format           ok    00:00:00
+[08:48:25][+00:09:23]   02 mac-touch            start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:25][+00:09:23]   02 mac-touch            ok    00:00:00
+[08:48:25][+00:09:23]   03 mac-write-sparse     start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:25][+00:09:23]   03 mac-write-sparse     ok    00:00:00
+[08:48:25][+00:09:23]   04 ship-to-vm           start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:26][+00:09:24]   04 ship-to-vm           ok    00:00:00  (share-copy)
+[08:48:26][+00:09:24]   05 win-chkdsk           start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:48:28][+00:09:26]   03 mac-touch-many       ok    00:00:26
+[08:48:28][+00:09:26]   04 ship-to-vm           start (mac-format-mac-split-index-root-win-chkdsk)
+[08:48:29][+00:09:27]   04 ship-to-vm           FAIL  00:00:00  (share-copy)
+[08:48:29][+00:09:27] FAIL mac-format-mac-split-index-root-win-chkdsk  (total 00:00:27)  — step 4 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-m ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+test mac-format-mac-split-index-root-win-chkdsk                               ... FAILED
+
+[08:48:29][+00:09:27] >>> mac-format-mac-write-win-repeat-mount-3-win-chkdsk
+[08:48:29][+00:09:27]   00 init-image           start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:29][+00:09:27]   00 init-image           ok    00:00:00
+[08:48:29][+00:09:27]   01 mac-format           start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:29][+00:09:27]   01 mac-format           ok    00:00:00
+[08:48:29][+00:09:27]   02 mac-touch            start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:29][+00:09:27]   02 mac-touch            ok    00:00:00
+[08:48:29][+00:09:27]   03 mac-write            start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:29][+00:09:27]   03 mac-write            ok    00:00:00
+[08:48:29][+00:09:27]   04 ship-to-vm           start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:31][+00:09:29]   04 ship-to-vm           ok    00:00:01  (share-copy)
+[08:48:31][+00:09:29]   05 win-chkdsk           start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:48:32][+00:09:30] first attempt — 37/72 done
+[08:48:44][+00:09:42]   05 win-chkdsk           ok    00:00:34
+[08:48:44][+00:09:42]   06 win-chkdsk           start (mac-format-mac-write-sparse-mixed-win-chkdsk)
+[08:48:44][+00:09:42]   05 win-chkdsk           ok    00:00:35
+[08:48:44][+00:09:42]   06 win-enumerate        start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:50][+00:09:48]   06 win-enumerate        ok    00:00:05
+[08:48:50][+00:09:48]   07 win-assert-routed-names start (mac-format-mac-split-routed-leaf-win-chkdsk)
+[08:48:51][+00:09:49]   07 win-assert-routed-names ok    00:00:01
+[08:48:51][+00:09:49] pass mac-format-mac-split-routed-leaf-win-chkdsk  (total 00:00:47)
+
+test mac-format-mac-split-routed-leaf-win-chkdsk                              ... ok
+
+[08:48:51][+00:09:49] >>> mac-format-mkdir-rmdir-win-chkdsk
+[08:48:51][+00:09:49]   00 init-image           start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:48:51][+00:09:49]   00 init-image           ok    00:00:00
+[08:48:51][+00:09:49]   01 mac-format           start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:48:52][+00:09:49]   01 mac-format           ok    00:00:00
+[08:48:52][+00:09:49]   02 mac-mkdir            start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:48:52][+00:09:50]   02 mac-mkdir            ok    00:00:00
+[08:48:52][+00:09:50]   03 mac-rmdir            start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:48:52][+00:09:50]   03 mac-rmdir            ok    00:00:00
+[08:48:52][+00:09:50]   04 ship-to-vm           start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:48:54][+00:09:52]   04 ship-to-vm           ok    00:00:02  (share-copy)
+[08:48:54][+00:09:52]   05 win-chkdsk           start (mac-format-mkdir-rmdir-win-chkdsk)
+[08:49:02][+00:10:00] first attempt — 38/72 done
+[08:49:05][+00:10:03]   05 win-chkdsk           ok    00:00:39
+[08:49:05][+00:10:03]   06 win-chkdsk           start (mac-format-mac-write-sparse-zeros-win-chkdsk)
+[08:49:23][+00:10:21]   06 win-chkdsk           ok    00:00:17
+[08:49:23][+00:10:21] pass mac-format-mac-write-sparse-zeros-win-chkdsk  (total 00:00:58)
+
+test mac-format-mac-write-sparse-zeros-win-chkdsk                             ... ok
+
+[08:49:23][+00:10:21] >>> mac-format-mkdir-rmdir-win-chkdsk-64k
+[08:49:23][+00:10:21]   00 init-image           start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:24][+00:10:22]   00 init-image           ok    00:00:00
+[08:49:24][+00:10:22]   01 mac-format           start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:24][+00:10:22]   01 mac-format           ok    00:00:00
+[08:49:24][+00:10:22]   02 mac-mkdir            start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:24][+00:10:22]   02 mac-mkdir            ok    00:00:00
+[08:49:24][+00:10:22]   03 mac-rmdir            start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:24][+00:10:22]   03 mac-rmdir            ok    00:00:00
+[08:49:24][+00:10:22]   04 ship-to-vm           start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:27][+00:10:25]   04 ship-to-vm           ok    00:00:02  (share-copy)
+[08:49:27][+00:10:25]   05 win-chkdsk           start (mac-format-mkdir-rmdir-win-chkdsk-64k)
+[08:49:27][+00:10:25]   05 win-chkdsk           ok    00:00:33
+[08:49:27][+00:10:25] pass mac-format-mkdir-rmdir-win-chkdsk  (total 00:00:36)
+
+test mac-format-mkdir-rmdir-win-chkdsk                                        ... ok
+
+[08:49:27][+00:10:25] >>> mac-format-mkdir-set-dirty-win-chkdsk
+[08:49:27][+00:10:25]   00 init-image           start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:28][+00:10:26]   00 init-image           ok    00:00:00
+[08:49:28][+00:10:26]   01 mac-format           start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:28][+00:10:26]   01 mac-format           ok    00:00:00
+[08:49:28][+00:10:26]   02 mac-mkdir            start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:28][+00:10:26]   02 mac-mkdir            ok    00:00:00
+[08:49:28][+00:10:26]   03 mac-touch            start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:28][+00:10:26]   03 mac-touch            ok    00:00:00
+[08:49:28][+00:10:26]   04 mac-set-dirty        start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:28][+00:10:26]   04 mac-set-dirty        ok    00:00:00
+[08:49:28][+00:10:26]   05 ship-to-vm           start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:30][+00:10:28]   05 ship-to-vm           ok    00:00:02  (share-copy)
+[08:49:30][+00:10:28]   06 win-chkdsk           start (mac-format-mkdir-set-dirty-win-chkdsk)
+[08:49:32][+00:10:30] first attempt — 40/72 done
+[08:50:00][+00:10:58]   05 win-chkdsk           ok    00:00:32
+[08:50:00][+00:10:58] pass mac-format-mkdir-rmdir-win-chkdsk-64k  (total 00:00:36)
+
+test mac-format-mkdir-rmdir-win-chkdsk-64k                                    ... ok
+
+[08:50:00][+00:10:58] >>> mac-format-rename-win-chkdsk
+[08:50:00][+00:10:58]   00 init-image           start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   00 init-image           ok    00:00:00
+[08:50:00][+00:10:58]   01 mac-format           start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   01 mac-format           ok    00:00:00
+[08:50:00][+00:10:58]   02 mac-touch            start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   02 mac-touch            ok    00:00:00
+[08:50:00][+00:10:58]   03 mac-write            start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   03 mac-write            ok    00:00:00
+[08:50:00][+00:10:58]   04 mac-rename           start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   04 mac-rename           ok    00:00:00
+[08:50:00][+00:10:58]   05 mac-enumerate        start (mac-format-rename-win-chkdsk)
+[08:50:00][+00:10:58]   05 mac-enumerate        ok    00:00:00
+[08:50:00][+00:10:58]   06 ship-to-vm           start (mac-format-rename-win-chkdsk)
+[08:50:02][+00:11:00]   06 win-chkdsk           ok    00:00:31
+[08:50:02][+00:11:00] pass mac-format-mkdir-set-dirty-win-chkdsk  (total 00:00:34)
+
+test mac-format-mkdir-set-dirty-win-chkdsk                                    ... ok
+
+[08:50:02][+00:11:00] >>> mac-format-set-dirty-win-chkdsk
+[08:50:02][+00:11:00]   00 init-image           start (mac-format-set-dirty-win-chkdsk)
+[08:50:02][+00:11:00] first attempt — 42/72 done
+[08:50:02][+00:11:00]   06 ship-to-vm           ok    00:00:01  (share-copy)
+[08:50:02][+00:11:00]   07 win-chkdsk           start (mac-format-rename-win-chkdsk)
+[08:50:02][+00:11:00]   00 init-image           ok    00:00:00
+[08:50:02][+00:11:00]   01 mac-format           start (mac-format-set-dirty-win-chkdsk)
+[08:50:02][+00:11:00]   01 mac-format           ok    00:00:00
+[08:50:02][+00:11:00]   02 mac-set-dirty        start (mac-format-set-dirty-win-chkdsk)
+[08:50:02][+00:11:00]   02 mac-set-dirty        ok    00:00:00
+[08:50:02][+00:11:00]   03 ship-to-vm           start (mac-format-set-dirty-win-chkdsk)
+[08:50:03][+00:11:01]   03 ship-to-vm           ok    00:00:01  (share-copy)
+[08:50:03][+00:11:01]   04 win-chkdsk           start (mac-format-set-dirty-win-chkdsk)
+[08:50:32][+00:11:30] first attempt — 42/72 done
+[08:50:32][+00:11:30]   07 win-chkdsk           ok    00:00:30
+[08:50:32][+00:11:30] pass mac-format-rename-win-chkdsk  (total 00:00:32)
+
+test mac-format-rename-win-chkdsk                                             ... ok
+
+[08:50:32][+00:11:30] >>> mac-format-small-64mib
+[08:50:32][+00:11:30]   00 init-image           start (mac-format-small-64mib)
+[08:50:32][+00:11:30]   00 init-image           ok    00:00:00
+[08:50:32][+00:11:30]   01 mac-format           start (mac-format-small-64mib)
+[08:50:32][+00:11:30]   01 mac-format           ok    00:00:00
+[08:50:32][+00:11:30]   02 ship-to-vm           start (mac-format-small-64mib)
+[08:50:33][+00:11:31]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:50:33][+00:11:31]   03 win-chkdsk           start (mac-format-small-64mib)
+[08:50:36][+00:11:34]   04 win-chkdsk           ok    00:00:32
+[08:50:36][+00:11:34] pass mac-format-set-dirty-win-chkdsk  (total 00:00:33)
+
+test mac-format-set-dirty-win-chkdsk                                          ... ok
+
+[08:50:36][+00:11:34] >>> mac-format-tiny-32mib
+[08:50:36][+00:11:34]   00 init-image           start (mac-format-tiny-32mib)
+[08:50:36][+00:11:34]   00 init-image           ok    00:00:00
+[08:50:36][+00:11:34]   01 mac-format           start (mac-format-tiny-32mib)
+[08:50:36][+00:11:34]   01 mac-format           ok    00:00:00
+[08:50:36][+00:11:34]   02 ship-to-vm           start (mac-format-tiny-32mib)
+[08:50:36][+00:11:34]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:50:36][+00:11:34]   03 win-chkdsk           start (mac-format-tiny-32mib)
+[08:51:02][+00:12:00] first attempt — 44/72 done
+[08:51:02][+00:12:00]   03 win-chkdsk           ok    00:00:28
+[08:51:02][+00:12:00] pass mac-format-small-64mib  (total 00:00:29)
+
+test mac-format-small-64mib                                                   ... ok
+
+[08:51:02][+00:12:00] >>> mac-format-volume-16gib-cluster-4k
+[08:51:02][+00:12:00]   00 init-image           start (mac-format-volume-16gib-cluster-4k)
+[08:51:06][+00:12:04]   03 win-chkdsk           ok    00:00:29
+[08:51:06][+00:12:04] pass mac-format-tiny-32mib  (total 00:00:29)
+
+test mac-format-tiny-32mib                                                    ... ok
+
+[08:51:06][+00:12:04] >>> mac-format-volume-32mib-cluster-512
+[08:51:06][+00:12:04]   00 init-image           start (mac-format-volume-32mib-cluster-512)
+[08:51:06][+00:12:04]   00 init-image           ok    00:00:00
+[08:51:06][+00:12:04]   01 mac-format           start (mac-format-volume-32mib-cluster-512)
+[08:51:06][+00:12:04]   01 mac-format           ok    00:00:00
+[08:51:06][+00:12:04]   02 ship-to-vm           start (mac-format-volume-32mib-cluster-512)
+[08:51:07][+00:12:05]   02 ship-to-vm           ok    00:00:00  (share-copy)
+[08:51:07][+00:12:05]   03 win-chkdsk           start (mac-format-volume-32mib-cluster-512)
+[08:51:15][+00:12:13]   00 init-image           ok    00:00:13
+[08:51:15][+00:12:13]   01 mac-format           start (mac-format-volume-16gib-cluster-4k)
+[08:51:15][+00:12:13]   01 mac-format           ok    00:00:00
+[08:51:15][+00:12:13]   02 ship-to-vm           start (mac-format-volume-16gib-cluster-4k)
+[08:51:30][+00:12:28]   02 ship-to-vm           FAIL  00:00:14  (share-copy)
+[08:51:30][+00:12:28] FAIL mac-format-volume-16gib-cluster-4k  (total 00:00:28)  — step 2 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-v ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+test mac-format-volume-16gib-cluster-4k                                       ... FAILED
+
+[08:51:30][+00:12:28] >>> mac-format-volume-4gib-cluster-4k
+[08:51:30][+00:12:28]   00 init-image           start (mac-format-volume-4gib-cluster-4k)
+[08:51:32][+00:12:30] first attempt — 47/72 done
+[08:51:32][+00:12:30]   00 init-image           ok    00:00:02
+[08:51:32][+00:12:30]   01 mac-format           start (mac-format-volume-4gib-cluster-4k)
+[08:51:32][+00:12:30]   01 mac-format           ok    00:00:00
+[08:51:32][+00:12:30]   02 ship-to-vm           start (mac-format-volume-4gib-cluster-4k)
+[08:51:41][+00:12:39]   03 win-chkdsk           ok    00:00:34
+[08:51:41][+00:12:39] pass mac-format-volume-32mib-cluster-512  (total 00:00:35)
+
+test mac-format-volume-32mib-cluster-512                                      ... ok
+[08:51:46][+00:12:44]   02 ship-to-vm           ok    00:00:13  (share-copy)
+[08:51:46][+00:12:44]   03 win-chkdsk           start (mac-format-volume-4gib-cluster-4k)
+[08:52:02][+00:13:00] first attempt — 48/72 done
+[08:52:09][+00:13:07]   06 win-chkdsk           ok    00:03:25
+[08:52:09][+00:13:07] pass mac-format-mac-write-sparse-mixed-win-chkdsk  (total 00:04:01)
+
+test mac-format-mac-write-sparse-mixed-win-chkdsk                             ... ok
+
+[08:52:09][+00:13:07] >>> mac-format-win-repeat-mount-10-win-chkdsk
+[08:52:09][+00:13:07]   00 init-image           start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:52:09][+00:13:07]   00 init-image           ok    00:00:00
+[08:52:09][+00:13:07]   01 mac-format           start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:52:09][+00:13:07]   01 mac-format           ok    00:00:00
+[08:52:09][+00:13:07]   02 ship-to-vm           start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:52:10][+00:13:08]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:52:10][+00:13:08]   03 win-chkdsk           start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:52:14][+00:13:12]   05 win-chkdsk           ok    00:03:42
+[08:52:14][+00:13:12]   06 win-repeat-mount     start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:52:23][+00:13:21]   06 win-repeat-mount     ok    00:00:08
+[08:52:23][+00:13:21]   07 win-chkdsk           start (mac-format-mac-write-win-repeat-mount-3-win-chkdsk)
+[08:52:29][+00:13:27]   03 win-chkdsk           ok    00:00:42
+[08:52:29][+00:13:27] pass mac-format-volume-4gib-cluster-4k  (total 00:00:59)
+
+
+[08:52:29][+00:13:27] >>> mac-format-volume-4gib-cluster-64k
+
+[08:52:29][+00:13:27] >>> mac-format-win-repeat-mount-5-win-chkdsk
+test mac-format-volume-4gib-cluster-4k                                        ... ok
+[08:52:29][+00:13:27]   00 init-image           start (mac-format-volume-4gib-cluster-64k)
+[08:52:29][+00:13:27]   00 init-image           start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:52:29][+00:13:27]   00 init-image           ok    00:00:00
+[08:52:29][+00:13:27]   01 mac-format           start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:52:30][+00:13:28]   01 mac-format           ok    00:00:00
+[08:52:30][+00:13:28]   02 ship-to-vm           start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:52:32][+00:13:30] first attempt — 50/72 done
+[08:52:33][+00:13:31]   00 init-image           ok    00:00:03
+[08:52:33][+00:13:31]   01 mac-format           start (mac-format-volume-4gib-cluster-64k)
+[08:52:33][+00:13:31]   02 ship-to-vm           ok    00:00:03  (share-copy)
+[08:52:33][+00:13:31]   03 win-chkdsk           start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:52:33][+00:13:31]   01 mac-format           ok    00:00:00
+[08:52:33][+00:13:31]   02 ship-to-vm           start (mac-format-volume-4gib-cluster-64k)
+[08:52:50][+00:13:48]   07 win-chkdsk           ok    00:00:27
+[08:52:50][+00:13:48] pass mac-format-mac-write-win-repeat-mount-3-win-chkdsk  (total 00:04:20)
+
+
+[08:52:50][+00:13:48] >>> mac-format-win-write-deep-nesting-win-chkdsk
+test mac-format-mac-write-win-repeat-mount-3-win-chkdsk                       ... ok
+[08:52:50][+00:13:48]   00 init-image           start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:52:50][+00:13:48]   00 init-image           ok    00:00:00
+[08:52:50][+00:13:48]   01 mac-format           start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:52:50][+00:13:48]   01 mac-format           ok    00:00:00
+[08:52:50][+00:13:48]   02 ship-to-vm           start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:52:52][+00:13:50]   03 win-chkdsk           ok    00:00:41
+[08:52:52][+00:13:50]   04 win-repeat-mount     start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:52:53][+00:13:51]   02 ship-to-vm           ok    00:00:20  (share-copy)
+[08:52:53][+00:13:51]   03 win-chkdsk           start (mac-format-volume-4gib-cluster-64k)
+[08:52:54][+00:13:52]   02 ship-to-vm           ok    00:00:03  (share-copy)
+[08:52:54][+00:13:52]   03 win-chkdsk           start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:53:02][+00:14:00] first attempt — 51/72 done
+[08:53:14][+00:14:12]   03 win-chkdsk           ok    00:00:40
+[08:53:14][+00:14:12]   04 win-repeat-mount     start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:53:20][+00:14:18]   04 win-repeat-mount     ok    00:00:27
+[08:53:20][+00:14:18]   05 win-chkdsk           start (mac-format-win-repeat-mount-10-win-chkdsk)
+[08:53:28][+00:14:26]   04 win-repeat-mount     ok    00:00:14
+[08:53:28][+00:14:26]   05 win-chkdsk           start (mac-format-win-repeat-mount-5-win-chkdsk)
+[08:53:30][+00:14:28]   03 win-chkdsk           ok    00:00:36
+[08:53:30][+00:14:28]   04 win-mkdir            start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:53:32][+00:14:30] first attempt — 51/72 done
+[08:53:38][+00:14:36]   05 win-chkdsk           ok    00:00:18
+[08:53:38][+00:14:36] pass mac-format-win-repeat-mount-10-win-chkdsk  (total 00:01:29)
+
+test mac-format-win-repeat-mount-10-win-chkdsk                                ... ok
+
+[08:53:38][+00:14:36] >>> mac-format-win-write-large
+[08:53:38][+00:14:36]   00 init-image           start (mac-format-win-write-large)
+[08:53:39][+00:14:37]   00 init-image           ok    00:00:00
+[08:53:39][+00:14:37]   01 mac-format           start (mac-format-win-write-large)
+[08:53:39][+00:14:37]   01 mac-format           ok    00:00:00
+[08:53:39][+00:14:37]   02 ship-to-vm           start (mac-format-win-write-large)
+[08:53:40][+00:14:38]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:53:40][+00:14:38]   03 win-chkdsk           start (mac-format-win-write-large)
+[08:53:44][+00:14:42]   04 win-mkdir            ok    00:00:13
+[08:53:44][+00:14:42]   05 win-write-content    start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:53:44][+00:14:42]   03 win-chkdsk           ok    00:00:50
+[08:53:44][+00:14:42] pass mac-format-volume-4gib-cluster-64k  (total 00:01:14)
+
+test mac-format-volume-4gib-cluster-64k                                       ... ok
+
+[08:53:44][+00:14:42] >>> mac-format-win-write-mac-enumerate
+[08:53:44][+00:14:42]   00 init-image           start (mac-format-win-write-mac-enumerate)
+[08:53:44][+00:14:42]   00 init-image           ok    00:00:00
+[08:53:44][+00:14:42]   01 mac-format           start (mac-format-win-write-mac-enumerate)
+[08:53:44][+00:14:42]   01 mac-format           ok    00:00:00
+[08:53:44][+00:14:42]   02 ship-to-vm           start (mac-format-win-write-mac-enumerate)
+[08:53:46][+00:14:45]   02 ship-to-vm           ok    00:00:02  (share-copy)
+[08:53:46][+00:14:45]   03 win-write-content    start (mac-format-win-write-mac-enumerate)
+[08:53:51][+00:14:49]   05 win-write-content    ok    00:00:06
+[08:53:51][+00:14:49]   06 win-chkdsk           start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:54:00][+00:14:58]   05 win-chkdsk           ok    00:00:32
+[08:54:00][+00:14:58] pass mac-format-win-repeat-mount-5-win-chkdsk  (total 00:01:30)
+
+test mac-format-win-repeat-mount-5-win-chkdsk                                 ...
+[08:54:00][+00:14:58ok
+] >>> mac-format-win-write-many-small
+[08:54:00][+00:14:58]   00 init-image           start (mac-format-win-write-many-small)
+[08:54:00][+00:14:58]   00 init-image           ok    00:00:00
+[08:54:00][+00:14:58]   01 mac-format           start (mac-format-win-write-many-small)
+[08:54:00][+00:14:58]   01 mac-format           ok    00:00:00
+[08:54:00][+00:14:58]   02 ship-to-vm           start (mac-format-win-write-many-small)
+[08:54:02][+00:15:00]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:54:02][+00:15:00]   03 win-chkdsk           start (mac-format-win-write-many-small)
+[08:54:02][+00:15:00] first attempt — 54/72 done
+[08:54:09][+00:15:07]   03 win-write-content    ok    00:00:22
+[08:54:09][+00:15:07]   04 win-write-content    start (mac-format-win-write-mac-enumerate)
+[08:54:15][+00:15:13]   06 win-chkdsk           ok    00:00:23
+[08:54:15][+00:15:13]   07 win-enumerate        start (mac-format-win-write-deep-nesting-win-chkdsk)
+[08:54:16][+00:15:14]   04 win-write-content    ok    00:00:06
+[08:54:16][+00:15:14]   05 ship-to-host         start (mac-format-win-write-mac-enumerate)
+[08:54:17][+00:15:15]   05 ship-to-host         ok    00:00:01  (share-copy)
+[08:54:17][+00:15:15]   06 mac-enumerate        start (mac-format-win-write-mac-enumerate)
+[08:54:17][+00:15:15]   06 mac-enumerate        ok    00:00:00
+[08:54:17][+00:15:15] pass mac-format-win-write-mac-enumerate  (total 00:00:33)
+
+
+[08:54:17][+00:15:15] >>> mac-format-win-write-many-win-delete-half-win-chkdsk
+test mac-format-win-write-mac-enumerate                                       ... ok
+[08:54:17][+00:15:15]   00 init-image           start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:54:17][+00:15:15]   00 init-image           ok    00:00:00
+[08:54:17][+00:15:15]   01 mac-format           start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:54:17][+00:15:15]   01 mac-format           ok    00:00:00
+[08:54:17][+00:15:15]   02 ship-to-vm           start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:54:19][+00:15:17]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:54:19][+00:15:17]   03 win-chkdsk           start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:54:22][+00:15:20]   07 win-enumerate        ok    00:00:06
+[08:54:22][+00:15:20] pass mac-format-win-write-deep-nesting-win-chkdsk  (total 00:01:31)
+
+test mac-format-win-write-deep-nesting-win-chkdsk                             ... ok
+
+[08:54:22][+00:15:20] >>> mac-format-win-write-medium
+[08:54:22][+00:15:20]   00 init-image           start (mac-format-win-write-medium)
+[08:54:22][+00:15:20]   00 init-image           ok    00:00:00
+[08:54:22][+00:15:20]   01 mac-format           start (mac-format-win-write-medium)
+[08:54:22][+00:15:20]   01 mac-format           ok    00:00:00
+[08:54:22][+00:15:20]   02 ship-to-vm           start (mac-format-win-write-medium)
+[08:54:24][+00:15:22]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:54:24][+00:15:22]   03 win-chkdsk           start (mac-format-win-write-medium)
+[08:54:25][+00:15:23]   03 win-chkdsk           ok    00:00:44
+[08:54:25][+00:15:23]   04 win-write-size       start (mac-format-win-write-large)
+[08:54:31][+00:15:29]   04 win-write-size       ok    00:00:06
+[08:54:31][+00:15:29]   05 win-chkdsk           start (mac-format-win-write-large)
+[08:54:32][+00:15:30] first attempt — 56/72 done
+[08:54:39][+00:15:37]   03 win-chkdsk           ok    00:00:37
+[08:54:39][+00:15:37]   04 win-write-many-size  start (mac-format-win-write-many-small)
+[08:54:46][+00:15:44]   04 win-write-many-size  ok    00:00:06
+[08:54:46][+00:15:44]   05 win-chkdsk           start (mac-format-win-write-many-small)
+[08:54:54][+00:15:52]   05 win-chkdsk           ok    00:00:23
+[08:54:54][+00:15:52]   06 win-enumerate        start (mac-format-win-write-large)
+[08:55:00][+00:15:58]   06 win-enumerate        ok    00:00:05
+[08:55:00][+00:15:58] pass mac-format-win-write-large  (total 00:01:21)
+
+test mac-format-win-write-large                                               ... ok
+
+[08:55:00][+00:15:58] >>> mac-format-win-write-modify-win-chkdsk
+[08:55:00][+00:15:58]   00 init-image           start (mac-format-win-write-modify-win-chkdsk)
+[08:55:00][+00:15:58]   00 init-image           ok    00:00:00
+[08:55:00][+00:15:58]   01 mac-format           start (mac-format-win-write-modify-win-chkdsk)
+[08:55:00][+00:15:58]   01 mac-format           ok    00:00:00
+[08:55:00][+00:15:58]   02 ship-to-vm           start (mac-format-win-write-modify-win-chkdsk)
+[08:55:02][+00:16:00] first attempt — 57/72 done
+[08:55:02][+00:16:00]   02 ship-to-vm           ok    00:00:02  (share-copy)
+[08:55:02][+00:16:00]   03 win-chkdsk           start (mac-format-win-write-modify-win-chkdsk)
+[08:55:03][+00:16:01]   03 win-chkdsk           ok    00:00:44
+[08:55:03][+00:16:01]   04 win-write-many-size  start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:55:10][+00:16:08]   03 win-chkdsk           ok    00:00:46
+[08:55:10][+00:16:08]   04 win-write-size       start (mac-format-win-write-medium)
+[08:55:12][+00:16:10]   04 win-write-many-size  ok    00:00:09
+[08:55:12][+00:16:10]   05 win-delete-many      start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:55:16][+00:16:14]   05 win-chkdsk           ok    00:00:30
+[08:55:16][+00:16:14]   06 win-enumerate        start (mac-format-win-write-many-small)
+[08:55:17][+00:16:15]   04 win-write-size       ok    00:00:07
+[08:55:17][+00:16:15]   05 win-chkdsk           start (mac-format-win-write-medium)
+[08:55:20][+00:16:18]   05 win-delete-many      ok    00:00:07
+[08:55:20][+00:16:18]   06 win-chkdsk           start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:55:23][+00:16:21]   06 win-enumerate        ok    00:00:07
+[08:55:23][+00:16:21] pass mac-format-win-write-many-small  (total 00:01:23)
+
+test mac-format-win-write-many-small                                          ... ok
+
+[08:55:23][+00:16:21] >>> mac-format-win-write-remount-win-chkdsk
+[08:55:23][+00:16:21]   00 init-image           start (mac-format-win-write-remount-win-chkdsk)
+[08:55:23][+00:16:21]   00 init-image           ok    00:00:00
+[08:55:23][+00:16:21]   01 mac-format           start (mac-format-win-write-remount-win-chkdsk)
+[08:55:23][+00:16:21]   01 mac-format           ok    00:00:00
+[08:55:23][+00:16:21]   02 ship-to-vm           start (mac-format-win-write-remount-win-chkdsk)
+[08:55:25][+00:16:23]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:55:25][+00:16:23]   03 win-chkdsk           start (mac-format-win-write-remount-win-chkdsk)
+[08:55:32][+00:16:30] first attempt — 58/72 done
+[08:55:42][+00:16:40]   05 win-chkdsk           ok    00:00:24
+[08:55:42][+00:16:40]   06 win-enumerate        start (mac-format-win-write-medium)
+[08:55:43][+00:16:41]   03 win-chkdsk           ok    00:00:40
+[08:55:43][+00:16:41]   04 win-write-size       start (mac-format-win-write-modify-win-chkdsk)
+[08:55:48][+00:16:46]   06 win-enumerate        ok    00:00:06
+[08:55:48][+00:16:46] pass mac-format-win-write-medium  (total 00:01:26)
+
+test mac-format-win-write-medium                                              ... ok
+
+[08:55:48][+00:16:46] >>> mac-format-win-write-rename-win-chkdsk
+[08:55:48][+00:16:46]   00 init-image           start (mac-format-win-write-rename-win-chkdsk)
+[08:55:48][+00:16:46]   00 init-image           ok    00:00:00
+[08:55:48][+00:16:46]   01 mac-format           start (mac-format-win-write-rename-win-chkdsk)
+[08:55:48][+00:16:46]   01 mac-format           ok    00:00:00
+[08:55:48][+00:16:46]   02 ship-to-vm           start (mac-format-win-write-rename-win-chkdsk)
+[08:55:49][+00:16:47]   04 win-write-size       ok    00:00:05
+[08:55:49][+00:16:47]   05 win-modify           start (mac-format-win-write-modify-win-chkdsk)
+[08:55:51][+00:16:49]   02 ship-to-vm           ok    00:00:02  (share-copy)
+[08:55:51][+00:16:49]   03 win-chkdsk           start (mac-format-win-write-rename-win-chkdsk)
+[08:55:56][+00:16:54]   05 win-modify           ok    00:00:06
+[08:55:56][+00:16:54]   06 win-chkdsk           start (mac-format-win-write-modify-win-chkdsk)
+[08:56:02][+00:17:00] first attempt — 59/72 done
+[08:56:04][+00:17:02]   03 win-chkdsk           ok    00:00:38
+[08:56:04][+00:17:02]   04 win-write-content    start (mac-format-win-write-remount-win-chkdsk)
+[08:56:09][+00:17:07]   04 win-write-content    ok    00:00:05
+[08:56:09][+00:17:07]   05 win-repeat-mount     start (mac-format-win-write-remount-win-chkdsk)
+[08:56:14][+00:17:12]   05 win-repeat-mount     ok    00:00:04
+[08:56:14][+00:17:12]   06 win-chkdsk           start (mac-format-win-write-remount-win-chkdsk)
+[08:56:14][+00:17:12]   06 win-chkdsk           ok    00:00:18
+[08:56:14][+00:17:12]   07 win-read             start (mac-format-win-write-modify-win-chkdsk)
+[08:56:20][+00:17:18]   07 win-read             ok    00:00:05
+[08:56:20][+00:17:18]   08 win-enumerate        start (mac-format-win-write-modify-win-chkdsk)
+[08:56:28][+00:17:26]   08 win-enumerate        ok    00:00:07
+[08:56:28][+00:17:26] pass mac-format-win-write-modify-win-chkdsk  (total 00:01:27)
+
+test mac-format-win-write-modify-win-chkdsk                                   ... ok
+
+[08:56:28][+00:17:26] >>> mac-format-win-write-then-delete
+[08:56:28][+00:17:26]   00 init-image           start (mac-format-win-write-then-delete)
+[08:56:28][+00:17:26]   00 init-image           ok    00:00:00
+[08:56:28][+00:17:26]   01 mac-format           start (mac-format-win-write-then-delete)
+[08:56:28][+00:17:26]   01 mac-format           ok    00:00:00
+[08:56:28][+00:17:26]   02 ship-to-vm           start (mac-format-win-write-then-delete)
+[08:56:29][+00:17:27]   03 win-chkdsk           ok    00:00:37
+[08:56:29][+00:17:27]   04 win-write-content    start (mac-format-win-write-rename-win-chkdsk)
+[08:56:30][+00:17:28]   02 ship-to-vm           ok    00:00:02  (share-copy)
+[08:56:30][+00:17:28]   03 win-write-content    start (mac-format-win-write-then-delete)
+[08:56:32][+00:17:30] first attempt — 60/72 done
+[08:56:35][+00:17:33]   06 win-chkdsk           ok    00:00:20
+[08:56:35][+00:17:33]   07 win-enumerate        start (mac-format-win-write-remount-win-chkdsk)
+[08:56:35][+00:17:33]   04 win-write-content    ok    00:00:06
+[08:56:35][+00:17:33]   05 win-rename           start (mac-format-win-write-rename-win-chkdsk)
+[08:56:40][+00:17:38]   07 win-enumerate        ok    00:00:05
+[08:56:40][+00:17:38] pass mac-format-win-write-remount-win-chkdsk  (total 00:01:17)
+
+test mac-format-win-write-remount-win-chkdsk                                  ... ok
+
+[08:56:40][+00:17:38] >>> mac-format-win-write-tiny
+[08:56:40][+00:17:38]   00 init-image           start (mac-format-win-write-tiny)
+[08:56:40][+00:17:38]   00 init-image           ok    00:00:00
+[08:56:40][+00:17:38]   01 mac-format           start (mac-format-win-write-tiny)
+[08:56:40][+00:17:38]   01 mac-format           ok    00:00:00
+[08:56:40][+00:17:38]   02 ship-to-vm           start (mac-format-win-write-tiny)
+[08:56:44][+00:17:42]   02 ship-to-vm           ok    00:00:03  (share-copy)
+[08:56:44][+00:17:42]   03 win-chkdsk           start (mac-format-win-write-tiny)
+[08:56:52][+00:17:50]   03 win-write-content    ok    00:00:22
+[08:56:52][+00:17:50]   04 win-write-content    start (mac-format-win-write-then-delete)
+[08:56:57][+00:17:55]   04 win-write-content    ok    00:00:04
+[08:56:57][+00:17:55]   05 win-write-content    start (mac-format-win-write-then-delete)
+[08:57:02][+00:18:00] first attempt — 61/72 done
+[08:57:02][+00:18:00]   05 win-write-content    ok    00:00:05
+[08:57:02][+00:18:00]   06 win-delete           start (mac-format-win-write-then-delete)
+[08:57:07][+00:18:05]   06 win-delete           ok    00:00:04
+[08:57:07][+00:18:05]   07 win-chkdsk           start (mac-format-win-write-then-delete)
+[08:57:16][+00:18:14]   03 win-chkdsk           ok    00:00:31
+[08:57:16][+00:18:14]   04 win-write-content    start (mac-format-win-write-tiny)
+[08:57:22][+00:18:20]   04 win-write-content    ok    00:00:05
+[08:57:22][+00:18:20]   05 win-chkdsk           start (mac-format-win-write-tiny)
+[08:57:24][+00:18:22]   07 win-chkdsk           ok    00:00:17
+[08:57:24][+00:18:22]   08 win-enumerate        start (mac-format-win-write-then-delete)
+[08:57:30][+00:18:28]   08 win-enumerate        ok    00:00:05
+[08:57:30][+00:18:28] pass mac-format-win-write-then-delete  (total 00:01:02)
+
+test mac-format-win-write-then-delete                                         ... ok
+
+[08:57:30][+00:18:28] >>> mac-format-win-write-win-delete-mac-verify-empty
+[08:57:30][+00:18:28]   00 init-image           start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:57:30][+00:18:28]   00 init-image           ok    00:00:00
+[08:57:30][+00:18:28]   01 mac-format           start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:57:30][+00:18:28]   01 mac-format           ok    00:00:00
+[08:57:30][+00:18:28]   02 ship-to-vm           start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:57:31][+00:18:29]   02 ship-to-vm           ok    00:00:01  (share-copy)
+[08:57:31][+00:18:29]   03 win-write-content    start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:57:32][+00:18:30] first attempt — 62/72 done
+[08:57:38][+00:18:36]   05 win-chkdsk           ok    00:00:16
+[08:57:38][+00:18:36]   06 win-enumerate        start (mac-format-win-write-tiny)
+[08:57:44][+00:18:42]   06 win-enumerate        ok    00:00:05
+[08:57:44][+00:18:42] pass mac-format-win-write-tiny  (total 00:01:03)
+
+test mac-format-win-write-tiny                                                ... ok
+
+[08:57:44][+00:18:42] >>> mac-format-write-set-dirty-win-chkdsk
+[08:57:44][+00:18:42]   00 init-image           start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:44][+00:18:42]   00 init-image           ok    00:00:00
+[08:57:44][+00:18:42]   01 mac-format           start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:44][+00:18:42]   01 mac-format           ok    00:00:00
+[08:57:44][+00:18:42]   02 mac-touch            start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:44][+00:18:42]   02 mac-touch            ok    00:00:00
+[08:57:44][+00:18:42]   03 mac-write            start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:44][+00:18:42]   03 mac-write            ok    00:00:00
+[08:57:44][+00:18:42]   04 mac-set-dirty        start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:44][+00:18:42]   04 mac-set-dirty        ok    00:00:00
+[08:57:44][+00:18:42]   05 ship-to-vm           start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:45][+00:18:43]   05 ship-to-vm           ok    00:00:01  (share-copy)
+[08:57:45][+00:18:43]   06 win-chkdsk           start (mac-format-write-set-dirty-win-chkdsk)
+[08:57:53][+00:18:51]   03 win-write-content    ok    00:00:21
+[08:57:53][+00:18:51]   04 win-write-content    start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:57:58][+00:18:56]   04 win-write-content    ok    00:00:04
+[08:57:58][+00:18:56]   05 win-write-content    start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:58:02][+00:19:00] first attempt — 63/72 done
+[08:58:03][+00:19:01]   05 win-write-content    ok    00:00:05
+[08:58:03][+00:19:01]   06 win-delete           start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:58:08][+00:19:06]   06 win-delete           ok    00:00:04
+[08:58:08][+00:19:06]   07 win-delete           start (mac-format-win-write-win-delete-mac-verify-empty)
+[08:58:17][+00:19:15]   06 win-chkdsk           ok    00:00:32
+[08:58:17][+00:19:15] pass mac-format-write-set-dirty-win-chkdsk  (total 00:00:33)
+
+test mac-format-write-set-dirty-win-chkdsk                                    ... ok
+
+[08:58:17][+00:19:15] >>> win-format-mac-enumerate-empty
+[08:58:17][+00:19:15]   00 init-image           start (win-format-mac-enumerate-empty)
+[08:58:18][+00:19:16]   00 init-image           ok    00:00:00
+[08:58:18][+00:19:16]   01 ship-to-vm           start (win-format-mac-enumerate-empty)
+[08:58:19][+00:19:17]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:58:19][+00:19:17]   02 win-format           start (win-format-mac-enumerate-empty)
+[08:58:32][+00:19:30] first attempt — 64/72 done
+[08:58:42][+00:19:40]   02 win-format           ok    00:00:23
+[08:58:42][+00:19:40]   03 ship-to-host         start (win-format-mac-enumerate-empty)
+[08:58:43][+00:19:41]   06 win-chkdsk           ok    00:03:23
+[08:58:43][+00:19:41]   07 win-enumerate        start (mac-format-win-write-many-win-delete-half-win-chkdsk)
+[08:58:44][+00:19:42]   03 ship-to-host         ok    00:00:01  (share-copy)
+[08:58:44][+00:19:42]   04 mac-enumerate        start (win-format-mac-enumerate-empty)
+[08:58:44][+00:19:42]   04 mac-enumerate        ok    00:00:00
+[08:58:44][+00:19:42] pass win-format-mac-enumerate-empty  (total 00:00:26)
+
+
+[08:58:44][+00:19:42] >>> win-format-win-write-mac-delete-win-verify
+[08:58:44][+00:19:42]   00 init-image           start (win-format-win-write-mac-delete-win-verify)
+test win-format-mac-enumerate-empty                                           ... ok
+[08:58:44][+00:19:42]   00 init-image           ok    00:00:00
+[08:58:44][+00:19:42]   01 ship-to-vm           start (win-format-win-write-mac-delete-win-verify)
+[08:58:45][+00:19:43]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:58:45][+00:19:43]   02 win-format           start (win-format-win-write-mac-delete-win-verify)
+[08:58:49][+00:19:47]   07 win-enumerate        ok    00:00:06
+[08:58:49][+00:19:47] pass mac-format-win-write-many-win-delete-half-win-chkdsk  (total 00:04:32)
+
+test mac-format-win-write-many-win-delete-half-win-chkdsk                     ... ok
+
+[08:58:49][+00:19:47] >>> win-format-win-write-mac-verify
+[08:58:49][+00:19:47]   00 init-image           start (win-format-win-write-mac-verify)
+[08:58:49][+00:19:47]   00 init-image           ok    00:00:00
+[08:58:49][+00:19:47]   01 ship-to-vm           start (win-format-win-write-mac-verify)
+[08:58:51][+00:19:49]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:58:51][+00:19:49]   02 win-format           start (win-format-win-write-mac-verify)
+[08:59:02][+00:20:00] first attempt — 66/72 done
+[08:59:09][+00:20:07]   02 win-format           ok    00:00:23
+[08:59:09][+00:20:07]   03 win-write-content    start (win-format-win-write-mac-delete-win-verify)
+[08:59:14][+00:20:12]   03 win-write-content    ok    00:00:05
+[08:59:14][+00:20:12]   04 win-write-content    start (win-format-win-write-mac-delete-win-verify)
+[08:59:15][+00:20:13]   02 win-format           ok    00:00:24
+[08:59:15][+00:20:13]   03 win-write-content    start (win-format-win-write-mac-verify)
+[08:59:20][+00:20:18]   04 win-write-content    ok    00:00:05
+[08:59:20][+00:20:18]   05 ship-to-host         start (win-format-win-write-mac-delete-win-verify)
+[08:59:21][+00:20:19]   03 win-write-content    ok    00:00:05
+[08:59:21][+00:20:19]   04 win-write-content    start (win-format-win-write-mac-verify)
+[08:59:21][+00:20:19]   05 ship-to-host         ok    00:00:01  (share-copy)
+[08:59:21][+00:20:19]   06 mac-rm               start (win-format-win-write-mac-delete-win-verify)
+[08:59:21][+00:20:19]   06 mac-rm               ok    00:00:00
+[08:59:21][+00:20:19]   07 ship-to-vm           start (win-format-win-write-mac-delete-win-verify)
+[08:59:23][+00:20:21]   07 ship-to-vm           ok    00:00:01  (share-copy)
+[08:59:23][+00:20:21]   08 win-chkdsk           start (win-format-win-write-mac-delete-win-verify)
+[08:59:26][+00:20:24]   04 win-write-content    ok    00:00:05
+[08:59:26][+00:20:24]   05 ship-to-host         start (win-format-win-write-mac-verify)
+[08:59:27][+00:20:25]   05 ship-to-host         ok    00:00:00  (share-copy)
+[08:59:27][+00:20:25]   06 mac-enumerate        start (win-format-win-write-mac-verify)
+[08:59:27][+00:20:25]   06 mac-enumerate        ok    00:00:00
+[08:59:27][+00:20:25] pass win-format-win-write-mac-verify  (total 00:00:38)
+
+test win-format-win-write-mac-verify                                          ... ok
+
+[08:59:27][+00:20:25] >>> win-format-win-write-mac-write-win-verify
+[08:59:27][+00:20:25]   00 init-image           start (win-format-win-write-mac-write-win-verify)
+[08:59:28][+00:20:26]   00 init-image           ok    00:00:00
+[08:59:28][+00:20:26]   01 ship-to-vm           start (win-format-win-write-mac-write-win-verify)
+[08:59:29][+00:20:27]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[08:59:29][+00:20:27]   02 win-format           start (win-format-win-write-mac-write-win-verify)
+[08:59:32][+00:20:30] first attempt — 67/72 done
+[08:59:41][+00:20:39]   05 win-rename           ok    00:03:06
+[08:59:41][+00:20:39]   06 win-chkdsk           start (mac-format-win-write-rename-win-chkdsk)
+[08:59:53][+00:20:51]   02 win-format           ok    00:00:24
+[08:59:53][+00:20:51]   03 win-write-content    start (win-format-win-write-mac-write-win-verify)
+[08:59:58][+00:20:56]   08 win-chkdsk           ok    00:00:34
+[08:59:58][+00:20:56]   09 win-enumerate        start (win-format-win-write-mac-delete-win-verify)
+[09:00:00][+00:20:58]   03 win-write-content    ok    00:00:07
+[09:00:00][+00:20:58]   04 ship-to-host         start (win-format-win-write-mac-write-win-verify)
+[09:00:01][+00:20:59]   04 ship-to-host         ok    00:00:01  (share-copy)
+[09:00:01][+00:20:59]   05 mac-touch            start (win-format-win-write-mac-write-win-verify)
+[09:00:01][+00:20:59]   05 mac-touch            ok    00:00:00
+[09:00:01][+00:20:59]   06 mac-write            start (win-format-win-write-mac-write-win-verify)
+[09:00:01][+00:20:59]   06 mac-write            ok    00:00:00
+[09:00:01][+00:20:59]   07 ship-to-vm           start (win-format-win-write-mac-write-win-verify)
+[09:00:02][+00:21:00] first attempt — 67/72 done
+[09:00:03][+00:21:01]   06 win-chkdsk           ok    00:00:21
+[09:00:03][+00:21:01]   07 win-enumerate        start (mac-format-win-write-rename-win-chkdsk)
+[09:00:03][+00:21:01]   07 ship-to-vm           ok    00:00:02  (share-copy)
+[09:00:03][+00:21:01]   08 win-chkdsk           start (win-format-win-write-mac-write-win-verify)
+[09:00:04][+00:21:02]   09 win-enumerate        ok    00:00:06
+[09:00:04][+00:21:02] pass win-format-win-write-mac-delete-win-verify  (total 00:01:20)
+
+test win-format-win-write-mac-delete-win-verify                               ... ok
+
+[09:00:04][+00:21:02] >>> win-format-win-write-many-mac-insert-index-allocation-win-chkdsk
+[09:00:04][+00:21:02]   00 init-image           start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:05][+00:21:03]   00 init-image           ok    00:00:00
+[09:00:05][+00:21:03]   01 ship-to-vm           start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:06][+00:21:04]   01 ship-to-vm           ok    00:00:01  (share-copy)
+[09:00:06][+00:21:04]   02 win-format           start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:10][+00:21:08]   07 win-enumerate        ok    00:00:06
+[09:00:10][+00:21:08] pass mac-format-win-write-rename-win-chkdsk  (total 00:04:21)
+
+test mac-format-win-write-rename-win-chkdsk                                   ... ok
+[09:00:31][+00:21:29]   02 win-format           ok    00:00:24
+[09:00:31][+00:21:29]   03 win-write-many-size  start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:32][+00:21:30] first attempt — 69/72 done
+[09:00:36][+00:21:34]   08 win-chkdsk           ok    00:00:32
+[09:00:36][+00:21:34]   09 win-enumerate        start (win-format-win-write-mac-write-win-verify)
+[09:00:36][+00:21:34]   03 win-write-many-size  ok    00:00:05
+[09:00:36][+00:21:34]   04 ship-to-host         start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:38][+00:21:36]   04 ship-to-host         ok    00:00:01  (share-copy)
+[09:00:38][+00:21:36]   05 mac-touch            start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:38][+00:21:36]   05 mac-touch            ok    00:00:00
+[09:00:38][+00:21:36]   06 ship-to-vm           start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:39][+00:21:37]   06 ship-to-vm           ok    00:00:00  (share-copy)
+[09:00:39][+00:21:37]   07 win-chkdsk           start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:00:42][+00:21:40]   09 win-enumerate        ok    00:00:05
+[09:00:42][+00:21:40] pass win-format-win-write-mac-write-win-verify  (total 00:01:14)
+
+test win-format-win-write-mac-write-win-verify                                ... ok
+[09:01:02][+00:22:00] first attempt — 70/72 done
+[09:01:10][+00:22:08]   07 win-chkdsk           ok    00:00:30
+[09:01:10][+00:22:08]   08 win-enumerate        start (win-format-win-write-many-mac-insert-index-allocation-win-chkdsk)
+[09:01:13][+00:22:11]   07 win-delete           ok    00:03:05
+[09:01:13][+00:22:11]   08 win-delete           start (mac-format-win-write-win-delete-mac-verify-empty)
+[09:01:15][+00:22:13]   08 win-enumerate        ok    00:00:05
+[09:01:15][+00:22:13] pass win-format-win-write-many-mac-insert-index-allocation-win-chkdsk  (total 00:01:10)
+
+test win-format-win-write-many-mac-insert-index-allocation-win-chkdsk         ... ok
+[09:01:19][+00:22:17]   08 win-delete           ok    00:00:05
+[09:01:19][+00:22:17]   09 ship-to-host         start (mac-format-win-write-win-delete-mac-verify-empty)
+[09:01:20][+00:22:18]   09 ship-to-host         ok    00:00:01  (share-copy)
+[09:01:20][+00:22:18]   10 mac-enumerate        start (mac-format-win-write-win-delete-mac-verify-empty)
+[09:01:20][+00:22:18]   10 mac-enumerate        ok    00:00:00
+[09:01:20][+00:22:18] pass mac-format-win-write-win-delete-mac-verify-empty  (total 00:03:50)
+
+test mac-format-win-write-win-delete-mac-verify-empty                         ... ok
+
+failures:
+
+---- mac-format-large-1gib ----
+step 2 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-l ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+---- mac-format-mac-split-index-root-win-chkdsk ----
+step 4 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-m ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+---- mac-format-volume-16gib-cluster-4k ----
+step 2 (ship-to-vm) exit Some(1) != expected 0
+--- stderr ---
+Copy-Item : Error performing inpage operation.
+At line:1 char:34
++ ... e = 'Stop'; Copy-Item -LiteralPath 'Z:/1791621541986/nfs-mac-format-v ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Copy-Item], IOException
+    + FullyQualifiedErrorId : System.IO.IOException,Microsoft.PowerShell.Commands.CopyItemCommand
+
+
+failures:
+    mac-format-large-1gib
+    mac-format-mac-split-index-root-win-chkdsk
+    mac-format-volume-16gib-cluster-4k
+
+test result: FAILED. 69 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1338.45s
+
+runner: 3 scenario(s) failed on first attempt — automatic retries are disabled
+  ✗ mac-format-large-1gib
+  ✗ mac-format-mac-split-index-root-win-chkdsk
+  ✗ mac-format-volume-16gib-cluster-4k
+
+===============================================================
+diagnostics: ${CONSUMER}/test-diagnostics/matrix/
+test exit:   101  (0 = all passed/ignored; non-zero = at least one failed)
+===============================================================
+[run-tests] VM matrix lock released: C:\fswth\rust-fs-ntfs-timed\.fswth-matrix.lock (run_id=1791621532393209000)

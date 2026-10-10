@@ -1,0 +1,12 @@
+08:05:06.413 round 1 a16.img      33.1s FAILED Error performing inpage operation. [IOException hr=0x0:x]
+08:04:40.242 round 1 b1g-1.img     7.0s FAILED Error performing inpage operation. [IOException hr=0x0:x]
+08:04:41.587 round 1 b1g-2.img     8.3s OK 1073741824
+08:04:41.542 round 1 b1g-3.img     8.2s OK 1073741824
+08:06:11.030 round 2 a16.img      57.0s OK 17179869184
+08:05:23.727 round 2 b1g-1.img     9.7s OK 1073741824
+08:05:23.929 round 2 b1g-2.img     9.9s OK 1073741824
+08:05:23.731 round 2 b1g-3.img     9.7s OK 1073741824
+08:06:35.124 round 3 a16.img      22.3s FAILED Error performing inpage operation. [IOException hr=0x0:x]
+08:06:24.136 round 3 b1g-1.img    11.1s OK 1073741824
+08:06:24.222 round 3 b1g-2.img    11.0s OK 1073741824
+08:06:24.270 round 3 b1g-3.img    10.9s OK 1073741824

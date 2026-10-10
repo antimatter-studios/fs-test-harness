@@ -1,0 +1,12 @@
+08:08:54.522 round 1 a16.img      48.0s OK 17179869184
+08:08:13.892 round 1 b1g-1.img     7.5s FAILED robocopy rc=8 len=-1
+08:08:13.983 round 1 b1g-2.img     7.5s OK 1073741824
+08:08:14.046 round 1 b1g-3.img     7.6s OK 1073741824
+08:09:49.479 round 2 a16.img      47.2s OK 17179869184
+08:09:09.070 round 2 b1g-1.img     6.8s OK 1073741824
+08:09:09.330 round 2 b1g-2.img     7.0s OK 1073741824
+08:09:09.358 round 2 b1g-3.img     7.1s OK 1073741824
+08:10:47.359 round 3 a16.img      47.8s OK 17179869184
+08:10:07.344 round 3 b1g-1.img     6.7s OK 1073741824
+08:10:07.675 round 3 b1g-2.img     7.0s OK 1073741824
+08:10:03.246 round 3 b1g-3.img     2.7s FAILED robocopy rc=8 len=-1

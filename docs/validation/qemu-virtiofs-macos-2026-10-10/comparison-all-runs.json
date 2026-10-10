@@ -1,0 +1,174 @@
+{
+ "fixed-scp-1": {
+  "wall_seconds": 1915.007,
+  "matrix_exit": 0,
+  "runner_seconds": 1894.8,
+  "ship_seconds": 1122.263,
+  "all_step_seconds": 6636.344,
+  "passed": 72,
+  "failed": 0,
+  "executed_steps": 438,
+  "expected_steps": 438,
+  "failed_scenarios": [],
+  "online_scan_fallbacks": [
+   "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+   "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+   "mac-format-tiny-32mib",
+   "mac-format-volume-32mib-cluster-512"
+  ],
+  "differs_from_first_run": [],
+  "slowest_ships": [
+   {
+    "seconds": 219.523,
+    "scenario": "mac-format-volume-16gib-cluster-4k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 112.254,
+    "scenario": "mac-format-volume-4gib-cluster-64k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 89.504,
+    "scenario": "mac-format-volume-4gib-cluster-4k",
+    "op": "ship-to-vm"
+   }
+  ]
+ },
+ "fixed-virtiofs-1": {
+  "wall_seconds": 1457.313,
+  "matrix_exit": 101,
+  "runner_seconds": 1444.64,
+  "ship_seconds": 194.956,
+  "all_step_seconds": 5187.206,
+  "passed": 69,
+  "failed": 3,
+  "executed_steps": 429,
+  "expected_steps": 438,
+  "failed_scenarios": [
+   "cli-windows-6-grow-mft-win-verify-chkdsk",
+   "mac-format-volume-16gib-cluster-4k",
+   "mac-format-win-write-rename-win-chkdsk"
+  ],
+  "online_scan_fallbacks": [
+   "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+   "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+   "mac-format-tiny-32mib",
+   "mac-format-volume-32mib-cluster-512"
+  ],
+  "differs_from_first_run": [
+   "cli-windows-6-grow-mft-win-verify-chkdsk",
+   "mac-format-volume-16gib-cluster-4k",
+   "mac-format-win-write-rename-win-chkdsk"
+  ],
+  "slowest_ships": [
+   {
+    "seconds": 19.259,
+    "scenario": "mac-format-volume-4gib-cluster-4k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 17.778,
+    "scenario": "mac-format-volume-4gib-cluster-64k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 14.311,
+    "scenario": "mac-format-volume-16gib-cluster-4k",
+    "op": "ship-to-vm"
+   }
+  ]
+ },
+ "fixed-scp-2": {
+  "wall_seconds": 2057.92,
+  "matrix_exit": 0,
+  "runner_seconds": 2043.23,
+  "ship_seconds": 1288.519,
+  "all_step_seconds": 7096.457,
+  "passed": 72,
+  "failed": 0,
+  "executed_steps": 438,
+  "expected_steps": 438,
+  "failed_scenarios": [],
+  "online_scan_fallbacks": [
+   "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+   "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+   "mac-format-tiny-32mib",
+   "mac-format-volume-32mib-cluster-512"
+  ],
+  "differs_from_first_run": [],
+  "slowest_ships": [
+   {
+    "seconds": 284.405,
+    "scenario": "mac-format-volume-16gib-cluster-4k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 118.522,
+    "scenario": "mac-format-volume-4gib-cluster-4k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 87.104,
+    "scenario": "mac-format-volume-4gib-cluster-64k",
+    "op": "ship-to-vm"
+   }
+  ]
+ },
+ "fixed-virtiofs-2": {
+  "wall_seconds": 1352.017,
+  "matrix_exit": 101,
+  "runner_seconds": 1338.45,
+  "ship_seconds": 188.737,
+  "all_step_seconds": 5191.639,
+  "passed": 69,
+  "failed": 3,
+  "executed_steps": 433,
+  "expected_steps": 438,
+  "failed_scenarios": [
+   "mac-format-large-1gib",
+   "mac-format-mac-split-index-root-win-chkdsk",
+   "mac-format-volume-16gib-cluster-4k"
+  ],
+  "online_scan_fallbacks": [
+   "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+   "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+   "mac-format-tiny-32mib",
+   "mac-format-volume-32mib-cluster-512"
+  ],
+  "differs_from_first_run": [
+   "mac-format-large-1gib",
+   "mac-format-mac-split-index-root-win-chkdsk",
+   "mac-format-volume-16gib-cluster-4k"
+  ],
+  "slowest_ships": [
+   {
+    "seconds": 20.104,
+    "scenario": "mac-format-volume-4gib-cluster-64k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 14.417,
+    "scenario": "mac-format-volume-16gib-cluster-4k",
+    "op": "ship-to-vm"
+   },
+   {
+    "seconds": 13.951,
+    "scenario": "mac-format-volume-4gib-cluster-4k",
+    "op": "ship-to-vm"
+   }
+  ]
+ },
+ "scp-mean": {
+  "wall_seconds": 1986.464,
+  "runner_seconds": 1969.015,
+  "ship_seconds": 1205.391,
+  "all_step_seconds": 6866.4
+ },
+ "virtiofs-mean": {
+  "wall_seconds": 1404.665,
+  "runner_seconds": 1391.545,
+  "ship_seconds": 191.846,
+  "all_step_seconds": 5189.423
+ }
+}

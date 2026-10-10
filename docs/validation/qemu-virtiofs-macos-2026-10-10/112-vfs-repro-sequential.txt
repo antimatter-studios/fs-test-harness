@@ -1,0 +1,8 @@
+round 1 a16.img      28.1s FAILED Error performing inpage operation.
+round 1 b1g-1.img     2.2s OK 1073741824
+round 1 b1g-2.img     2.6s OK 1073741824
+round 1 b1g-3.img     2.6s OK 1073741824
+round 2 a16.img      10.2s FAILED Error performing inpage operation.
+round 2 b1g-1.img     2.9s FAILED Error performing inpage operation.
+round 2 b1g-2.img     2.4s OK 1073741824
+round 2 b1g-3.img     2.5s OK 1073741824
