@@ -989,6 +989,101 @@ mod tests {
     }
 
     #[test]
+    fn recipe_label_is_expanded_before_the_host_command_runs() {
+        let cfg = config_with_ops(&[(
+            "label",
+            OpDef {
+                host: Host::Host,
+                command: r#"bash -c 'printf %s "$1"' _ '{step.label}'"#.into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let mut scn = scenario_with_recipe(vec![json!({
+            "op": "label", "label": "{scenario.volume_params.label}"
+        })]);
+        scn.extra
+            .insert("volume_params".into(), json!({"label": "ACTUAL-LABEL"}));
+        let dir = tempdir();
+        let result = run_recipe(
+            "label",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0,
+            |_| {},
+        )
+        .unwrap();
+        assert!(result.overall_passed);
+        assert!(result.steps[0].command.contains("'ACTUAL-LABEL'"));
+        assert_eq!(
+            std::fs::read_to_string(dir.join("step-00/stdout.txt")).unwrap(),
+            "ACTUAL-LABEL"
+        );
+    }
+
+    #[test]
+    fn missing_recipe_token_fails_before_spawning_a_command() {
+        let cfg = config_with_ops(&[(
+            "missing",
+            OpDef {
+                host: Host::Host,
+                command: "a-command-that-must-not-run {step.typo}".into(),
+                expect_exit: Some(0),
+                when: None,
+            },
+        )]);
+        let scn = scenario_with_recipe(vec![json!({"op": "missing"})]);
+        let dir = tempdir();
+        let result = run_recipe(
+            "missing",
+            &scn,
+            &cfg,
+            &LocalConfig::default(),
+            &dir,
+            &dir,
+            0,
+            |_| {},
+        )
+        .unwrap();
+        assert!(!result.overall_passed);
+        assert!(result.steps[0]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("step.typo"));
+        assert!(!dir.join("step-00/stdout.txt").exists());
+    }
+
+    #[test]
+    fn missing_ship_token_fails_before_contacting_the_guest() {
+        for (src, dest, field) in [
+            ("{step.typo}", "target", "src"),
+            ("source", "{step.typo}", "dest"),
+        ] {
+            let cfg = config_with_ops(&[]);
+            let scn =
+                scenario_with_recipe(vec![json!({"op": "ship-to-vm", "src": src, "dest": dest})]);
+            let dir = tempdir();
+            let error = run_recipe(
+                "ship",
+                &scn,
+                &cfg,
+                &LocalConfig::default(),
+                &dir,
+                &dir,
+                0,
+                |_| {},
+            )
+            .unwrap_err();
+            assert!(error.contains(&format!("step 0: 'ship-to-vm' {field}")));
+            assert!(error.contains("step.typo"));
+        }
+    }
+
+    #[test]
     fn host_step_runs_locally_and_records_exit() {
         let cfg = config_with_ops(&[(
             "noop",
@@ -1331,9 +1426,42 @@ mod tests {
         }
     }
 
+    /// Tests start together on parallel threads; their scratch directories
+    /// must still be distinct. Named by timestamp alone they collided on
+    /// macOS, whose clock ticks in microseconds, and one test's cleanup
+    /// deleted another's directory mid-run.
+    #[test]
+    fn scratch_directories_are_distinct_when_tests_start_together() {
+        let start = std::sync::Arc::new(std::sync::Barrier::new(16));
+        let dirs: Vec<PathBuf> = (0..16)
+            .map(|_| {
+                let start = start.clone();
+                std::thread::spawn(move || {
+                    start.wait();
+                    tempdir()
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|t| t.join().unwrap())
+            .collect();
+        let distinct: std::collections::HashSet<&PathBuf> = dirs.iter().collect();
+        for dir in &dirs {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+        assert_eq!(
+            distinct.len(),
+            dirs.len(),
+            "shared scratch directories: {dirs:?}"
+        );
+    }
+
     fn tempdir() -> PathBuf {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let p = std::env::temp_dir().join(format!(
-            "fs-windows-test-harness-dispatch-test-{}",
+            "fs-windows-test-harness-dispatch-test-{}-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

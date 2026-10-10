@@ -1,0 +1,2267 @@
+{
+  "date": "2026-10-09",
+  "full_parity_accepted": false,
+  "harness_commit": "8e4a5ee974cd2557ec35e97d661732ccdf64e01c",
+  "consumer_commit": "fe450f1798993cf1c8d7b4866a0855761d9aa5c6",
+  "consumer_tracked_files_unchanged": true,
+  "input_sha256": {
+    "ntfs_binary": "467badeeafa25bed77cb5d14895f30a1c1a4364ce966a315da905dca77945b85",
+    "ntfs_matrix": "b4cf8001c9c6ae01927c50187b0e1ee096ad85f03552dcbd6aaa07c60acf8bef",
+    "ntfs_config": "56a06a6d4cb4c8076b231d9ad969de8e823419c81746615890e3e665cbaeb395",
+    "windows_vhd_helper": "d3b3f00ed7c88f28a41a773928fb5a1d40966bddffa65973d70b8b24706a0c41",
+    "llvm_mingw": "e77c4acfa44184f6b0c52b814d724ad63b2ecebb3c3f6f842c0846e717cbd23c",
+    "windows_libunwind": "09f90f705d492018a76d7a3a825705baf6cfa7862bcfa40d454574d3d39b07a4",
+    "ntfs_cli_binary": "5cfb81f7b18f7651abdc99a30b45f79b5a454b3090abc917f057c1b7b971dbea"
+  },
+  "environment": {
+    "host": "Raspberry Pi 5, Linux ARM64, KVM",
+    "qemu": "10.0.13 (Debian 1:10.0.13+ds-0+deb13u1)",
+    "kernel": "6.18.50+rpt-rpi-2712",
+    "python": "3.13.5",
+    "rust": "1.98.1",
+    "guest_vcpus": 2,
+    "guest_memory_mib": 4096,
+    "guest_disk_gib": 128,
+    "consumer_max_parallel": 4,
+    "step_timeout_seconds": 900,
+    "windows_vhd_helper": "rust-img-vhd 0.6.0, aarch64-pc-windows-gnullvm",
+    "guest_before": {
+      "caption": "Microsoft Windows 11 IoT Enterprise LTSC Evaluation",
+      "version": "10.0.26100",
+      "boot": "2026-10-09T14:06:50.5627790Z",
+      "architecture": "ARM64",
+      "ntfs_version": "10.0.26100.1 (WinBuild.160101.0800)",
+      "chkdsk_version": "10.0.26100.1 (WinBuild.160101.0800)",
+      "license_status": 1,
+      "grace_minutes": 129596,
+      "memfs": true,
+      "vhd_tool": "C:\\fswth-tools\\rust-img-vhd.exe"
+    },
+    "guest_after": {
+      "boot": "2026-10-09T14:06:50.5627790Z",
+      "version": "10.0.26100",
+      "architecture": "ARM64"
+    },
+    "same_boot": true
+  },
+  "checks": {
+    "harness_check": "passed",
+    "rust_tests": 42,
+    "local_vm_python_tests": 29,
+    "windows_policy_regression": "passed",
+    "rust_line_coverage_percent": 79.26,
+    "local_vm_python_line_coverage_percent": 87
+  },
+  "smoke": {
+    "exit_code": 0,
+    "seconds": 508.181,
+    "positive_steps_passed": 18,
+    "canary_steps_executed": 3,
+    "canary_rejected_for_expected_reason": true
+  },
+  "ntfs": {
+    "phase_seconds": 3737.342,
+    "runner_seconds": 3521.5,
+    "exit_code": 101,
+    "scenario_count": 72,
+    "passed": 71,
+    "failed": 1,
+    "ignored": 0,
+    "automatic_retries": false,
+    "expected_steps": 438,
+    "executed_steps": 435,
+    "unexecuted_steps": 3,
+    "skipped_recorded_steps": 0,
+    "missing_vm_diagnostics": [],
+    "online_scan_fallback_scenarios": [
+      "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+      "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+      "mac-format-tiny-32mib",
+      "mac-format-volume-32mib-cluster-512"
+    ],
+    "log": {
+      "raw_sha256": "4db770b643935e6bf56339e889bfb3f8b22ce45f53ef7f451312629396ced736",
+      "lines": 1444,
+      "bytes": 107771,
+      "budget_lines": 1300,
+      "budget_bytes": 90000,
+      "within_budget": false,
+      "failure_exit_takes_precedence_over_budget_exit": true
+    }
+  },
+  "supplemental_insertion_diagnosis": {
+    "supplemental_only": true,
+    "changes_matrix_verdict": false,
+    "phases": [
+      {
+        "name": "capture-original",
+        "exit_code": 0,
+        "seconds": 12.473
+      },
+      {
+        "name": "host-insertion",
+        "exit_code": 0,
+        "seconds": 0.032
+      },
+      {
+        "name": "upload-insertion",
+        "exit_code": 0,
+        "seconds": 7.352
+      },
+      {
+        "name": "windows-chkdsk",
+        "exit_code": 0,
+        "seconds": 33.428
+      },
+      {
+        "name": "windows-enumerate",
+        "exit_code": 0,
+        "seconds": 8.692
+      },
+      {
+        "name": "capture-windows-evidence",
+        "exit_code": 0,
+        "seconds": 0.968
+      }
+    ],
+    "guest_after": {
+      "boot": "2026-10-09T14:06:50.5627790Z",
+      "version": "10.0.26100",
+      "architecture": "ARM64"
+    },
+    "original_sha256": "9b01f90c408d4d5084e318f1559ec0943fa01d58bfd57cf42544a0ab0e62b1ee",
+    "insertion_sha256": "d39ca37c3ab55dc83ddab8d28e85d4706d599a3635e8c3ca208e6f23e4cfbdc3",
+    "completed": true,
+    "windows_verdict": {
+      "passed": true,
+      "verdict_shape": "clean",
+      "modes": {
+        "readonly": {
+          "exit": 0,
+          "state": "scanned",
+          "reason": "chkdsk found nothing to report"
+        },
+        "/scan": {
+          "exit": 0,
+          "state": "scanned",
+          "reason": "chkdsk found nothing to report"
+        }
+      },
+      "exits": {
+        "readonly": 0,
+        "/scan": 0
+      }
+    },
+    "original_numbered_files_enumerated": 256,
+    "new_file_enumerated": true
+  },
+  "scenarios": [
+    {
+      "name": "cli-corrupt-mirror-fsck-win-chkdsk",
+      "status": "passed",
+      "seconds": 127.855,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "damaged",
+        "modes": {
+          "readonly": {
+            "exit": 3,
+            "state": "failed",
+            "reason": "chkdsk exited 3"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/F /X": {
+            "exit": 1,
+            "state": "scanned",
+            "reason": "exit 1 accepted for this verdict shape"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 3,
+          "/scan": 0,
+          "/F /X": 1,
+          "/scan-post": 0
+        },
+        "damage_found": true,
+        "fix_exit": 1,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "cli-corrupt-signature-fsck-win-chkdsk",
+      "status": "passed",
+      "seconds": 323.497,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "damaged",
+        "modes": {
+          "readonly": {
+            "exit": 3,
+            "state": "failed",
+            "reason": "chkdsk exited 3"
+          },
+          "/scan": {
+            "exit": 13,
+            "state": "failed",
+            "reason": "chkdsk exited 13"
+          },
+          "/F /X": {
+            "exit": 1,
+            "state": "scanned",
+            "reason": "exit 1 accepted for this verdict shape"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 3,
+          "/scan": 13,
+          "/F /X": 1,
+          "/scan-post": 0
+        },
+        "damage_found": true,
+        "fix_exit": 1,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "cli-mkfs-win-chkdsk",
+      "status": "passed",
+      "seconds": 144.725,
+      "expected_steps": 3,
+      "executed_steps": 3,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-populate-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 366.39,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-set-dirty-fsck-win-dirty-chkdsk",
+      "status": "passed",
+      "seconds": 133.454,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "repair-required",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 13,
+            "state": "failed",
+            "reason": "chkdsk exited 13"
+          },
+          "/F /X": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 13,
+          "/F /X": 0,
+          "/scan-post": 0
+        },
+        "pre_scan_exit": 13,
+        "fix_exit": 0,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "cli-windows-6-grow-mft-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 130.552,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-1-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 79.186,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-1-mount-replay-write-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 85.101,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-6-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 285.842,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-6-mount-replay-write-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 96.578,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-fresh-log-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 88.743,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-index-vcn-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 164.934,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 11,
+            "state": "not-scanned",
+            "reason": "no volume snapshot, so the online scan did not run"
+          },
+          "/scan-offline-fallback": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "offline /F /X found nothing to fix, in place of the online scan"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 11,
+          "/scan-offline-fallback": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-open-at-checkpoint-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 333.27,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-quota-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 93.925,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-small-cluster-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 147.387,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-tail-continuation-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 304.608,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-undo-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 96.407,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-wrap-boundary-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 93.688,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-wrap-mft-grows-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 160.796,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "cli-windows-interrupted-wrap-span-fsck-replay-win-verify-chkdsk",
+      "status": "passed",
+      "seconds": 123.553,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "foreign-fragmented-indx-512-win-enumerate-chkdsk",
+      "status": "passed",
+      "seconds": 64.159,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 11,
+            "state": "not-scanned",
+            "reason": "no volume snapshot, so the online scan did not run"
+          },
+          "/scan-offline-fallback": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "offline /F /X found nothing to fix, in place of the online scan"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 11,
+          "/scan-offline-fallback": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-basic-256mib",
+      "status": "passed",
+      "seconds": 95.355,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-cluster-1k",
+      "status": "passed",
+      "seconds": 268.621,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-cluster-512",
+      "status": "passed",
+      "seconds": 84.898,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-cluster-64k",
+      "status": "passed",
+      "seconds": 137.969,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-cluster-8k",
+      "status": "passed",
+      "seconds": 66.993,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-hardlink-unlink-win-chkdsk",
+      "status": "passed",
+      "seconds": 70.235,
+      "expected_steps": 9,
+      "executed_steps": 9,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-label-32chars",
+      "status": "passed",
+      "seconds": 59.994,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-label-cjk",
+      "status": "passed",
+      "seconds": 62.566,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-label-empty",
+      "status": "passed",
+      "seconds": 68.774,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-label-latin1",
+      "status": "passed",
+      "seconds": 70.115,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-large-1gib",
+      "status": "passed",
+      "seconds": 146.201,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mac-enumerate-empty",
+      "status": "passed",
+      "seconds": 1.218,
+      "expected_steps": 3,
+      "executed_steps": 3,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-mac-mkdir-mac-touch-mac-enumerate",
+      "status": "passed",
+      "seconds": 1.371,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-mac-split-index-root-win-chkdsk",
+      "status": "passed",
+      "seconds": 198.701,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mac-split-routed-leaf-win-chkdsk",
+      "status": "passed",
+      "seconds": 100.92,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mac-touch-mac-write-mac-enumerate",
+      "status": "passed",
+      "seconds": 1.326,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-mac-write-mac-rm-mac-enumerate-empty",
+      "status": "passed",
+      "seconds": 1.294,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-mac-write-sparse-mixed-win-chkdsk",
+      "status": "passed",
+      "seconds": 123.936,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mac-write-sparse-zeros-win-chkdsk",
+      "status": "passed",
+      "seconds": 108.741,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mac-write-win-repeat-mount-3-win-chkdsk",
+      "status": "passed",
+      "seconds": 150.101,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mkdir-rmdir-win-chkdsk",
+      "status": "passed",
+      "seconds": 80.517,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mkdir-rmdir-win-chkdsk-64k",
+      "status": "passed",
+      "seconds": 177.865,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-mkdir-set-dirty-win-chkdsk",
+      "status": "passed",
+      "seconds": 83.071,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "repair-required",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 13,
+            "state": "failed",
+            "reason": "chkdsk exited 13"
+          },
+          "/F /X": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 13,
+          "/F /X": 0,
+          "/scan-post": 0
+        },
+        "pre_scan_exit": 13,
+        "fix_exit": 0,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "mac-format-rename-win-chkdsk",
+      "status": "passed",
+      "seconds": 267.369,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-set-dirty-win-chkdsk",
+      "status": "passed",
+      "seconds": 67.135,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "repair-required",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 13,
+            "state": "failed",
+            "reason": "chkdsk exited 13"
+          },
+          "/F /X": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 13,
+          "/F /X": 0,
+          "/scan-post": 0
+        },
+        "pre_scan_exit": 13,
+        "fix_exit": 0,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "mac-format-small-64mib",
+      "status": "passed",
+      "seconds": 51.001,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-tiny-32mib",
+      "status": "passed",
+      "seconds": 80.528,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 11,
+            "state": "not-scanned",
+            "reason": "no volume snapshot, so the online scan did not run"
+          },
+          "/scan-offline-fallback": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "offline /F /X found nothing to fix, in place of the online scan"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 11,
+          "/scan-offline-fallback": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-volume-16gib-cluster-4k",
+      "status": "passed",
+      "seconds": 864.742,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-volume-32mib-cluster-512",
+      "status": "passed",
+      "seconds": 79.61,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 11,
+            "state": "not-scanned",
+            "reason": "no volume snapshot, so the online scan did not run"
+          },
+          "/scan-offline-fallback": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "offline /F /X found nothing to fix, in place of the online scan"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 11,
+          "/scan-offline-fallback": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-volume-4gib-cluster-4k",
+      "status": "passed",
+      "seconds": 1113.131,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-volume-4gib-cluster-64k",
+      "status": "passed",
+      "seconds": 1527.717,
+      "expected_steps": 4,
+      "executed_steps": 4,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-repeat-mount-10-win-chkdsk",
+      "status": "passed",
+      "seconds": 155.832,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-repeat-mount-5-win-chkdsk",
+      "status": "passed",
+      "seconds": 153.039,
+      "expected_steps": 6,
+      "executed_steps": 6,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-deep-nesting-win-chkdsk",
+      "status": "passed",
+      "seconds": 160.266,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-large",
+      "status": "passed",
+      "seconds": 315.006,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-mac-enumerate",
+      "status": "passed",
+      "seconds": 107.164,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-win-write-many-small",
+      "status": "passed",
+      "seconds": 153.217,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-many-win-delete-half-win-chkdsk",
+      "status": "passed",
+      "seconds": 160.333,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-medium",
+      "status": "passed",
+      "seconds": 342.046,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-modify-win-chkdsk",
+      "status": "passed",
+      "seconds": 198.717,
+      "expected_steps": 9,
+      "executed_steps": 9,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-remount-win-chkdsk",
+      "status": "passed",
+      "seconds": 206.354,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-rename-win-chkdsk",
+      "status": "passed",
+      "seconds": 730.041,
+      "expected_steps": 8,
+      "executed_steps": 8,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-then-delete",
+      "status": "passed",
+      "seconds": 216.706,
+      "expected_steps": 9,
+      "executed_steps": 9,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-tiny",
+      "status": "passed",
+      "seconds": 176.243,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "mac-format-win-write-win-delete-mac-verify-empty",
+      "status": "passed",
+      "seconds": 155.727,
+      "expected_steps": 11,
+      "executed_steps": 11,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "mac-format-write-set-dirty-win-chkdsk",
+      "status": "passed",
+      "seconds": 67.24,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "repair-required",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 13,
+            "state": "failed",
+            "reason": "chkdsk exited 13"
+          },
+          "/F /X": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan-post": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 13,
+          "/F /X": 0,
+          "/scan-post": 0
+        },
+        "pre_scan_exit": 13,
+        "fix_exit": 0,
+        "post_scan_exit": 0
+      }
+    },
+    {
+      "name": "win-format-mac-enumerate-empty",
+      "status": "passed",
+      "seconds": 81.636,
+      "expected_steps": 5,
+      "executed_steps": 5,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "win-format-win-write-mac-delete-win-verify",
+      "status": "passed",
+      "seconds": 347.954,
+      "expected_steps": 10,
+      "executed_steps": 10,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "win-format-win-write-mac-verify",
+      "status": "passed",
+      "seconds": 97.671,
+      "expected_steps": 7,
+      "executed_steps": 7,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null
+    },
+    {
+      "name": "win-format-win-write-mac-write-win-verify",
+      "status": "passed",
+      "seconds": 165.561,
+      "expected_steps": 10,
+      "executed_steps": 10,
+      "unexecuted_operations": [],
+      "skipped_steps": 0,
+      "error": null,
+      "windows_verdict": {
+        "passed": true,
+        "verdict_shape": "clean",
+        "modes": {
+          "readonly": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          },
+          "/scan": {
+            "exit": 0,
+            "state": "scanned",
+            "reason": "chkdsk found nothing to report"
+          }
+        },
+        "exits": {
+          "readonly": 0,
+          "/scan": 0
+        }
+      }
+    },
+    {
+      "name": "win-format-win-write-many-mac-reject-index-allocation-win-chkdsk",
+      "status": "failed",
+      "seconds": 112.236,
+      "expected_steps": 9,
+      "executed_steps": 6,
+      "unexecuted_operations": [
+        "ship-to-vm",
+        "win-chkdsk",
+        "win-enumerate"
+      ],
+      "skipped_steps": 0,
+      "error": "step 5 (mac-touch-index-allocation-rejected) exit Some(0) != expected 1\n--- stdout ---\ncreated file rec=298 //mac-rejected.txt",
+      "failed_steps": [
+        {
+          "index": 5,
+          "op": "mac-touch-index-allocation-rejected",
+          "exit_code": 0,
+          "expected_exit": 1,
+          "error": null
+        }
+      ]
+    }
+  ]
+}

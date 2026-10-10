@@ -1,0 +1,142 @@
+=== smoke: run-tests.sh smoke- ===
+[harness] fs-windows-test-harness v4.3.1-7-gc113f23-dirty (feat/qemu-local-vm @ c113f23)
+[run-tests] wrote ${HARNESS}/tests/smoke-consumer/.test-env
+[run-tests] preflight: SSH fswth-local
+[run-tests] VM lock: acquiring C:/fswth/smoke-consumer (each VM command bounded: 300s, each step: 900s)
+[run-tests] VM matrix lock acquired: C:\fswth\smoke-consumer\.fswth-matrix.lock (run_id=1791585210746414504, host=homelab, pid=1254521)
+[ship] harness scripts/vm/ -> C:/fswth/smoke-consumer/../fs-windows-test-harness/scripts/vm
+[ship] consumer scripts/fs-windows-test-harness/
+[ship] consumer binary bin/tarimg.py
+[run]  cargo run --bin run-matrix locally
+[run]  HARNESS_IMAGE_DIR=images
+[run]  test_threads=26 (from max_parallel=drive-letters)
+
+   Compiling fs-windows-test-harness v4.2.0 (${HARNESS}/runner)
+    Finished `release` profile [optimized] target(s) in 24.08s
+     Running `${CARGO_TARGET_DIR}/release/run-matrix --test-threads=26 smoke-`
+runner: max_parallel=1
+runner: reaped orphaned image dir ${HARNESS}/tests/smoke-consumer/images/1791585043631 (owner pid 1247672)
+================================================================
+fs-windows-test-harness-smoke — test matrix  |  2026-10-09 22:34:15 UTC  |  1 scenarios  |  parallel 1
+================================================================
+
+running 1 test
+test smoke-rw-roundtrip ...
+[22:34:15][+00:00:00] >>> smoke-rw-roundtrip
+[22:34:15][+00:00:00]   00 image-create         start (smoke-rw-roundtrip)
+[22:34:15][+00:00:00]   00 image-create         ok    00:00:00
+[22:34:15][+00:00:00]   01 ship-to-vm           start (smoke-rw-roundtrip)
+[22:34:18][+00:00:03]   01 ship-to-vm           ok    00:00:03  (smoke-rw.tar)
+[22:34:18][+00:00:03]   02 win-ls-via-mount     start (smoke-rw-roundtrip)
+[22:34:28][+00:00:12]   02 win-ls-via-mount     ok    00:00:09
+[22:34:28][+00:00:12]   03 win-cat-via-mount    start (smoke-rw-roundtrip)
+[22:34:37][+00:00:22]   03 win-cat-via-mount    ok    00:00:09
+[22:34:37][+00:00:22]   04 win-mkdir            start (smoke-rw-roundtrip)
+[22:34:45][+00:00:30] first attempt — 0/1 done
+[22:34:46][+00:00:31]   04 win-mkdir            ok    00:00:08
+[22:34:46][+00:00:31]   05 win-write            start (smoke-rw-roundtrip)
+[22:34:55][+00:00:40]   05 win-write            ok    00:00:08
+[22:34:55][+00:00:40]   06 win-rename           start (smoke-rw-roundtrip)
+[22:35:03][+00:00:48]   06 win-rename           ok    00:00:08
+[22:35:03][+00:00:48]   07 win-write            start (smoke-rw-roundtrip)
+[22:35:12][+00:00:57]   07 win-write            ok    00:00:08
+[22:35:12][+00:00:57]   08 win-unlink           start (smoke-rw-roundtrip)
+[22:35:15][+00:01:00] first attempt — 0/1 done
+[22:35:21][+00:01:06]   08 win-unlink           ok    00:00:08
+[22:35:21][+00:01:06]   09 win-mkdir            start (smoke-rw-roundtrip)
+[22:35:30][+00:01:15]   09 win-mkdir            ok    00:00:08
+[22:35:30][+00:01:15]   10 win-rmdir            start (smoke-rw-roundtrip)
+[22:35:39][+00:01:24]   10 win-rmdir            ok    00:00:09
+[22:35:39][+00:01:24]   11 win-cat-via-mount    start (smoke-rw-roundtrip)
+[22:35:45][+00:01:30] first attempt — 0/1 done
+[22:35:48][+00:01:33]   11 win-cat-via-mount    ok    00:00:08
+[22:35:48][+00:01:33]   12 win-ls-via-mount     start (smoke-rw-roundtrip)
+[22:35:57][+00:01:42]   12 win-ls-via-mount     ok    00:00:08
+[22:35:57][+00:01:42]   13 ship-to-host         start (smoke-rw-roundtrip)
+[22:36:00][+00:01:45]   13 ship-to-host         ok    00:00:03  (ship-1255056-1791585357190933309)
+[22:36:00][+00:01:45]   14 host-verify-ls       start (smoke-rw-roundtrip)
+[22:36:00][+00:01:45]   14 host-verify-ls       ok    00:00:00
+[22:36:00][+00:01:45]   15 host-verify-ls       start (smoke-rw-roundtrip)
+[22:36:01][+00:01:45]   15 host-verify-ls       ok    00:00:00
+[22:36:01][+00:01:45]   16 host-verify-cat      start (smoke-rw-roundtrip)
+[22:36:01][+00:01:46]   16 host-verify-cat      ok    00:00:00
+[22:36:01][+00:01:46]   17 host-verify-info     start (smoke-rw-roundtrip)
+[22:36:01][+00:01:46]   17 host-verify-info     ok    00:00:00
+[22:36:01][+00:01:46] pass smoke-rw-roundtrip  (total 00:01:46)
+
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 106.05s
+
+
+===============================================================
+diagnostics: ${HARNESS}/tests/smoke-consumer/test-diagnostics/matrix/
+test exit:   0  (0 = all passed/ignored; non-zero = at least one failed)
+===============================================================
+[run-tests] VM matrix lock released: C:\fswth\smoke-consumer\.fswth-matrix.lock (run_id=1791585210746414504)
+=== smoke: run-tests.sh exited 0 ===
+--- pass verdicts (smoke-*) ---
+  smoke-rw-roundtrip: passed
+OK: pass assertions hold
+=== canary: run-tests.sh canary- ===
+[harness] fs-windows-test-harness v4.3.1-7-gc113f23-dirty (feat/qemu-local-vm @ c113f23)
+[run-tests] wrote ${HARNESS}/tests/smoke-consumer/.test-env
+[run-tests] preflight: SSH fswth-local
+[run-tests] VM lock: acquiring C:/fswth/smoke-consumer (each VM command bounded: 300s, each step: 900s)
+[run-tests] VM matrix lock acquired: C:\fswth\smoke-consumer\.fswth-matrix.lock (run_id=1791585364671862896, host=homelab, pid=1257657)
+[ship] harness scripts/vm/ -> C:/fswth/smoke-consumer/../fs-windows-test-harness/scripts/vm
+[ship] consumer scripts/fs-windows-test-harness/
+[ship] consumer binary bin/tarimg.py
+[run]  cargo run --bin run-matrix locally
+[run]  HARNESS_IMAGE_DIR=images
+[run]  test_threads=26 (from max_parallel=drive-letters)
+
+    Finished `release` profile [optimized] target(s) in 0.05s
+     Running `${CARGO_TARGET_DIR}/release/run-matrix --test-threads=26 canary-`
+runner: max_parallel=1
+runner: reaped orphaned image dir ${HARNESS}/tests/smoke-consumer/images/1791585255099 (owner pid 1255056)
+================================================================
+fs-windows-test-harness-smoke — test matrix  |  2026-10-09 22:36:24 UTC  |  1 scenarios  |  parallel 1
+================================================================
+
+running 1 test
+test canary-wrong-content ...
+[22:36:24][+00:00:00] >>> canary-wrong-content
+[22:36:24][+00:00:00]   00 image-create         start (canary-wrong-content)
+[22:36:24][+00:00:00]   00 image-create         ok    00:00:00
+[22:36:24][+00:00:00]   01 ship-to-vm           start (canary-wrong-content)
+[22:36:28][+00:00:03]   01 ship-to-vm           ok    00:00:03  (canary.tar)
+[22:36:28][+00:00:03]   02 win-cat-via-mount    start (canary-wrong-content)
+[22:36:37][+00:00:13]   02 win-cat-via-mount    FAIL  00:00:09
+[22:36:37][+00:00:13] FAIL canary-wrong-content  (total 00:00:13)  — step 2 (win-cat-via-mount) exit Some(1) != expected 0
+--- stderr ---
+op failed: win-cat-via-mount drift at Y:\hello.txt: content mismatch: got first 200 bytes='hello-from-the-host' want='not what the host wrote'
+
+FAILED
+
+failures:
+
+---- canary-wrong-content ----
+step 2 (win-cat-via-mount) exit Some(1) != expected 0
+--- stderr ---
+op failed: win-cat-via-mount drift at Y:\hello.txt: content mismatch: got first 200 bytes='hello-from-the-host' want='not what the host wrote'
+
+
+failures:
+    canary-wrong-content
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.15s
+
+runner: 1 scenario(s) failed on first attempt — automatic retries are disabled
+  ✗ canary-wrong-content
+
+===============================================================
+diagnostics: ${HARNESS}/tests/smoke-consumer/test-diagnostics/matrix/
+test exit:   101  (0 = all passed/ignored; non-zero = at least one failed)
+===============================================================
+[run-tests] VM matrix lock released: C:\fswth\smoke-consumer\.fswth-matrix.lock (run_id=1791585364671862896)
+=== canary: run-tests.sh exited 101 ===
+--- canary verdicts (canary-*) ---
+  canary-wrong-content: failed
+OK: canary assertions hold
+smoke test OK: smoke-* passed first time, canary-* reported failed as designed

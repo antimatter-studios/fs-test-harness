@@ -127,6 +127,19 @@ impl Substitution {
                     if let Some(end_rel) = bytes[i + 1..].iter().position(|&b| b == b'}') {
                         let inner = &bytes[i + 1..i + 1 + end_rel];
                         if let Some((path, optional)) = parse_placeholder(inner) {
+                            // Nested consumer strings may use their own markers,
+                            // e.g. file_{N}.txt. Only harness namespaces or known
+                            // flat tokens are references within those strings.
+                            if !chain.is_empty()
+                                && !self.flat.contains_key(&path)
+                                && !["scenario.", "step.", "tools.", "vm."]
+                                    .iter()
+                                    .any(|prefix| path.starts_with(prefix))
+                            {
+                                out.push_str(&template[i..i + end_rel + 2]);
+                                i += end_rel + 2;
+                                continue;
+                            }
                             match self.resolve(&path, chain, missing)? {
                                 Some(s) => out.push_str(&s),
                                 None if optional => {}
@@ -601,6 +614,15 @@ mod tests {
         assert_eq!(
             s.expand_checked("{binary} {image} --label {step.params.label}"),
             Ok("/usr/local/bin/myfs /srv/images/test.img --label STEP-LABEL".to_string())
+        );
+    }
+    #[test]
+    fn nested_consumer_filename_markers_remain_literal() {
+        let mut s = fixture();
+        s.step = json!({"pattern": "file_{N}.txt"});
+        assert_eq!(
+            s.expand_checked("{step.pattern}"),
+            Ok("file_{N}.txt".into())
         );
     }
 }

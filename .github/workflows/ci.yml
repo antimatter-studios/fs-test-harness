@@ -231,6 +231,9 @@ jobs:
       - name: agent-guide self-test (the shared block is intact; drift is refused)
         run: bash scripts/task.sh agents-core agents-core 20 1000 -- bash tests/agents-core.sh
 
+      - name: local QEMU lifecycle checks (no guest needed)
+        run: bash scripts/task.sh local-vm local-vm 70 9000 -- python3 -B tests/local-vm.py
+
       - name: upload state-machine logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -324,6 +327,10 @@ jobs:
       - name: chkdsk verdict and offline fallback tests
         shell: powershell
         run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/chkdsk-verdict.ps1
+
+      - name: local VM execution-policy scope regression
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/local-vm-policy.ps1
 
       - uses: dtolnay/rust-toolchain@stable
 
