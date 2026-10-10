@@ -7,6 +7,10 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
 
 ### Added
 
+- Linux QEMU startup requests local allocation when it inherits interleaving,
+  verifies the effective policy, and logs when a kernel ignores the request.
+  No node is hardcoded, other policies are preserved, and macOS uses its native
+  allocation. No additional library dependency or hidden boot retry is added.
 - An opt-in persistent Windows ARM64 QEMU/KVM guest for Linux ARM64, with
   pinned evaluation downloads, unattended installation media, SSH and WinFsp
   provisioning, explicit VM lifecycle commands, and transport wrappers for

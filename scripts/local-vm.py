@@ -564,6 +564,12 @@ def stop_virtiofsd(state):
     (runtime / "share.json").unlink(missing_ok=True)
 
 
+def qemu_launch_command(command):
+    if platform.system() == "Linux":
+        return [sys.executable, str(RESOURCES / "linux-memory.py"), *command]
+    return command
+
+
 def up(state, config, install=False, share=None, virtiofsd=None):
     if share is not None:
         share = Path(share).expanduser().resolve()
@@ -597,7 +603,12 @@ def up(state, config, install=False, share=None, virtiofsd=None):
         write_json(state / "vm.json", config)
     with (state / "qemu.log").open("a") as log:
         try:
-            run(command, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+            run(
+                qemu_launch_command(command),
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=30,
+            )
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             if daemon is not None:
                 daemon.terminate()

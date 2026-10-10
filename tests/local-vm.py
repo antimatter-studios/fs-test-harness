@@ -22,9 +22,83 @@ spec = importlib.util.spec_from_file_location(
 )
 vm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(vm)
+memory_spec = importlib.util.spec_from_file_location(
+    "linux_memory", vm.RESOURCES / "linux-memory.py"
+)
+memory = importlib.util.module_from_spec(memory_spec)
+memory_spec.loader.exec_module(memory)
 
 
 class LocalVM(unittest.TestCase):
+    def test_interleaved_policy_becomes_local_without_a_node_number(self):
+        lib = MagicMock()
+        lib.set_mempolicy.return_value = 0
+        with patch.object(memory, "read_policy", side_effect=[3, 4]):
+            self.assertIn("changed to local", memory.normalize_policy(lib))
+        lib.set_mempolicy.assert_called_once_with(4, None, 0)
+
+    def test_default_bind_and_preferred_policies_are_preserved(self):
+        for mode in (0, 1, 2, 4, 5):
+            lib = MagicMock()
+            with patch.object(memory, "read_policy", return_value=mode):
+                self.assertIn("retained", memory.normalize_policy(lib))
+            lib.set_mempolicy.assert_not_called()
+
+    def test_interleave_nodemask_flags_are_not_node_preferences(self):
+        lib = MagicMock()
+        lib.set_mempolicy.return_value = 0
+        with patch.object(memory, "read_policy", side_effect=[3 | (1 << 14), 4]):
+            memory.normalize_policy(lib)
+        lib.set_mempolicy.assert_called_once_with(4, None, 0)
+
+    def test_failed_policy_change_is_not_ignored(self):
+        lib = MagicMock()
+        lib.set_mempolicy.return_value = -1
+        with (
+            patch.object(memory, "read_policy", return_value=3),
+            self.assertRaisesRegex(RuntimeError, "set_mempolicy failed"),
+        ):
+            memory.normalize_policy(lib)
+
+    def test_kernel_ignored_change_is_reported_without_claiming_a_fix(self):
+        lib = MagicMock()
+        lib.set_mempolicy.return_value = 0
+        with patch.object(memory, "read_policy", side_effect=[3, 3]):
+            self.assertIn("unchanged policy", memory.normalize_policy(lib))
+        lib.set_mempolicy.assert_called_once_with(4, None, 0)
+
+    def test_failed_policy_query_is_refused(self):
+        lib = MagicMock()
+        lib.get_mempolicy.return_value = -1
+        with self.assertRaisesRegex(RuntimeError, "get_mempolicy failed"):
+            memory.read_policy(lib)
+
+    def test_linux_without_numa_uses_native_allocation(self):
+        lib = MagicMock()
+        lib.get_mempolicy.return_value = -1
+        with patch.object(memory.ctypes, "get_errno", return_value=memory.errno.ENOSYS):
+            self.assertIn("native allocation retained", memory.normalize_policy(lib))
+        lib.set_mempolicy.assert_not_called()
+
+    def test_unsupported_kernel_abi_is_named(self):
+        with (
+            patch.object(memory.platform, "machine", return_value="unsupported"),
+            self.assertRaisesRegex(RuntimeError, "supported ARM64 host"),
+        ):
+            memory.main(["qemu"])
+
+    def test_linux_launch_uses_memory_policy_wrapper(self):
+        with patch.object(vm.platform, "system", return_value="Linux"):
+            command = vm.qemu_launch_command(["/usr/bin/qemu", "-daemonize"])
+        self.assertEqual(command[-2:], ["/usr/bin/qemu", "-daemonize"])
+        self.assertEqual(Path(command[1]).name, "linux-memory.py")
+
+    def test_macos_launch_does_not_use_linux_memory_policy(self):
+        with patch.object(vm.platform, "system", return_value="Darwin"):
+            self.assertEqual(
+                vm.qemu_launch_command(["qemu", "-daemonize"]), ["qemu", "-daemonize"]
+            )
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="fswth-test-")
         self.addCleanup(self.temp.cleanup)
