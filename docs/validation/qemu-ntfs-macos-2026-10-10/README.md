@@ -6,6 +6,12 @@ steps.** Full parity is still not accepted. The VMware comparison was not
 measured, because the existing VMware guest would not power on (see below),
 so direct provider parity remains unmeasured.
 
+**Sign-off (later the same day): with the corrected consumer, a fresh guest
+built by this branch passed the complete matrix, 72 of 72 and 438 of 438
+steps, exit 0, over scp** -- see [Sign-off](#sign-off-with-the-corrected-consumer).
+The VMware guest, once it could be started, proved unable to attach VHDs
+reliably; QEMU replaces it.
+
 ## Inputs and environment
 
 - Harness: `feat/qemu-local-vm`, started from `c113f23`. The NTFS matrix ran
@@ -142,6 +148,45 @@ tests); runs 61 and 62 hit defect 5. `down` runs 14 and 15 timed out while
 the host slept; a timeout leaves the guest running and kills nothing. Every
 run is in `results.json`'s `commands`.
 
+## Sign-off with the corrected consumer
+
+rust-fs-ntfs#461 corrected the stale rejection (the insertion is now required
+to succeed and Windows verifies it) and remeasured the matrix output budget at
+1,850 lines / 135,000 bytes. It merged as `3e03fe2`, which also moves
+`rust-fs-core` to 0.3.8. To sign this branch off without any virtio-fs code:
+
+- Harness: this branch at `06cf970`, scp only -- before it was squashed onto
+  `main` as `211edc4`, which brings `main`'s own recipe-reference fix (#46).
+- Consumer: rust-fs-ntfs `main` at `3e03fe223c424418ce2a658eaeaa4175924a1312`,
+  host tools rebuilt there; `rust-img-vhd` 0.6.0 rebuilt against
+  `rust-fs-core` 0.3.8 as the consumer's CI does.
+- A **fresh guest** in a new state directory, prepared, installed and
+  provisioned by this branch: Windows setup 216 s after the one UEFI Shell
+  interaction, `provision` 39 s, zero CLIXML in `provision.log`.
+
+| Check | Result |
+|---|---|
+| `chore check` | All eight tasks pass; `agents-core` against the harness's pinned core (see below) |
+| WinFsp smoke | Passed in 228 s: 18 positive steps, the canary failed as intended, zero CLIXML |
+| Full NTFS matrix | **Exit 0: 72 passed, 0 failed, 438 of 438 steps, 0 skipped**, no retries |
+| Timing | 1,859.6 s wall, runner 1,815.2 s |
+| Output | 1,327 lines / 97,443 bytes, within the consumer's new budget |
+| VM reuse | The same Windows boot before and after the matrix |
+
+Four online scans still used the consumer's documented offline fallback.
+Scenario by scenario -- status, steps, chkdsk mode states and verdicts -- the
+result is identical to two earlier scp runs of the same consumer content on
+the first guest. Transcripts: [signoff-ntfs-output.txt](signoff-ntfs-output.txt)
+(raw SHA-256 `f2de0c98…2e54441`) and
+[signoff-smoke-output.txt](signoff-smoke-output.txt); per-scenario results
+in [signoff-results.json](signoff-results.json).
+
+`agents-core` failed once in this layout because the consumer and harness
+share one `../rust-fs-core` sibling: rust-fs-core 0.3.8 carries a newer
+canonical shared block than `06cf970`'s `AGENTS.md`, which pinned 0.3.3. Run
+against the pinned 0.3.3 it passed. The squashed branch now pins 0.3.8 and
+carries the new block, and passes against it.
+
 ## VMware comparison: not measured
 
 The existing VMware Fusion guest (Windows 11 ARM64, 2 vCPUs, 4 GiB; the
@@ -153,6 +198,22 @@ guest still running. Clearing the stale lock would change the guest bundle,
 so it was left for the owner. The one power-on attempt rotated Fusion's
 `vmware*.log` files; nothing else in the bundle changed. **Direct provider
 parity between QEMU and VMware remains unmeasured.**
+
+With the owner's approval the stale lock file was later removed and the
+guest started. It could not run this consumer: it still carried the old
+`vhd_tool.exe` rather than `rust-img-vhd`, and with the pinned helper placed
+on its PATH temporarily, Windows in it failed to attach VHDs intermittently
+(`Mount-DiskImage` HRESULT `0x800703e3`). Attaching freshly created blank
+VHDs one at a time failed 3 of 8 there and 0 of 8 on the QEMU guest with the
+identical script. The guest is Windows 11 Pro 26200, not the evaluation
+LTSC 26100, and the cause inside it is unknown. Windows `disk` Event 51 and
+Filter Manager errors are not evidence of a fault: the healthy QEMU guest
+logs them too whenever the matrix mounts deliberately damaged images. The
+helper was removed and the guest shut down; a partly removed work directory
+remains in it. The first attempt's later SSH failures were the reporter's
+own: the host's key vault idle-locked mid-run. Given a reproducible QEMU
+guest that passes the full matrix, **retiring the VMware guest is
+recommended** rather than repairing it.
 
 ## Transfer cost and a virtiofs spike
 
@@ -179,22 +240,25 @@ straight from the share were slow (`Get-FileHash` of 16 GiB took 511 s), so
 a share would feed a local copy, not replace it. This is evidence for a
 possible follow-up, not a change on this branch; the harness transport
 remains SSH/scp. Spike measurements are in `results.json` under
-`virtiofs_spike`.
+`virtiofs_spike`. A follow-up on `feat/qemu-virtiofs` measured full matrices:
+virtio-fs cut shipping by about 81% but Windows intermittently failed to read
+from the share, so scp stays the transport.
 
 ## Remaining gates
 
-- **VMware parity:** clear the stale lock (owner's decision), then run the
-  same pinned matrix on VMware with this harness tree. At minimum compare the
-  failed scenario and the four online-scan fallbacks.
-- **Consumer:** resolve the stale expected rejection and remeasure the output
-  budget in rust-fs-ntfs, then run the corrected matrix on Linux and macOS.
-  The failed runs remain evidence and are not relabelled.
+- **VMware:** the current guest cannot attach VHDs reliably, so provider
+  parity stays unmeasured; retirement is recommended over repair.
+- **Consumer:** resolved by rust-fs-ntfs#461; the corrected matrix passes
+  72/72 on macOS (above) and on the Pi (its own evidence in that pull
+  request). The original 71/1 runs remain evidence and are not relabelled.
 - **Linux re-validation:** this branch replaces 7-Zip and genisoimage with
   `bsdtar` on both hosts (Debian: `libarchive-tools`), discovers firmware,
   and shuts Windows down over SSH. The Pi has not run fresh provisioning or
   `down` with these changes.
-- **Recipe-reference fix:** the full matrix ran before `e152059`. Smoke
-  passed with it; whether it changes any NTFS scenario is unmeasured.
+- **Recipe-reference fix:** measured -- the sign-off ran with `e152059`, and
+  no NTFS scenario's result differs from the earlier scp runs.
+- **Exact head:** the sign-off ran on `06cf970`; the squashed head carries
+  `main`'s version of the recipe-reference fix, so the matrix is rerun there.
 
 ## Reproduction shape
 

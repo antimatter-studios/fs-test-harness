@@ -26,7 +26,9 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   `qemu-system-aarch64`), and its paths and hashes are recorded in `vm.json`.
   Python older than 3.11 is refused by name.
   The 2026-10-10 macOS validation reproduces the Pi's NTFS matrix result
-  scenario by scenario; VMware parity remains unmeasured.
+  scenario by scenario, and with rust-fs-ntfs#461 a fresh guest passes all 72
+  scenarios over scp; the VMware guest could not attach VHDs reliably, so its
+  parity remains unmeasured.
 
 ### Fixed
 

@@ -194,7 +194,10 @@ The [2026-10-10 macOS validation](validation/qemu-ntfs-macos-2026-10-10/README.m
 did the same on an Apple Silicon MacBook with HVF: fresh provisioning,
 smoke twice on one Windows boot, a clean shutdown and restart, and the same
 unchanged NTFS consumer. All 72 scenarios match the Pi run, the same failure
-and four fallbacks included. Its VMware comparison was not measured.
+and four fallbacks included. With the consumer's corrected expectation
+(rust-fs-ntfs#461), a fresh guest built by this branch then passed all 72
+scenarios over scp. The VMware guest could not attach VHDs reliably, so
+provider parity is unmeasured and retiring it is recommended.
 
 The corrected NTFS consumer subsequently passed **72/72 scenarios and all
 438 steps** on the Pi using QEMU and SCP. Its
