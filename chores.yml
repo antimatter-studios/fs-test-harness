@@ -39,7 +39,7 @@ chore_min_version: 0.6.0
 #     output-budget     39 / 1,957    120 / 12,000   measured 2026-09-26
 #     agents-core       11 /   445     20 / 1,000   measured 2026-09-30
 #     remote-timeout    18 / 1,022     25 / 1,500   measured 2026-10-02
-#     local-vm          42 / 3,986     70 / 9,000   measured 2026-10-09 (29 tests)
+#     local-vm          71 / 6,619     95 / 9,000   measured 2026-10-10 (46 tests)
 #     smoke            348 / 42,000   500 / 60,000   end-to-end VM transcript
 #
 #   THE LINT AND TEST ROWS MOVED ON 2026-10-02. On fs-windows-test-harness#40
@@ -119,7 +119,7 @@ tasks:
   local-vm:
     desc: QEMU lifecycle, media verification, locking and SSH transport checks (no VM needed)
     cmds:
-      - scripts/task.sh local-vm local-vm 70 9000 -- python3 -B tests/local-vm.py
+      - scripts/task.sh local-vm local-vm 95 9000 -- python3 -B tests/local-vm.py
 
   check:
     desc: Every CI job that runs off Windows -- lint, test, state-machine, remote-timeout, output-budget, agents-core, config, local-vm

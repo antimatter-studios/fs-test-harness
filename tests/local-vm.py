@@ -15,7 +15,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 spec = importlib.util.spec_from_file_location(
     "local_vm", Path(__file__).resolve().parents[1] / "scripts/local-vm.py"
@@ -514,6 +514,175 @@ class LocalVM(unittest.TestCase):
                 popen.return_value.wait.assert_called_once()
             else:
                 popen.assert_not_called()
+
+    def test_a_share_adds_shared_guest_memory_and_a_virtio_fs_device(self):
+        with patch.object(vm, "runtime_dir", return_value=self.state):
+            plain = vm.qemu_command(self.state, self.config)
+            shared = vm.qemu_command(self.state, self.config, share=True)
+        self.assertNotIn("vhost-user-fs-pci", " ".join(plain))
+        self.assertNotIn("memory-backend", " ".join(plain))
+        machine = shared[shared.index("-machine") + 1]
+        self.assertTrue(machine.endswith(",memory-backend=mem"), machine)
+        # vhost-user maps guest RAM into virtiofsd; macOS has no memfd, so
+        # POSIX shared memory serves both hosts.
+        self.assertIn("memory-backend-shm,id=mem,size=4096M,share=on", shared)
+        self.assertIn(f"socket,id=vfs,path={self.state / 'vfs.sock'}", shared)
+        self.assertIn("vhost-user-fs-pci,queue-size=1024,chardev=vfs,tag=fswth", shared)
+
+    def test_up_with_a_share_starts_virtiofsd_before_qemu(self):
+        share = self.state / "images"
+        share.mkdir()
+        self.config["install_started"] = True
+        order = []
+
+        def daemon(argv, **kwargs):
+            order.append("virtiofsd")
+            (self.state / "vfs.sock").touch()
+            return MagicMock(pid=4242, poll=MagicMock(return_value=None))
+
+        with (
+            patch.object(vm, "running", return_value=None),
+            patch.object(vm, "runtime_dir", return_value=self.state),
+            patch.object(vm.subprocess, "Popen", side_effect=daemon) as popen,
+            patch.object(
+                vm, "run", side_effect=lambda *a, **k: order.append("qemu")
+            ) as run,
+        ):
+            vm.up(self.state, self.config, share=share, virtiofsd="/opt/virtiofsd")
+            self.assertEqual(vm.current_share(self.state), str(share))
+        self.assertEqual(order, ["virtiofsd", "qemu"])
+        self.assertEqual(
+            [str(x) for x in popen.call_args.args[0]],
+            [
+                "/opt/virtiofsd",
+                "--shared-dir",
+                str(share),
+                "--socket-path",
+                str(self.state / "vfs.sock"),
+                "--sandbox",
+                "none",
+                "--cache",
+                "never",
+            ],
+        )
+        self.assertIn(
+            "vhost-user-fs-pci,queue-size=1024,chardev=vfs,tag=fswth",
+            run.call_args.args[0],
+        )
+
+    def test_a_running_vm_is_reused_only_with_the_same_share(self):
+        share = self.state / "images"
+        share.mkdir()
+        with (
+            patch.object(vm, "running", return_value={"running": True}),
+            patch.object(vm, "runtime_dir", return_value=self.state),
+            patch.object(vm, "run") as run,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "down first"):
+                vm.up(self.state, self.config, share=share)
+            vm.write_json(self.state / "share.json", {"dir": str(share)})
+            vm.up(self.state, self.config, share=share)
+            with self.assertRaisesRegex(RuntimeError, "down first"):
+                vm.up(self.state, self.config)
+        run.assert_not_called()
+
+    def test_a_share_without_virtiofsd_or_a_directory_is_refused(self):
+        self.config["install_started"] = True
+        with (
+            patch.object(vm, "running", return_value=None),
+            patch.object(vm, "runtime_dir", return_value=self.state),
+            patch.object(vm.shutil, "which", return_value=None),
+            patch.object(vm, "VIRTIOFSD_PATHS", ()),
+            patch.object(vm, "run") as run,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Missing virtiofsd"):
+                vm.up(self.state, self.config, share=self.state)
+            with self.assertRaisesRegex(RuntimeError, "not a directory"):
+                vm.up(
+                    self.state, self.config, share=self.state / "absent", virtiofsd="/v"
+                )
+        run.assert_not_called()
+
+    def test_virtiofsd_is_stopped_when_it_or_qemu_fails_to_start(self):
+        self.config["install_started"] = True
+        daemon = MagicMock(pid=4242, poll=MagicMock(return_value=1))
+        with (
+            patch.object(vm, "running", return_value=None),
+            patch.object(vm, "runtime_dir", return_value=self.state),
+            patch.object(vm.subprocess, "Popen", return_value=daemon),
+            patch.object(vm, "run") as run,
+            self.assertRaisesRegex(RuntimeError, "virtiofsd.log"),
+        ):
+            vm.up(self.state, self.config, share=self.state, virtiofsd="/v")
+        run.assert_not_called()
+        daemon.terminate.assert_called_once()
+
+        def listening(argv, **kwargs):
+            (self.state / "vfs.sock").touch()
+            return daemon
+
+        daemon = MagicMock(pid=4242, poll=MagicMock(return_value=None))
+        with (
+            patch.object(vm, "running", return_value=None),
+            patch.object(vm, "runtime_dir", return_value=self.state),
+            patch.object(vm.subprocess, "Popen", side_effect=listening),
+            patch.object(
+                vm, "run", side_effect=subprocess.CalledProcessError(1, "qemu")
+            ),
+            self.assertRaisesRegex(RuntimeError, "QEMU launch failed"),
+        ):
+            vm.up(self.state, self.config, share=self.state, virtiofsd="/v")
+        daemon.terminate.assert_called_once()
+        self.assertIsNone(vm.current_share(self.state))
+
+    def test_down_stops_only_its_own_virtiofsd(self):
+        (self.state / "virtiofsd.pid").write_text("4242")
+        vm.write_json(self.state / "share.json", {"dir": "/srv/images"})
+        for name, killed in (("virtiofsd", True), ("bash", False)):
+            with (
+                self.subTest(name=name),
+                patch.object(vm, "runtime_dir", return_value=self.state),
+                patch.object(vm, "process_name", return_value=name),
+                patch.object(vm.os, "kill") as kill,
+            ):
+                vm.stop_virtiofsd(self.state)
+            if killed:
+                kill.assert_called_once_with(4242, vm.signal.SIGTERM)
+            else:
+                kill.assert_not_called()
+        self.assertIsNone(vm.current_share(self.state))
+        self.assertFalse((self.state / "virtiofsd.pid").exists())
+
+    def test_share_driver_copies_virtio_fs_from_the_pinned_iso(self):
+        self.config["provisioned"] = True
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append([str(x) for x in argv])
+            if "-x" in argv:
+                arm64 = Path(argv[argv.index("-C") + 1]) / "viofs/w11/ARM64"
+                arm64.mkdir(parents=True)
+                for name in ("viofs.inf", "viofs.sys", "virtiofs.exe"):
+                    (arm64 / name).write_bytes(name.encode())
+
+        with (
+            patch.object(vm, "run", side_effect=run),
+            patch.object(vm, "ssh") as ssh,
+        ):
+            vm.share_driver(self.state, self.config)
+        extract, copy = calls
+        self.assertEqual(extract[-1], "viofs/w11/ARM64")
+        self.assertEqual(copy[-1], "fswth-local:C:/fswth-bootstrap/viofs/")
+        self.assertEqual(
+            sorted(Path(x).name for x in copy[1:-1]),
+            ["share-driver.ps1", "viofs.inf", "viofs.sys", "virtiofs.exe"],
+        )
+        self.assertIn("share-driver.ps1", ssh.call_args.args[1])
+        with (
+            patch.object(vm, "run"),
+            self.assertRaisesRegex(RuntimeError, "virtio-fs driver was not extracted"),
+        ):
+            vm.share_driver(self.state, self.config)
 
     def test_old_python_is_refused_by_name(self):
         with (

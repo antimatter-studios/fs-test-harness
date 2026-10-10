@@ -27,6 +27,11 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   Python older than 3.11 is refused by name.
   The 2026-10-10 macOS validation reproduces the Pi's NTFS matrix result
   scenario by scenario; VMware parity remains unmeasured.
+- Optional virtio-fs image sharing. `local-vm.py up --share DIR` runs
+  `virtiofsd` beside QEMU and `share-driver` installs the guest's `viofs`
+  driver and service at `Z:`; with `VM_SHARE_HOST_DIR` and
+  `VM_SHARE_GUEST_DIR` in `.test-env`, ship steps for images inside the share
+  copy inside Windows instead of over scp. Off unless configured.
 
 ### Fixed
 

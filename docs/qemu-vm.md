@@ -141,6 +141,45 @@ The existing `--no-ship` flag can reuse a known unchanged deployment. Do not
 use it after changing source, scripts, build settings or tools; this branch
 does not implement automatic deployment fingerprinting.
 
+## Optional: share images instead of copying them
+
+By default every image crosses into and out of the guest over scp. A host
+directory can instead be shared with the guest through virtio-fs, so ship
+steps copy inside Windows (see [the vocabulary](vocabulary.md)). It is off
+unless you ask for it, and a guest started without it behaves as before.
+
+It needs a `virtiofsd` on the host: Debian's `virtiofsd` package, or on macOS
+a build of the macOS port (`christhomas/virtiofsd`, branch `cth/macos`):
+
+```sh
+cargo build --release --locked      # in the virtiofsd checkout
+```
+
+Start the guest with the share, and install the guest side once:
+
+```sh
+python3 scripts/local-vm.py up --share /path/to/images \
+    --virtiofsd /path/to/virtiofsd/target/release/virtiofsd
+python3 scripts/local-vm.py wait
+python3 scripts/local-vm.py share-driver     # once per guest
+```
+
+`share-driver` installs virtio-win's ARM64 `viofs` driver from the pinned
+VirtIO ISO and its WinFsp-based service, which mounts the share at `Z:` on
+every boot. `up --share` starts `virtiofsd` (`--cache never`, so neither side
+reads a stale copy) and gives QEMU shared guest memory and the virtio-fs
+device; `down` leaves no `virtiofsd` behind. A running guest is reused only
+with the same share: `down` first to add, change or remove it. Without a
+share the service finds no device and stays idle.
+
+Then point the consumer's ignored `.test-env` at the share:
+
+```sh
+HOST_IMAGE_DIR=/path/to/images
+VM_SHARE_HOST_DIR=/path/to/images
+VM_SHARE_GUEST_DIR=Z:/
+```
+
 ## Inspect and stop
 
 ```sh

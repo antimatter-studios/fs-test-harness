@@ -18,6 +18,7 @@ import platform
 import secrets
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -52,6 +53,10 @@ SYSTEM_FIRMWARE = (
     Path("/usr/share/AAVMF/AAVMF_CODE.fd"),
     Path("/usr/share/AAVMF/AAVMF_VARS.fd"),
 )
+# Optional virtio-fs share (`up --share`). The guest's VirtioFsSvc mounts the
+# device with this tag at Z:. Debian installs virtiofsd outside PATH.
+SHARE_TAG = "fswth"
+VIRTIOFSD_PATHS = (Path("/usr/libexec/virtiofsd"), Path("/usr/lib/qemu/virtiofsd"))
 
 
 def run(argv, **kwargs):
@@ -78,13 +83,14 @@ def private_dir(path):
     path.chmod(0o700)
 
 
-def runtime_dir(state):
+def runtime_dir(state, create=True):
     # sun_path is 108 bytes on Linux, 104 on macOS; keep sockets independent
-    # of long state paths.
+    # of long state paths. Lookups pass create=False and leave nothing behind.
     parent = Path(f"/tmp/fswth-{os.getuid()}")
-    private_dir(parent)
     path = parent / hashlib.sha256(os.fsencode(state)).hexdigest()[:16]
-    private_dir(path)
+    if create:
+        private_dir(parent)
+        private_dir(path)
     return path
 
 
@@ -402,7 +408,7 @@ def load_config(state):
     return config
 
 
-def qemu_command(state, config, install=False):
+def qemu_command(state, config, install=False, share=False):
     runtime = runtime_dir(state)
     # State prepared before HVF support has no accelerator: it was KVM.
     accel = config.get("accelerator", "kvm")
@@ -464,14 +470,115 @@ def qemu_command(state, config, install=False):
                 f"usb-storage,drive={name}"
                 + (",bootindex=2" if name == "installer" else ""),
             ]
+    if share:
+        # vhost-user maps guest RAM into virtiofsd. macOS has no memfd;
+        # POSIX shared memory works on both hosts.
+        command[command.index("-machine") + 1] += ",memory-backend=mem"
+        command += [
+            "-object",
+            f"memory-backend-shm,id=mem,size={config['memory_mib']}M,share=on",
+            "-chardev",
+            f"socket,id=vfs,path={runtime / 'vfs.sock'}",
+            "-device",
+            f"vhost-user-fs-pci,queue-size=1024,chardev=vfs,tag={SHARE_TAG}",
+        ]
     return command
 
 
-def up(state, config, install=False):
+def current_share(state):
+    marker = runtime_dir(state, create=False) / "share.json"
+    if not marker.is_file():
+        return None
+    return json.loads(marker.read_text())["dir"]
+
+
+def find_virtiofsd(explicit):
+    if explicit:
+        return explicit
+    found = shutil.which("virtiofsd") or next(
+        (str(p) for p in VIRTIOFSD_PATHS if p.is_file()), None
+    )
+    if not found:
+        raise RuntimeError(
+            "Missing virtiofsd for --share; see docs/qemu-vm.md (Debian: apt install virtiofsd)"
+        )
+    return found
+
+
+def start_virtiofsd(state, share, binary):
+    runtime = runtime_dir(state)
+    socket_path = runtime / "vfs.sock"
+    socket_path.unlink(missing_ok=True)
+    with (state / "virtiofsd.log").open("a") as log:
+        daemon = subprocess.Popen(
+            [
+                binary,
+                "--shared-dir",
+                share,
+                "--socket-path",
+                socket_path,
+                "--sandbox",
+                "none",
+                # Host and guest both write these files: never serve a cached
+                # copy (the spike's 40 read-after-write checks used this).
+                "--cache",
+                "never",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    (runtime / "virtiofsd.pid").write_text(f"{daemon.pid}\n")
+    deadline = time.monotonic() + 10
+    while not socket_path.exists():
+        if daemon.poll() is not None or time.monotonic() >= deadline:
+            daemon.terminate()
+            (runtime / "virtiofsd.pid").unlink(missing_ok=True)
+            raise RuntimeError(
+                f"virtiofsd did not start; inspect {state / 'virtiofsd.log'}"
+            )
+        time.sleep(0.1)
+    return daemon
+
+
+def process_name(pid):
+    result = subprocess.run(
+        ["ps", "-o", "comm=", "-p", str(pid)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip()
+
+
+def stop_virtiofsd(state):
+    """virtiofsd ends with its QEMU; stop one left behind, and only ours."""
+    runtime = runtime_dir(state, create=False)
+    pid_file = runtime / "virtiofsd.pid"
+    if pid_file.is_file():
+        pid = int(pid_file.read_text())
+        if "virtiofsd" in process_name(pid):
+            os.kill(pid, signal.SIGTERM)
+        pid_file.unlink()
+    (runtime / "share.json").unlink(missing_ok=True)
+
+
+def up(state, config, install=False, share=None, virtiofsd=None):
+    if share is not None:
+        share = Path(share).expanduser().resolve()
+        if not share.is_dir():
+            raise RuntimeError(f"--share is not a directory: {share}")
     status = running(state)
     if status is not None:
         if not status.get("running"):
             raise RuntimeError(f"VM exists but is not running: {status}")
+        wanted, current = (str(share) if share else None), current_share(state)
+        if wanted != current:
+            raise RuntimeError(
+                f"VM is running {'with share ' + current if current else 'without a share'}; "
+                "down first to change its share"
+            )
         print("VM is already running; boot and disk are reused")
         return
     if install and config["install_started"]:
@@ -480,7 +587,10 @@ def up(state, config, install=False):
         )
     if not install and not config["install_started"]:
         raise RuntimeError("First boot needs up --install")
-    command = qemu_command(state, config, install)
+    command = qemu_command(state, config, install, share=share is not None)
+    daemon = None
+    if share is not None:
+        daemon = start_virtiofsd(state, share, find_virtiofsd(virtiofsd))
     # Mark before launching: a killed command must not allow a destructive retry.
     if install:
         config["install_started"] = True
@@ -489,11 +599,17 @@ def up(state, config, install=False):
         try:
             run(command, stdout=log, stderr=subprocess.STDOUT, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            if daemon is not None:
+                daemon.terminate()
+                (runtime_dir(state) / "virtiofsd.pid").unlink(missing_ok=True)
             raise RuntimeError(
                 f"QEMU launch failed; inspect {state / 'qemu.log'}"
             ) from exc
+    if share is not None:
+        write_json(runtime_dir(state) / "share.json", {"dir": str(share)})
     print(
         f"VM started; SSH 127.0.0.1:{config['ssh_port']}; it stays running until down"
+        + (f"; {share} is shared as Z:" if share is not None else "")
     )
 
 
@@ -575,6 +691,7 @@ def provision(state, config):
 
 def down(state, timeout):
     if running(state) is None:
+        stop_virtiofsd(state)
         print("VM is already stopped")
         return
     # Windows' own shutdown is clean; the ACPI power button left it dirty
@@ -595,10 +712,52 @@ def down(state, timeout):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if running(state) is None:
+            stop_virtiofsd(state)
             print("VM shut down cleanly")
             return
         time.sleep(2)
     raise TimeoutError("Windows did not shut down; left running, no forced kill")
+
+
+def share_driver(state, config):
+    """Install virtio-win's ARM64 virtio-fs driver and service in the guest."""
+    with tempfile.TemporaryDirectory(prefix="virtio-", dir=state) as scratch:
+        run(
+            [
+                "bsdtar",
+                "-x",
+                "-f",
+                Path(config["media"]) / "virtio-win.iso",
+                "-C",
+                scratch,
+                "viofs/w11/ARM64",
+            ],
+            timeout=120,
+        )
+        source = Path(scratch) / "viofs/w11/ARM64"
+        files = sorted(source.iterdir()) if source.is_dir() else []
+        if not any(f.name == "viofs.inf" for f in files):
+            raise RuntimeError("ARM64 virtio-fs driver was not extracted")
+        ssh(
+            state,
+            "New-Item -ItemType Directory -Force C:\\fswth-bootstrap\\viofs | Out-Null",
+            capture_output=True,
+            timeout=60,
+        )
+        run(
+            [
+                state / "bin/scp",
+                *files,
+                RESOURCES / "share-driver.ps1",
+                "fswth-local:C:/fswth-bootstrap/viofs/",
+            ],
+            timeout=120,
+        )
+    ssh(
+        state,
+        "& C:\\fswth-bootstrap\\viofs\\share-driver.ps1; if (-not $?) { exit 1 }",
+        timeout=300,
+    )
 
 
 def boot_installer(state, config):
@@ -630,6 +789,7 @@ def keep_awake(action):
     if platform.system() != "Darwin" or action not in (
         "wait",
         "provision",
+        "share-driver",
         "down",
         "exec",
         "ssh",
@@ -675,6 +835,14 @@ def parse_args(argv=None):
     prep.add_argument("--firmware-vars", help="variable-store template for the code")
     start = sub.add_parser("up", help="start once; reuse a running VM")
     start.add_argument(
+        "--share",
+        type=Path,
+        help="also share this host directory with the guest (virtio-fs, Z:)",
+    )
+    start.add_argument(
+        "--virtiofsd", help="virtiofsd binary (default: PATH, then /usr/libexec)"
+    )
+    start.add_argument(
         "--install",
         action="store_true",
         help="first boot ONLY; unattended setup wipes this VM's disk",
@@ -689,6 +857,10 @@ def parse_args(argv=None):
     )
     sub.add_parser(
         "provision", help="activate evaluation and install WinFsp after Windows setup"
+    )
+    sub.add_parser(
+        "share-driver",
+        help="once, on a guest started with up --share: install virtio-fs as Z:",
     )
     for name in ("exec", "ssh"):
         cmd = sub.add_parser(
@@ -722,7 +894,16 @@ def main(argv=None):
         )
     os.umask(0o077)
     if args.action == "status":
-        print(json.dumps({"state": str(state), "qemu": running(state)}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "state": str(state),
+                    "qemu": running(state),
+                    "share": current_share(state),
+                },
+                indent=2,
+            )
+        )
         return 0
     with exclusive(state), keep_awake(args.action):
         if args.action == "prepare":
@@ -730,11 +911,17 @@ def main(argv=None):
             return 0
         config = load_config(state)
         if args.action == "up":
-            up(state, config, args.install)
+            up(state, config, args.install, share=args.share, virtiofsd=args.virtiofsd)
         elif args.action == "wait":
             wait_ready(state, args.timeout)
         elif args.action == "provision":
             provision(state, config)
+        elif args.action == "share-driver":
+            if not config["provisioned"] or current_share(state) is None:
+                raise RuntimeError(
+                    "share-driver needs a provisioned VM started with up --share"
+                )
+            share_driver(state, config)
         elif args.action == "down":
             down(state, args.timeout)
         elif args.action == "boot-installer":
