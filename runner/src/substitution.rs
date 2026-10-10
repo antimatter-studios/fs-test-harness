@@ -41,7 +41,28 @@ pub struct Substitution {
     pub step: Value,
 }
 
+/// Why a template could not be expanded into a command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubstitutionError {
+    /// Required references that resolve to nothing, in template order.
+    Unresolved(Vec<String>),
+    /// A reference chain that leads back to itself, from first to repeat.
+    Cycle(Vec<String>),
+    /// A reference chain deeper than [`MAX_DEPTH`], from the outermost.
+    TooDeep(Vec<String>),
+}
+
+/// How many references deep a value may point before expansion stops.
+#[allow(dead_code)] // used by the expansion the next commit implements
+pub const MAX_DEPTH: usize = 8;
+
 impl Substitution {
+    /// Expand `template` completely, or say why it cannot be (#45). Not
+    /// implemented yet: this stub is the one-pass, silent-empty `expand`.
+    pub fn expand_checked(&self, template: &str) -> Result<String, SubstitutionError> {
+        Ok(self.expand(template))
+    }
+
     /// Substitute every `{...}` placeholder in `template`.
     ///
     /// Token resolution:
@@ -353,5 +374,102 @@ mod tests {
         assert!(!s.evaluate_when("scenario.empty"));
         assert!(!s.evaluate_when("scenario.false"));
         assert!(!s.evaluate_when("scenario.null"));
+    }
+    /// The QEMU validation's shape (#45): a step value that is itself a
+    /// reference. One pass handed Windows `{scenario.volume_params.label}`.
+    #[test]
+    fn a_reference_inside_a_resolved_value_is_expanded() {
+        let mut s = fixture();
+        s.step = json!({ "params": { "label": "{scenario.volume_params.label}" } });
+        assert_eq!(
+            s.expand_checked("-Label '{step.params.label}'"),
+            Ok("-Label 'TEST'".to_string())
+        );
+        // Two levels: a step value naming a scenario value naming another.
+        s.scenario["alias"] = json!("{scenario.volume_params.label}");
+        s.step = json!({ "label": "{scenario.alias}" });
+        assert_eq!(s.expand_checked("{step.label}"), Ok("TEST".to_string()));
+    }
+
+    #[test]
+    fn a_reference_cycle_is_reported_not_followed() {
+        let mut s = fixture();
+        s.scenario = json!({ "a": "{scenario.b}", "b": "{scenario.a}" });
+        match s.expand_checked("x {scenario.a}") {
+            Err(SubstitutionError::Cycle(chain)) => {
+                assert_eq!(chain, ["scenario.a", "scenario.b", "scenario.a"])
+            }
+            other => panic!("expected a cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_chain_deeper_than_the_limit_is_reported() {
+        let mut s = fixture();
+        let mut m = serde_json::Map::new();
+        for i in 0..=MAX_DEPTH {
+            m.insert(format!("v{i}"), json!(format!("{{scenario.v{}}}", i + 1)));
+        }
+        m.insert(format!("v{}", MAX_DEPTH + 1), json!("end"));
+        s.scenario = serde_json::Value::Object(m);
+        assert!(matches!(
+            s.expand_checked("{scenario.v0}"),
+            Err(SubstitutionError::TooDeep(_))
+        ));
+    }
+
+    /// A required reference that resolves to nothing is an error before
+    /// any command runs, naming every one; an optional one is still empty.
+    #[test]
+    fn unresolved_required_references_are_reported() {
+        let s = fixture();
+        assert_eq!(
+            s.expand_checked("a {step.params.nope} b {scenario.gone} c {step.params.maybe?}"),
+            Err(SubstitutionError::Unresolved(vec![
+                "step.params.nope".to_string(),
+                "scenario.gone".to_string()
+            ]))
+        );
+        assert_eq!(
+            s.expand_checked("--journal {step.params.journal_mode?}"),
+            Ok("--journal ".to_string())
+        );
+        // A missing reference reached through another is reported too.
+        let mut s = fixture();
+        s.step = json!({ "label": "{scenario.no_such}" });
+        assert_eq!(
+            s.expand_checked("{step.label}"),
+            Err(SubstitutionError::Unresolved(vec![
+                "scenario.no_such".to_string()
+            ]))
+        );
+    }
+
+    /// Data that is meant literally stays literal: a `{"literal": ...}`
+    /// value, doubled braces, and flat tokens (file content, paths).
+    #[test]
+    fn explicitly_literal_data_is_not_expanded() {
+        let mut s = fixture();
+        s.step = json!({ "content": { "literal": "{scenario.image} stays" } });
+        assert_eq!(
+            s.expand_checked("{step.content}"),
+            Ok("{scenario.image} stays".to_string())
+        );
+        assert_eq!(
+            s.expand_checked("{{step.content}} and {{"),
+            Ok("{step.content} and {".to_string())
+        );
+        s.flat
+            .insert("content".to_string(), "{scenario.image}".to_string());
+        assert_eq!(
+            s.expand_checked("{content}"),
+            Ok("{scenario.image}".to_string())
+        );
+        // Every existing one-level template still expands as before.
+        let s = fixture();
+        assert_eq!(
+            s.expand_checked("{binary} {image} --label {step.params.label}"),
+            Ok("/usr/local/bin/myfs /srv/images/test.img --label STEP-LABEL".to_string())
+        );
     }
 }

@@ -3,13 +3,14 @@
   "scenarios": {
     "smoke-rw-roundtrip": {
       "status": "pending",
-      "_doc": "Host creates an image, ships it to the VM; every VM step remounts it and runs one built-in op (list, read with content/size/sha256 checks, mkdir, write, rename, unlink, rmdir); the image is shipped back and the host verifiers read the result out of it, the last with a double-quoted, space-padded argument that must reach the verifier unchanged. Each change is only visible to a later step if it survived an unmount, so the final listings prove the whole chain.",
+      "_doc": "Host creates an image, ships it to the VM; every VM step remounts it and runs one built-in op (list, read with content/size/sha256 checks, mkdir, write, rename, unlink, rmdir); the image is shipped back and the host verifiers read the result out of it, the last with a double-quoted, space-padded argument that must reach the verifier unchanged. The first read names its path through {scenario.volume_params.hello_path}, a reference inside a step value, which must reach Windows expanded (#45). Each change is only visible to a later step if it survived an unmount, so the final listings prove the whole chain.",
       "image": "smoke-rw.tar",
+      "volume_params": { "hello_path": "/hello.txt" },
       "recipe": [
         { "op": "image-create", "path": "/hello.txt", "content": "hello-from-the-host" },
         { "op": "ship-to-vm", "src": "images/{run_id}/{scenario.image}", "dest": "{vm.workdir}/{scenario.image}" },
         { "op": "win-ls-via-mount", "drive": "X", "path": "/", "expect_names_csv": ".,..,hello.txt", "expect_count": "3" },
-        { "op": "win-cat-via-mount", "drive": "X", "path": "/hello.txt", "expect_content": "hello-from-the-host", "expect_size": "19", "expect_sha256": "4b446221383191e3c60c8c7de9fe13ffd1e7fd9bb2dcac11b3322b0ff1f17da6" },
+        { "op": "win-cat-via-mount", "drive": "X", "path": "{scenario.volume_params.hello_path}", "expect_content": "hello-from-the-host", "expect_size": "19", "expect_sha256": "4b446221383191e3c60c8c7de9fe13ffd1e7fd9bb2dcac11b3322b0ff1f17da6" },
         { "op": "win-mkdir", "drive": "X", "path": "/docs" },
         { "op": "win-write", "drive": "X", "path": "/docs/draft.txt", "content": "first draft" },
         { "op": "win-rename", "drive": "X", "from": "/docs/draft.txt", "to": "/docs/final.txt" },
