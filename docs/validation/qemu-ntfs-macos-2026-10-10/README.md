@@ -181,6 +181,15 @@ the first guest. Transcripts: [signoff-ntfs-output.txt](signoff-ntfs-output.txt)
 [signoff-smoke-output.txt](signoff-smoke-output.txt); per-scenario results
 in [signoff-results.json](signoff-results.json).
 
+**Rerun on the squashed head.** The same matrix, guest and consumer were run
+again on this branch's head `e90a34f` (`211edc4` plus this report): `chore
+check` passed all eight tasks with no override, and the matrix **exited 0
+with 72 of 72 scenarios and 438 of 438 steps** on one Windows boot, in
+2,140.9 s wall time (runner 2,092.0 s), 1,336 lines / 97,902 bytes. Every
+scenario's result is identical to the `06cf970` run
+([head-ntfs-output.txt](head-ntfs-output.txt), raw SHA-256
+`5a8cf719…54e617b`; [head-results.json](head-results.json)).
+
 `agents-core` failed once in this layout because the consumer and harness
 share one `../rust-fs-core` sibling: rust-fs-core 0.3.8 carries a newer
 canonical shared block than `06cf970`'s `AGENTS.md`, which pinned 0.3.3. Run
@@ -257,8 +266,8 @@ from the share, so scp stays the transport.
   `down` with these changes.
 - **Recipe-reference fix:** measured -- the sign-off ran with `e152059`, and
   no NTFS scenario's result differs from the earlier scp runs.
-- **Exact head:** the sign-off ran on `06cf970`; the squashed head carries
-  `main`'s version of the recipe-reference fix, so the matrix is rerun there.
+- **Exact head:** done -- the squashed head with `main`'s version of the
+  recipe-reference fix passes the same 72 of 72 (above).
 
 ## Reproduction shape
 
