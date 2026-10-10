@@ -41,8 +41,160 @@ pub struct Substitution {
     pub step: Value,
 }
 
+/// Why a template could not be expanded into a command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubstitutionError {
+    /// Required references that resolve to nothing, in template order.
+    Unresolved(Vec<String>),
+    /// A reference chain that leads back to itself, from first to repeat.
+    Cycle(Vec<String>),
+    /// A reference chain deeper than [`MAX_DEPTH`], from the outermost.
+    TooDeep(Vec<String>),
+}
+
+/// How many references deep a value may point before expansion stops.
+pub const MAX_DEPTH: usize = 8;
+
+impl std::fmt::Display for SubstitutionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SubstitutionError::Unresolved(paths) => write!(
+                f,
+                "unresolved required reference(s): {}",
+                paths
+                    .iter()
+                    .map(|p| format!("{{{p}}}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            SubstitutionError::Cycle(chain) => {
+                write!(f, "reference cycle: {}", chain.join(" -> "))
+            }
+            SubstitutionError::TooDeep(chain) => write!(
+                f,
+                "references nested deeper than {MAX_DEPTH}: {}",
+                chain.join(" -> ")
+            ),
+        }
+    }
+}
+
 impl Substitution {
-    /// Substitute every `{...}` placeholder in `template`.
+    /// Expand `template` completely, or say why it cannot be (#45). What
+    /// the dispatcher runs: a command is built from this or not at all.
+    ///
+    /// * A `{scenario.*}` or `{step.*}` value that is itself a string is
+    ///   expanded in turn, so a step can name a scenario value. A chain
+    ///   that leads back to a reference already being expanded is a
+    ///   [`SubstitutionError::Cycle`]; one deeper than [`MAX_DEPTH`] is
+    ///   [`SubstitutionError::TooDeep`].
+    /// * A required reference that resolves to nothing, at any depth, is
+    ///   collected, and every one is reported together as
+    ///   [`SubstitutionError::Unresolved`]. A `?` reference still yields
+    ///   an empty string.
+    /// * Literal data is left alone: a `{"literal": "..."}` value is used
+    ///   verbatim, `{{` and `}}` are a literal brace, and flat tokens
+    ///   (`{content}`, `{path}`, `{binary}`, ...) are never re-expanded.
+    pub fn expand_checked(&self, template: &str) -> Result<String, SubstitutionError> {
+        let mut missing = Vec::new();
+        let out = self.expand_in(template, &mut Vec::new(), &mut missing)?;
+        if missing.is_empty() {
+            Ok(out)
+        } else {
+            Err(SubstitutionError::Unresolved(missing))
+        }
+    }
+
+    /// One level of [`Self::expand_checked`]: `chain` is the references
+    /// being expanded on the way here, outermost first.
+    fn expand_in(
+        &self,
+        template: &str,
+        chain: &mut Vec<String>,
+        missing: &mut Vec<String>,
+    ) -> Result<String, SubstitutionError> {
+        let mut out = String::with_capacity(template.len());
+        let bytes = template.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            match (bytes[i], bytes.get(i + 1)) {
+                (b'{', Some(b'{')) | (b'}', Some(b'}')) => {
+                    out.push(bytes[i] as char);
+                    i += 2;
+                    continue;
+                }
+                (b'{', _) => {
+                    if let Some(end_rel) = bytes[i + 1..].iter().position(|&b| b == b'}') {
+                        let inner = &bytes[i + 1..i + 1 + end_rel];
+                        if let Some((path, optional)) = parse_placeholder(inner) {
+                            match self.resolve(&path, chain, missing)? {
+                                Some(s) => out.push_str(&s),
+                                None if optional => {}
+                                None => {
+                                    if !missing.contains(&path) {
+                                        missing.push(path);
+                                    }
+                                }
+                            }
+                            i += 1 + end_rel + 1;
+                            continue;
+                        }
+                    }
+                }
+                _ => {}
+            }
+            let ch = template[i..]
+                .chars()
+                .next()
+                .expect("i is on a char boundary");
+            out.push(ch);
+            i += ch.len_utf8();
+        }
+        Ok(out)
+    }
+
+    /// A reference's text, expanded when it is a scenario or step string;
+    /// `None` when it resolves to nothing.
+    fn resolve(
+        &self,
+        path: &str,
+        chain: &mut Vec<String>,
+        missing: &mut Vec<String>,
+    ) -> Result<Option<String>, SubstitutionError> {
+        if let Some(s) = self.flat.get(path) {
+            return Ok(Some(s.clone()));
+        }
+        let Some(v) = self.lookup_value(path) else {
+            return Ok(None);
+        };
+        if let Some(literal) = v
+            .as_object()
+            .filter(|m| m.len() == 1)
+            .and_then(|m| m.get("literal"))
+            .and_then(Value::as_str)
+        {
+            return Ok(Some(literal.to_string()));
+        }
+        let Value::String(s) = v else {
+            return Ok(Some(value_to_string(&v)));
+        };
+        let mut at = chain.clone();
+        at.push(path.to_string());
+        if chain.iter().any(|p| p == path) {
+            return Err(SubstitutionError::Cycle(at));
+        }
+        if chain.len() >= MAX_DEPTH {
+            return Err(SubstitutionError::TooDeep(at));
+        }
+        chain.push(path.to_string());
+        let expanded = self.expand_in(&s, chain, missing);
+        chain.pop();
+        expanded.map(Some)
+    }
+
+    /// Substitute every `{...}` placeholder in `template`, in one pass and
+    /// with a missing required reference silently empty. The dispatcher
+    /// uses [`Self::expand_checked`]; this stays for its plain contract.
     ///
     /// Token resolution:
     ///
@@ -353,5 +505,102 @@ mod tests {
         assert!(!s.evaluate_when("scenario.empty"));
         assert!(!s.evaluate_when("scenario.false"));
         assert!(!s.evaluate_when("scenario.null"));
+    }
+    /// The QEMU validation's shape (#45): a step value that is itself a
+    /// reference. One pass handed Windows `{scenario.volume_params.label}`.
+    #[test]
+    fn a_reference_inside_a_resolved_value_is_expanded() {
+        let mut s = fixture();
+        s.step = json!({ "params": { "label": "{scenario.volume_params.label}" } });
+        assert_eq!(
+            s.expand_checked("-Label '{step.params.label}'"),
+            Ok("-Label 'TEST'".to_string())
+        );
+        // Two levels: a step value naming a scenario value naming another.
+        s.scenario["alias"] = json!("{scenario.volume_params.label}");
+        s.step = json!({ "label": "{scenario.alias}" });
+        assert_eq!(s.expand_checked("{step.label}"), Ok("TEST".to_string()));
+    }
+
+    #[test]
+    fn a_reference_cycle_is_reported_not_followed() {
+        let mut s = fixture();
+        s.scenario = json!({ "a": "{scenario.b}", "b": "{scenario.a}" });
+        match s.expand_checked("x {scenario.a}") {
+            Err(SubstitutionError::Cycle(chain)) => {
+                assert_eq!(chain, ["scenario.a", "scenario.b", "scenario.a"])
+            }
+            other => panic!("expected a cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_chain_deeper_than_the_limit_is_reported() {
+        let mut s = fixture();
+        let mut m = serde_json::Map::new();
+        for i in 0..=MAX_DEPTH {
+            m.insert(format!("v{i}"), json!(format!("{{scenario.v{}}}", i + 1)));
+        }
+        m.insert(format!("v{}", MAX_DEPTH + 1), json!("end"));
+        s.scenario = serde_json::Value::Object(m);
+        assert!(matches!(
+            s.expand_checked("{scenario.v0}"),
+            Err(SubstitutionError::TooDeep(_))
+        ));
+    }
+
+    /// A required reference that resolves to nothing is an error before
+    /// any command runs, naming every one; an optional one is still empty.
+    #[test]
+    fn unresolved_required_references_are_reported() {
+        let s = fixture();
+        assert_eq!(
+            s.expand_checked("a {step.params.nope} b {scenario.gone} c {step.params.maybe?}"),
+            Err(SubstitutionError::Unresolved(vec![
+                "step.params.nope".to_string(),
+                "scenario.gone".to_string()
+            ]))
+        );
+        assert_eq!(
+            s.expand_checked("--journal {step.params.journal_mode?}"),
+            Ok("--journal ".to_string())
+        );
+        // A missing reference reached through another is reported too.
+        let mut s = fixture();
+        s.step = json!({ "label": "{scenario.no_such}" });
+        assert_eq!(
+            s.expand_checked("{step.label}"),
+            Err(SubstitutionError::Unresolved(vec![
+                "scenario.no_such".to_string()
+            ]))
+        );
+    }
+
+    /// Data that is meant literally stays literal: a `{"literal": ...}`
+    /// value, doubled braces, and flat tokens (file content, paths).
+    #[test]
+    fn explicitly_literal_data_is_not_expanded() {
+        let mut s = fixture();
+        s.step = json!({ "content": { "literal": "{scenario.image} stays" } });
+        assert_eq!(
+            s.expand_checked("{step.content}"),
+            Ok("{scenario.image} stays".to_string())
+        );
+        assert_eq!(
+            s.expand_checked("{{step.content}} and {{"),
+            Ok("{step.content} and {".to_string())
+        );
+        s.flat
+            .insert("content".to_string(), "{scenario.image}".to_string());
+        assert_eq!(
+            s.expand_checked("{content}"),
+            Ok("{scenario.image}".to_string())
+        );
+        // Every existing one-level template still expands as before.
+        let s = fixture();
+        assert_eq!(
+            s.expand_checked("{binary} {image} --label {step.params.label}"),
+            Ok("/usr/local/bin/myfs /srv/images/test.img --label STEP-LABEL".to_string())
+        );
     }
 }
