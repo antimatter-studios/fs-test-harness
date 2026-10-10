@@ -1405,9 +1405,42 @@ mod tests {
         }
     }
 
+    /// Tests start together on parallel threads; their scratch directories
+    /// must still be distinct. Named by timestamp alone they collided on
+    /// macOS, whose clock ticks in microseconds, and one test's cleanup
+    /// deleted another's directory mid-run.
+    #[test]
+    fn scratch_directories_are_distinct_when_tests_start_together() {
+        let start = std::sync::Arc::new(std::sync::Barrier::new(16));
+        let dirs: Vec<PathBuf> = (0..16)
+            .map(|_| {
+                let start = start.clone();
+                std::thread::spawn(move || {
+                    start.wait();
+                    tempdir()
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|t| t.join().unwrap())
+            .collect();
+        let distinct: std::collections::HashSet<&PathBuf> = dirs.iter().collect();
+        for dir in &dirs {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+        assert_eq!(
+            distinct.len(),
+            dirs.len(),
+            "shared scratch directories: {dirs:?}"
+        );
+    }
+
     fn tempdir() -> PathBuf {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let p = std::env::temp_dir().join(format!(
-            "fs-windows-test-harness-dispatch-test-{}",
+            "fs-windows-test-harness-dispatch-test-{}-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

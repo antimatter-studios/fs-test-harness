@@ -49,6 +49,9 @@ loosely follows Keep a Changelog; semver applies from `2.0.0` onward.
   The ACPI power button left Windows with an unexpected-shutdown record
   (Kernel-Power 41, EventLog 6008) on its next boot; it is now only the
   fallback when SSH fails, and says so.
+- The runner's dispatch tests get distinct scratch directories when they
+  start together. Named by timestamp alone, they collided on macOS's
+  microsecond clock, so `chore test` failed 2 runs in 6 there.
 
 ### Changed
 
