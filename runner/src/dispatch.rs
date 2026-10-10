@@ -660,6 +660,38 @@ fn run_builtin_ship(
     } else {
         None
     };
+    let shared = if op_name == "ship-to-vm" {
+        shared_guest_path(flat, &src)
+    } else {
+        shared_guest_path(flat, &dest)
+    };
+    if let Some(guest_path) = shared {
+        let vm_path = if op_name == "ship-to-vm" { &dest } else { &src };
+        let command = shared_ship_command(op_name, &guest_path, vm_path, lease_stage.as_deref());
+        let (from, to) = if op_name == "ship-to-vm" {
+            (guest_path.as_str(), vm_path.as_str())
+        } else {
+            (vm_path.as_str(), guest_path.as_str())
+        };
+        let described = format!("share-copy {from} {to}");
+        let outcome = run_vm(&command, &config.vm.host, &config.vm.ssh_key, step_dir);
+        let (exit_code, error) = match outcome {
+            Ok(code) => (code, None),
+            Err(e) => (None, Some(e)),
+        };
+        return Ok(StepResult {
+            index: idx,
+            op: op_name.to_string(),
+            host: "vm", // the copy runs inside the VM, through the share.
+            command: described,
+            exit_code,
+            expected_exit: 0,
+            duration_ms: started.elapsed().as_millis(),
+            skipped: false,
+            skip_reason: None,
+            error,
+        });
+    }
     let guard_dir = step_dir.join("lease-guard");
     if lease_stage.is_some() {
         std::fs::create_dir_all(&guard_dir)
@@ -760,6 +792,59 @@ fn run_builtin_ship(
     }
 }
 
+/// The VM-side path of `host_path` when it lies inside the shared
+/// directory. Anything else -- outside it, relative, or climbing out with
+/// `..` -- returns `None` and ships over scp as before.
+fn shared_guest_path(flat: &BTreeMap<String, String>, host_path: &str) -> Option<String> {
+    let host_root = Path::new(flat.get("vm.share_host")?);
+    let guest_root = flat.get("vm.share_guest")?;
+    let relative = Path::new(host_path).strip_prefix(host_root).ok()?;
+    let mut parts = Vec::new();
+    for component in relative.components() {
+        match component {
+            std::path::Component::Normal(part) => parts.push(part.to_str()?),
+            _ => return None,
+        }
+    }
+    if parts.is_empty() {
+        return None;
+    }
+    Some(format!("{guest_root}/{}", parts.join("/")))
+}
+
+/// One VM command that ships through the share, run under the same lease
+/// fence as every VM command. Into the VM: copy from the share to the lease
+/// stage and move it into place, as scp's staged ship does. Out of the VM:
+/// copy straight into the share, where the host sees it at once.
+fn shared_ship_command(
+    op_name: &str,
+    guest_path: &str,
+    vm_path: &str,
+    stage: Option<&str>,
+) -> String {
+    let copy = |from: &str, to: &str| {
+        format!(
+            "Copy-Item -LiteralPath {} -Destination {} -Recurse -Force",
+            ps_literal(from),
+            ps_literal(to)
+        )
+    };
+    let body = if op_name == "ship-to-vm" {
+        match stage {
+            Some(stage) => format!(
+                "{}; Move-Item -LiteralPath {} -Destination {} -Force",
+                copy(guest_path, stage),
+                ps_literal(stage),
+                ps_literal(vm_path)
+            ),
+            None => copy(guest_path, vm_path),
+        }
+    } else {
+        copy(vm_path, guest_path)
+    };
+    format!("$ErrorActionPreference = 'Stop'; {body}")
+}
+
 fn host_name(h: OpHost) -> &'static str {
     match h {
         OpHost::Host => "host",
@@ -818,6 +903,18 @@ fn build_flat_vocab(
             harness_dir.trim_start_matches('/')
         );
         flat.insert("vm.harness_root".to_string(), vm_harness);
+    }
+
+    // `{vm.share_host}` / `{vm.share_guest}` — an optional directory the VM
+    // also sees (`VM_SHARE_HOST_DIR` / `VM_SHARE_GUEST_DIR` in .test-env).
+    // Ship steps whose host path lies inside it copy inside the VM instead
+    // of over scp.
+    if let Some(share) = local_config.share()? {
+        flat.insert(
+            "vm.share_host".to_string(),
+            share.host.display().to_string(),
+        );
+        flat.insert("vm.share_guest".to_string(), share.guest);
     }
 
     for (name, value) in &config.tools {
@@ -1433,6 +1530,90 @@ mod tests {
             dirs.len(),
             "shared scratch directories: {dirs:?}"
         );
+    }
+
+    fn share_vocab() -> BTreeMap<String, String> {
+        BTreeMap::from([
+            ("vm.share_host".to_string(), "/srv/images".to_string()),
+            ("vm.share_guest".to_string(), "Z:".to_string()),
+        ])
+    }
+
+    #[test]
+    fn only_paths_inside_the_share_are_shipped_through_it() {
+        let flat = share_vocab();
+        assert_eq!(
+            shared_guest_path(&flat, "/srv/images/1791/nfs-a.img").as_deref(),
+            Some("Z:/1791/nfs-a.img")
+        );
+        for outside in [
+            "/srv/images2/nfs-a.img", // a sibling sharing the prefix's text
+            "/tmp/nfs-a.img",
+            "/srv/images/../etc/passwd",
+            "/srv/images",
+            "images/nfs-a.img",
+        ] {
+            assert_eq!(shared_guest_path(&flat, outside), None, "{outside}");
+        }
+        assert_eq!(
+            shared_guest_path(&BTreeMap::new(), "/srv/images/a.img"),
+            None,
+            "no share configured"
+        );
+    }
+
+    #[test]
+    fn a_shared_ship_is_one_fenced_copy_inside_the_vm() {
+        let to_vm = shared_ship_command(
+            "ship-to-vm",
+            "Z:/1/a.img",
+            "C:/w/a.img",
+            Some("C:/w/.lock/t/ship-1"),
+        );
+        assert_eq!(
+            to_vm,
+            "$ErrorActionPreference = 'Stop'; \
+             Copy-Item -LiteralPath 'Z:/1/a.img' -Destination 'C:/w/.lock/t/ship-1' -Recurse -Force; \
+             Move-Item -LiteralPath 'C:/w/.lock/t/ship-1' -Destination 'C:/w/a.img' -Force"
+        );
+        assert_eq!(
+            shared_ship_command("ship-to-vm", "Z:/1/a.img", "C:/w/a.img", None),
+            "$ErrorActionPreference = 'Stop'; \
+             Copy-Item -LiteralPath 'Z:/1/a.img' -Destination 'C:/w/a.img' -Recurse -Force"
+        );
+        // The VM writes straight into the share: the host sees the file at once.
+        assert_eq!(
+            shared_ship_command(
+                "ship-to-host",
+                "Z:/1/it's.img",
+                "C:/w/it's.img",
+                Some("C:/w/.lock/t/x")
+            ),
+            "$ErrorActionPreference = 'Stop'; \
+             Copy-Item -LiteralPath 'C:/w/it''s.img' -Destination 'Z:/1/it''s.img' -Recurse -Force"
+        );
+    }
+
+    #[test]
+    fn the_share_reaches_the_vocabulary_or_stops_the_run() {
+        let dir = tempdir();
+        let env = dir.join(".test-env");
+        std::fs::write(
+            &env,
+            "VM_SHARE_HOST_DIR=/srv/images\nVM_SHARE_GUEST_DIR=Z:/\n",
+        )
+        .unwrap();
+        let cfg = config_with_ops(&[]);
+        let flat = build_flat_vocab(&cfg, &LocalConfig::load(&env), &dir, 0, "sc").unwrap();
+        assert_eq!(
+            flat.get("vm.share_host").map(String::as_str),
+            Some("/srv/images")
+        );
+        assert_eq!(flat.get("vm.share_guest").map(String::as_str), Some("Z:"));
+        std::fs::write(&env, "VM_SHARE_GUEST_DIR=Z:/\n").unwrap();
+        let err = build_flat_vocab(&cfg, &LocalConfig::load(&env), &dir, 0, "sc").unwrap_err();
+        assert!(err.contains("VM_SHARE_HOST_DIR"), "{err}");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     fn tempdir() -> PathBuf {

@@ -98,6 +98,17 @@ These op-names are recognised by the runner without an entry in
 `src` and `dest` go through the same `{...}` substitution as command
 templates. `{scenario.image}` is the typical value.
 
+**Optional shared directory.** When the per-machine `.test-env` names a
+directory the VM also sees -- `VM_SHARE_HOST_DIR` on the host and
+`VM_SHARE_GUEST_DIR` in the VM, both or neither -- a ship step whose host
+path lies inside it copies inside the VM instead of over scp: one fenced
+`Copy-Item` from the share into the VM path, or from the VM path into the
+share. Any other path still ships over scp. The two values are also
+available as `{vm.share_host}` and `{vm.share_guest}`. Pointing the
+consumer's `HOST_IMAGE_DIR` at the shared directory sends every image
+through it; the QEMU provider's `up --share` provides one
+([qemu-vm.md](qemu-vm.md)).
+
 ---
 
 ## Per-driver vocabulary — the translation-table convention

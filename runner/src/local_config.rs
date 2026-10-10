@@ -20,7 +20,7 @@
 //! `${VAR:-default}` expands to the value of VAR, or `default` if unset/empty.
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Strip one matching pair of surrounding `"` or `'` quotes.
 fn unquote(v: &str) -> &str {
@@ -30,6 +30,15 @@ fn unquote(v: &str) -> &str {
         }
     }
     v
+}
+
+/// A host directory the VM also sees, e.g. through virtiofs: the path
+/// `VM_SHARE_HOST_DIR` on this machine is `VM_SHARE_GUEST_DIR` in the VM.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Share {
+    pub host: PathBuf,
+    /// VM-side root, trailing separators trimmed (`Z:/` becomes `Z:`).
+    pub guest: String,
 }
 
 /// Machine-local overrides sourced from `.test-env`.
@@ -70,6 +79,34 @@ impl LocalConfig {
 
         let harness_dir = map.get("HARNESS_DIR").cloned();
         Self { map, harness_dir }
+    }
+
+    /// The optional shared directory. Both keys or neither: half a share
+    /// would silently fall back to scp, so it is an error instead.
+    pub fn share(&self) -> Result<Option<Share>, String> {
+        match (
+            self.map.get("VM_SHARE_HOST_DIR"),
+            self.map.get("VM_SHARE_GUEST_DIR"),
+        ) {
+            (None, None) => Ok(None),
+            (Some(host), Some(guest)) => {
+                let host = PathBuf::from(host);
+                if !host.is_absolute() {
+                    return Err(format!(
+                        "VM_SHARE_HOST_DIR must be an absolute path: {}",
+                        host.display()
+                    ));
+                }
+                Ok(Some(Share {
+                    host,
+                    guest: guest.trim_end_matches(['/', '\\']).to_string(),
+                }))
+            }
+            _ => Err(
+                "VM_SHARE_HOST_DIR and VM_SHARE_GUEST_DIR must be set together in .test-env"
+                    .to_string(),
+            ),
+        }
     }
 
     /// Expand `${VAR}` and `${VAR:-default}` references using `.test-env` values.
@@ -125,6 +162,31 @@ mod tests {
         let lc = LocalConfig::load(&path);
         std::fs::remove_file(&path).unwrap();
         lc
+    }
+
+    #[test]
+    fn a_share_needs_both_paths_and_an_absolute_host_dir() {
+        assert_eq!(load("VM_HOST=h\n").share(), Ok(None));
+        let share = load("VM_SHARE_HOST_DIR=/srv/images\nVM_SHARE_GUEST_DIR=Z:/\n")
+            .share()
+            .unwrap()
+            .unwrap();
+        assert_eq!(share.host, std::path::PathBuf::from("/srv/images"));
+        assert_eq!(share.guest, "Z:", "trailing separators are trimmed");
+        for half in [
+            "VM_SHARE_HOST_DIR=/srv/images\n",
+            "VM_SHARE_GUEST_DIR=Z:\\\n",
+        ] {
+            let err = load(half).share().unwrap_err();
+            assert!(
+                err.contains("VM_SHARE_HOST_DIR") && err.contains("VM_SHARE_GUEST_DIR"),
+                "{err}"
+            );
+        }
+        let err = load("VM_SHARE_HOST_DIR=images\nVM_SHARE_GUEST_DIR=Z:\n")
+            .share()
+            .unwrap_err();
+        assert!(err.contains("absolute"), "{err}");
     }
 
     #[test]
