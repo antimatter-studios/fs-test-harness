@@ -1,0 +1,45 @@
+# Shutdown evidence: Windows System log after each restart (guest local time)
+
+## events-after-clean-restart.txt
+
+TimeCreated             Id ProviderName                   Msg
+-----------             -- ------------                   ---
+10/9/2026 11:07:51 PM   41 Microsoft-Windows-Kernel-Power The system has rebooted without cleanly shutting down first. This error could be caused if the system stopped responding, crashed, or lost power unexpectedly.
+10/9/2026 11:07:50 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.
+10/9/2026 11:07:50 PM   20 Microsoft-Windows-Kernel-Boot  The last shutdown's success status was true. The last boot's success status was true.
+10/9/2026 11:07:52 PM 6008 EventLog                       The previous system shutdown at 11:05:04 PM on ?10/?9/?2026 was unexpected.
+10/9/2026 11:05:02 PM   41 Microsoft-Windows-Kernel-Power The system has rebooted without cleanly shutting down first. This error could be caused if the system stopped responding, crashed, or lost power unexpectedly.
+10/9/2026 11:05:01 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.
+10/9/2026 11:05:01 PM   20 Microsoft-Windows-Kernel-Boot  The last shutdown's success status was true. The last boot's success status was true.
+10/9/2026 11:05:04 PM 6008 EventLog                       The previous system shutdown at 10:32:25 PM on ?10/?9/?2026 was unexpected.
+
+
+
+
+## events-after-guest-shutdown.txt
+
+TimeCreated             Id ProviderName                   Msg
+-----------             -- ------------                   ---
+10/9/2026 11:08:35 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.
+10/9/2026 11:08:35 PM   20 Microsoft-Windows-Kernel-Boot  The last shutdown's success status was true. The last boot's success status was true.
+10/9/2026 11:08:28 PM  109 Microsoft-Windows-Kernel-Power The kernel power manager has initiated a shutdown transition. |
+10/9/2026 11:08:27 PM 1074 User32                         The process C:\WINDOWS\system32\shutdown.exe (FSWTH-QEMU) has initiated the shutdown of computer FSWTH-QEMU on behalf of user FSWTH-QEMU\fswth for the following
+                                                          reason: No title for this reason could be found |  Reason Code: 0x800000ff
+10/9/2026 11:08:27 PM 6006 EventLog                       The Event log service was stopped.
+10/9/2026 11:07:51 PM   41 Microsoft-Windows-Kernel-Power The system has rebooted without cleanly shutting down first. This error could be caused if the system stopped responding, crashed, or lost power unexpectedly.
+10/9/2026 11:07:50 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.
+10/9/2026 11:07:50 PM   20 Microsoft-Windows-Kernel-Boot  The last shutdown's success status was true. The last boot's success status was true.
+
+
+
+
+## events-after-fixed-restart.txt
+
+TimeCreated             Id ProviderName                   Msg
+-----------             -- ------------                   ---
+10/9/2026 11:09:43 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.
+10/9/2026 11:09:43 PM   20 Microsoft-Windows-Kernel-Boot  The last shutdown's success status was true. The last boot's success status was true.
+10/9/2026 11:09:35 PM  109 Microsoft-Windows-Kernel-Power The kernel power manager has initiated a shutdown transition....
+10/9/2026 11:09:34 PM 1074 User32                         The process C:\WINDOWS\system32\shutdown.exe (FSWTH-QEMU) has initiated the shutdown of computer FSWTH-QEMU on behalf of user FSWTH-QEMU\fs...
+10/9/2026 11:09:34 PM 6006 EventLog                       The Event log service was stopped.
+10/9/2026 11:08:35 PM   27 Microsoft-Windows-Kernel-Boot  The boot type was 0x0.

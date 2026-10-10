@@ -1,5 +1,9 @@
 # Setting up the Windows VM
 
+For the persistent **Linux ARM64 QEMU/KVM** setup, including Raspberry Pi 5,
+use [qemu-vm.md](qemu-vm.md). This page retains the VMware setup while the
+replacement is validated. macOS QEMU support is a subsequent step.
+
 Everything the harness needs from the Windows side, from an empty
 hypervisor to `ssh <user>@<vm> "echo ok"` answering. Do this once per
 machine. The rest of the harness assumes it is done: `run-tests.sh` talks to

@@ -65,6 +65,9 @@ bash ../fs-windows-test-harness/scripts/run-tests.sh
 ```
 
 Setting up the Windows VM: [`docs/vm-setup.md`](./docs/vm-setup.md).
+Persistent QEMU VM, one setup for Linux ARM64/KVM (including Raspberry Pi 5)
+and Apple Silicon macOS/HVF: [`docs/qemu-vm.md`](./docs/qemu-vm.md). The guest
+stays running between tests; CI continues to use its Windows runner directly.
 Full contract: [`docs/consumer-integration.md`](./docs/consumer-integration.md).
 Architecture overview: [`docs/architecture.md`](./docs/architecture.md).
 Diagnosing a red scenario: [`docs/triage-protocol.md`](./docs/triage-protocol.md).
@@ -86,6 +89,7 @@ chore state-machine
 chore output-budget  # the wrapper resolves from core, and every task is budgeted
 chore agents-core    # AGENTS.md carries the shared agent-core block, unmodified
 chore config   # needs python3 3.11+ and `pip install 'jsonschema>=4.19'`
+chore local-vm # QEMU control checks; no guest or image download required
 chore test -- --verbose   # any task: stream the whole run, not just the verdict
 
 # End to end against a Windows host with WinFsp and sshd (PowerShell as

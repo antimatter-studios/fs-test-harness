@@ -98,6 +98,10 @@ def check_pass(rc, scenarios, diag, log):
                 stdout = read(os.path.join(step_dir, "stdout.txt")) or ""
                 check(re.search(pattern, stdout, re.M),
                       f"{label}: stdout {stdout.strip()!r} does not match {pattern!r}")
+                literal_path = scn["recipe"][step["index"]].get("literal_path")
+                if literal_path:
+                    check(literal_path.replace("/", "\\") in stdout,
+                          f"{label}: Windows output lost the literal path {literal_path!r}")
 
         # The runner deletes each scenario's staged host image when the
         # scenario ends; the newest run dir must hold no image.
@@ -148,6 +152,8 @@ def main(argv):
     if not scenarios:
         raise SystemExit(f"no scenarios in {matrix} start with {prefix!r}")
     log = read(log_path) or ""
+    check("#< CLIXML" not in log,
+          "PowerShell CLIXML leaked into the smoke transcript")
     (check_pass if mode == "pass" else check_canary)(int(rc), scenarios, diag, log)
 
     print(f"--- {mode} verdicts ({prefix}*) ---")

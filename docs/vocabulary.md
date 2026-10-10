@@ -58,6 +58,10 @@ string, so a typo reached the host or Windows as an empty argument (#45).
 **Literal data.** `{{` and `}}` are a literal brace. A value written as
 `{ "literal": "..." }` is used verbatim, braces and all. Flat tokens
 (`{content}`, `{path}`, `{binary}`, ...) are never expanded again.
+Inside scenario and step strings, references use those known flat tokens or
+the `scenario.*`, `step.*`, `tools.*` and `vm.*` namespaces. Consumer markers
+such as `file_{N}.txt` remain literal; a missing required harness reference
+still stops the step.
 
 **Lookup order**: flat token first (so `{tools.fsck}` resolves even
 though it has a dot), then dotted-path. Flat shadows dotted; the v1
